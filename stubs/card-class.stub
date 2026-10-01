@@ -1,0 +1,18 @@
+<?php
+
+namespace {{ namespace }};
+
+use Illuminate\Contracts\View\View;
+use Livewire\Attributes\Lazy;
+use Laralyze\Livewire\Card;
+
+#[Lazy]
+class {{ class }} extends Card
+{
+    public function render(): View
+    {
+        return view('{{ view }}', [
+            'entries' => $this->aggregate('{{ type }}', ['count', 'max'], orderBy: 'count'),
+        ]);
+    }
+}

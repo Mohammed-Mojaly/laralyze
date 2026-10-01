@@ -1,0 +1,17 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 8
+    paths:
+        - src
+        - config
+        - benchmarks
+    configDirectories:
+        - config
+    ignoreErrors:
+        # Raw SQL in storage is assembled only from grammar-wrapped column
+        # names and fixed internal values, never from user input.
+        -
+            message: '#expects (TValue of float\|int\|)?literal-string, (non-falsy-)?string given#'
+            path: src/Storage/*

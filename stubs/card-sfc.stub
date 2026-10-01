@@ -1,0 +1,42 @@
+<?php
+
+use Livewire\Attributes\Lazy;
+use Laralyze\Livewire\Card;
+
+new #[Lazy] class extends Card
+{
+    public function with(): array
+    {
+        return [
+            'entries' => $this->aggregate('{{ type }}', ['count', 'max'], orderBy: 'count'),
+        ];
+    }
+};
+?>
+
+<x-laralyze::card :card="$this" title="{{ title }}">
+    @if ($entries->isEmpty())
+        <x-laralyze::empty :title="'Nothing recorded in the '.$this->range()->label().'.'" />
+    @else
+        <div class="lz-table-wrap">
+            <table class="lz-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Key</th>
+                        <th scope="col" class="lz-num">Count</th>
+                        <th scope="col" class="lz-num">Max</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($entries as $entry)
+                        <tr wire:key="{{ $entry->key }}">
+                            <td>{{ $entry->key }}</td>
+                            <td class="lz-num">{{ \Laralyze\Support\Format::number($entry->count) }}</td>
+                            <td class="lz-num">{{ \Laralyze\Support\Format::number($entry->max) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+</x-laralyze::card>

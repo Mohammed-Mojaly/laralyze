@@ -1,0 +1,60 @@
+{
+    "name": "mohammed-mojaly/laralyze",
+    "description": "Self-hosted production monitoring and analysis for Laravel.",
+    "keywords": ["laravel", "monitoring", "apm", "observability", "performance"],
+    "license": "MIT",
+    "type": "library",
+    "homepage": "https://github.com/Mohammed-Mojaly/laralyze",
+    "support": {
+        "issues": "https://github.com/Mohammed-Mojaly/laralyze/issues",
+        "source": "https://github.com/Mohammed-Mojaly/laralyze"
+    },
+    "require": {
+        "php": "^8.3",
+        "illuminate/console": "^12.0|^13.0",
+        "illuminate/contracts": "^12.0|^13.0",
+        "illuminate/support": "^12.0|^13.0",
+        "livewire/livewire": "^3.8|^4.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.12",
+        "laravel/pint": "^1.27",
+        "orchestra/testbench": "^10.12|^11.3",
+        "pestphp/pest": "^4.4|^5.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Laralyze\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Laralyze\\Tests\\": "tests/",
+            "Laralyze\\Benchmarks\\": "benchmarks/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Laralyze\\LaralyzeServiceProvider"
+            ],
+            "aliases": {
+                "Laralyze": "Laralyze\\Facades\\Laralyze"
+            }
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "lint": "pint",
+        "analyse": "phpstan analyse --memory-limit=1G",
+        "bench": "@php benchmarks/run.php"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

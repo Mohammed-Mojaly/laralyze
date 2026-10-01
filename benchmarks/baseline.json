@@ -1,0 +1,102 @@
+{
+    "recorded_at": "2026-09-30T21:28:36+00:00",
+    "php": "8.4.22",
+    "laravel": "v13.34.0",
+    "os": "Windows",
+    "without_laralyze": {
+        "trivial": {
+            "p50_us": 313.6,
+            "p95_us": 566.4,
+            "mean_us": 347.4,
+            "terminate_mean_us": 119.9,
+            "memory_growth_kb": 0.1
+        },
+        "queries_50": {
+            "p50_us": 3242.6,
+            "p95_us": 4843.4,
+            "mean_us": 3462.8,
+            "terminate_mean_us": 138.4,
+            "memory_growth_kb": 0.4
+        },
+        "queries_1000": {
+            "p50_us": 58805.4,
+            "p95_us": 64808.3,
+            "mean_us": 59726,
+            "terminate_mean_us": 160.9,
+            "memory_growth_kb": 0.4
+        },
+        "cache_heavy": {
+            "p50_us": 2914.7,
+            "p95_us": 3416.1,
+            "mean_us": 3003.6,
+            "terminate_mean_us": 138,
+            "memory_growth_kb": 0.4
+        },
+        "http_client": {
+            "p50_us": 1139,
+            "p95_us": 1799,
+            "mean_us": 1227.1,
+            "terminate_mean_us": 133.7,
+            "memory_growth_kb": 0.4
+        },
+        "record_1000": {
+            "p50_us": 320.4,
+            "p95_us": 364.2,
+            "mean_us": 328.8,
+            "terminate_mean_us": 110.1,
+            "memory_growth_kb": 0.1
+        }
+    },
+    "with_laralyze": {
+        "trivial": {
+            "p50_us": 314.6,
+            "p95_us": 576,
+            "mean_us": 358,
+            "terminate_mean_us": 139.3,
+            "memory_growth_kb": 0.1
+        },
+        "queries_50": {
+            "p50_us": 3232.9,
+            "p95_us": 4553.8,
+            "mean_us": 3430.1,
+            "terminate_mean_us": 158.6,
+            "memory_growth_kb": 0.4
+        },
+        "queries_1000": {
+            "p50_us": 58805.1,
+            "p95_us": 64197,
+            "mean_us": 59479.4,
+            "terminate_mean_us": 188.1,
+            "memory_growth_kb": 0.4
+        },
+        "cache_heavy": {
+            "p50_us": 2937.3,
+            "p95_us": 4065.4,
+            "mean_us": 3133.7,
+            "terminate_mean_us": 161.3,
+            "memory_growth_kb": 0.4
+        },
+        "http_client": {
+            "p50_us": 1139.3,
+            "p95_us": 1530.4,
+            "mean_us": 1203.9,
+            "terminate_mean_us": 149.6,
+            "memory_growth_kb": 0.4
+        },
+        "record_1000": {
+            "p50_us": 4224.7,
+            "p95_us": 5124.4,
+            "mean_us": 4454.8,
+            "terminate_mean_us": 18829.8,
+            "memory_growth_kb": 0.1
+        }
+    },
+    "overhead_us": {
+        "trivial": 2.4,
+        "queries_50": -1.7,
+        "queries_1000": -139.9,
+        "cache_heavy": 25.5,
+        "http_client": -10.8,
+        "record_1000": 3905.4
+    }
+}
