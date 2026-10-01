@@ -83,7 +83,7 @@ composer bench     # overhead benchmark, with and without Laralyze
 
 Run the storage tests against another database with `LARALYZE_TEST_DB=mysql|mariadb|pgsql|sqlsrv` (credentials via `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, and database `laralyze_test`). For SQL Server with Windows authentication, leave `DB_USERNAME` empty: `LARALYZE_TEST_DB=sqlsrv DB_HOST=my-pc DB_USERNAME= composer test`.
 
-`composer bench -- --compare` fails when Laralyze adds more than max(0.5 ms, 1%) to a typical request, or more than 2 ms to a pathological one (1,000 queries, 200 cache calls), before the response is sent.
+`composer bench -- --compare` fails when Laralyze adds more than max(0.5 ms, 1%) to a typical request before the response is sent. Heavier scenarios (1,000 queries, 200 cache calls) are reported, not gated.
 
 ## License
 

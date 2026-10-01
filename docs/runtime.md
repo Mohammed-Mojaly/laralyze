@@ -16,7 +16,7 @@ Measured on a reference app (PHP 8.4, SQLite), before the response:
 | 1,000 queries | ~1.5–2 ms |
 | 200 cache calls | ~0.5 ms |
 
-Each query or cache call goes through Laravel's event dispatcher, about 1–2 µs, like any tool that listens to them. If that matters for a hot path, turn the recorder off or wrap the code in `Laralyze::ignore(fn () => ...)`.
+Each query or cache call goes through Laravel's event dispatcher, about 1–2 µs, like any tool that listens to them; a request with 1,000 queries gets about 4–5% slower. If that matters for a hot path, turn the recorder off or wrap the code in `Laralyze::ignore(fn () => ...)`.
 
 ## The scheduler
 
