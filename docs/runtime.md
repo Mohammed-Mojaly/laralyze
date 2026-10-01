@@ -37,7 +37,7 @@ Nothing to do. Data is written after the response is sent (`fastcgi_finish_reque
 
 ## Octane
 
-Supported. Laralyze clears its buffer at the start of every request, so nothing leaks between requests. Dashboard cards check the `viewLaralyze` gate themselves on every update, so permission is never cached by a long-running worker.
+Supported, and tested on Swoole and FrankenPHP. Laralyze clears its buffer at the start of every request, so nothing leaks between requests. Dashboard cards check the `viewLaralyze` gate themselves on every update, so permission is never cached by a long-running worker.
 
 ## Queue workers
 
