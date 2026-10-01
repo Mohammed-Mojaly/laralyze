@@ -86,17 +86,20 @@ it('groups queries by their SQL, with lists folded together', function () {
 });
 
 it('counts every query of a long execution exactly', function () {
-    Schema::create('widgets', fn ($table) => $table->id());
+    // DDL isn't rolled back on every database, so this table is its own.
+    Schema::dropIfExists('long_runs');
+    Schema::create('long_runs', fn ($table) => $table->id());
 
     // Durations are buffered and added up every 1,000 queries.
     for ($i = 0; $i < 2_503; $i++) {
-        DB::table('widgets')->where('id', $i)->first();
+        DB::table('long_runs')->where('id', $i)->first();
     }
 
     Laralyze::flush();
+    Schema::drop('long_runs');
 
     $row = collect(app(DatabaseStorage::class)->aggregate('query', ['count', 'sum', 'max'], 3_600))
-        ->first(fn ($row) => str_contains($row->key, 'widgets') && str_contains($row->key, 'where'));
+        ->first(fn ($row) => str_contains($row->key, 'long_runs') && str_contains($row->key, 'where'));
 
     expect((float) $row->count)->toBe(2_503.0)
         ->and((float) $row->sum)->toBeGreaterThan(0.0)
