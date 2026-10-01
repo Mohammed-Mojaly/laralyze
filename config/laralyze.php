@@ -1,7 +1,7 @@
 <?php
 
-use Laralyze\Http\Middleware\Authorize;
-use Laralyze\Recorders;
+use MohammedMojaly\Laralyze\Http\Middleware\Authorize;
+use MohammedMojaly\Laralyze\Recorders;
 
 return [
 

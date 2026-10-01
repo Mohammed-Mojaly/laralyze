@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze;
+namespace MohammedMojaly\Laralyze;
 
 use Composer\InstalledVersions;
 use Illuminate\Console\Events\ScheduledTaskFailed;

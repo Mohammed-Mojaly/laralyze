@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Support;
+namespace MohammedMojaly\Laralyze\Support;
 
 /**
  * Finds the line in the app's own code that led to something, skipping

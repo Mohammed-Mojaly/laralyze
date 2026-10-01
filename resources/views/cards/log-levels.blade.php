@@ -1,5 +1,5 @@
-@use('Laralyze\Support\Chart')
-@use('Laralyze\Support\Format')
+@use('MohammedMojaly\Laralyze\Support\Chart')
+@use('MohammedMojaly\Laralyze\Support\Format')
 <x-laralyze::card :card="$this" title="Logs">
     @if ($total > 0)
         <div class="lz-figures">

@@ -1,10 +1,10 @@
 <?php
 
-namespace Laralyze\Cards;
+namespace MohammedMojaly\Laralyze\Cards;
 
 use Illuminate\Contracts\View\View;
-use Laralyze\Livewire\Card;
 use Livewire\Attributes\Lazy;
+use MohammedMojaly\Laralyze\Livewire\Card;
 
 /**
  * Visitors right now, page views and unique visitors over the period.

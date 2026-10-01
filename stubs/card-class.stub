@@ -4,7 +4,7 @@ namespace {{ namespace }};
 
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Lazy;
-use Laralyze\Livewire\Card;
+use MohammedMojaly\Laralyze\Livewire\Card;
 
 #[Lazy]
 class {{ class }} extends Card

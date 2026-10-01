@@ -1,11 +1,11 @@
 <?php
 
-namespace Laralyze\Cards;
+namespace MohammedMojaly\Laralyze\Cards;
 
 use Illuminate\Contracts\View\View;
-use Laralyze\Livewire\Card;
-use Laralyze\Recorders\Logs;
 use Livewire\Attributes\Lazy;
+use MohammedMojaly\Laralyze\Livewire\Card;
+use MohammedMojaly\Laralyze\Recorders\Logs;
 
 /**
  * Logged messages per level over time.

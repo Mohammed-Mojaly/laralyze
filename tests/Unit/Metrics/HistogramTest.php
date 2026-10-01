@@ -1,6 +1,6 @@
 <?php
 
-use Laralyze\Metrics\Histogram;
+use MohammedMojaly\Laralyze\Metrics\Histogram;
 
 it('puts small and negative values in the first bin', function (float $value) {
     expect(Histogram::bin($value))->toBe(0);

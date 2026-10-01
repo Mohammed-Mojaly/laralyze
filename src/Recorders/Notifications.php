@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Recorders;
+namespace MohammedMojaly\Laralyze\Recorders;
 
 use Illuminate\Notifications\Events\NotificationFailed;
 use Illuminate\Notifications\Events\NotificationSending;

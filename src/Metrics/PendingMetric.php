@@ -1,8 +1,8 @@
 <?php
 
-namespace Laralyze\Metrics;
+namespace MohammedMojaly\Laralyze\Metrics;
 
-use Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\Laralyze;
 
 /**
  * The fluent part of Laralyze::record(): each call adds one aggregation.

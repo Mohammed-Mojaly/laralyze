@@ -1,18 +1,18 @@
 <?php
 
-namespace Laralyze\Livewire;
+namespace MohammedMojaly\Laralyze\Livewire;
 
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Benchmark;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Laralyze\Dashboard\Range;
-use Laralyze\Laralyze;
-use Laralyze\Recorders\Recorder;
-use Laralyze\Storage\DatabaseStorage;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use MohammedMojaly\Laralyze\Dashboard\Range;
+use MohammedMojaly\Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\Recorders\Recorder;
+use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use stdClass;
 
 /**

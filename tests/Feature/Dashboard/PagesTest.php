@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\View;
-use Laralyze\Recorders\Requests;
+use MohammedMojaly\Laralyze\Recorders\Requests;
 
 beforeEach(function () {
     app()->detectEnvironment(fn () => 'local');

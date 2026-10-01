@@ -5,6 +5,12 @@
     "license": "MIT",
     "type": "library",
     "homepage": "https://github.com/Mohammed-Mojaly/laralyze",
+    "authors": [
+        {
+            "name": "Mohammed Mojaly",
+            "homepage": "https://github.com/Mohammed-Mojaly"
+        }
+    ],
     "support": {
         "issues": "https://github.com/Mohammed-Mojaly/laralyze/issues",
         "source": "https://github.com/Mohammed-Mojaly/laralyze"
@@ -24,22 +30,22 @@
     },
     "autoload": {
         "psr-4": {
-            "Laralyze\\": "src/"
+            "MohammedMojaly\\Laralyze\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Laralyze\\Tests\\": "tests/",
-            "Laralyze\\Benchmarks\\": "benchmarks/"
+            "MohammedMojaly\\Laralyze\\Tests\\": "tests/",
+            "MohammedMojaly\\Laralyze\\Benchmarks\\": "benchmarks/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Laralyze\\LaralyzeServiceProvider"
+                "MohammedMojaly\\Laralyze\\LaralyzeServiceProvider"
             ],
             "aliases": {
-                "Laralyze": "Laralyze\\Facades\\Laralyze"
+                "Laralyze": "MohammedMojaly\\Laralyze\\Facades\\Laralyze"
             }
         }
     },

@@ -1,4 +1,4 @@
-@use('Laralyze\Support\Format')
+@use('MohammedMojaly\Laralyze\Support\Format')
 <x-laralyze::card :card="$this" title="Slow requests">
     @if ($requests->isEmpty())
         <x-laralyze::empty
@@ -22,7 +22,7 @@
                             <td>
                                 <div class="lz-route">
                                     <span class="lz-method">{{ $request->method }}</span>
-                                    <span @class(['lz-path', 'is-unmatched' => $request->path === \Laralyze\Recorders\Requests::UNMATCHED]) title="{{ $request->path }}">{{ $request->path }}</span>
+                                    <span @class(['lz-path', 'is-unmatched' => $request->path === \MohammedMojaly\Laralyze\Recorders\Requests::UNMATCHED]) title="{{ $request->path }}">{{ $request->path }}</span>
                                 </div>
                             </td>
                             <td class="lz-num lz-strong">{{ Format::number($request->count) }}</td>

@@ -1,11 +1,11 @@
 <?php
 
-namespace Laralyze\Cards;
+namespace MohammedMojaly\Laralyze\Cards;
 
 use Illuminate\Contracts\View\View;
-use Laralyze\Livewire\Card;
-use Laralyze\Recorders\Requests;
 use Livewire\Attributes\Lazy;
+use MohammedMojaly\Laralyze\Livewire\Card;
+use MohammedMojaly\Laralyze\Recorders\Requests;
 
 /**
  * How many requests came in, split by status class, over time.

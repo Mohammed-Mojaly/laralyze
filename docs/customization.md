@@ -36,7 +36,7 @@ Extend the card and register your class under the same name:
 ```php
 namespace App\Laralyze;
 
-use Laralyze\Cards\Routes as BaseRoutes;
+use MohammedMojaly\Laralyze\Cards\Routes as BaseRoutes;
 
 class Routes extends BaseRoutes
 {
@@ -59,7 +59,7 @@ php artisan laralyze:make-card CheckoutFunnel
 
 On Livewire 4 this creates a single-file card; on Livewire 3, a class and a view. Put it on a page with `<livewire:laralyze.checkout-funnel cols="6" />`.
 
-Cards extend `Laralyze\Livewire\Card` and read data for the period selected in the top bar:
+Cards extend `MohammedMojaly\Laralyze\Livewire\Card` and read data for the period selected in the top bar:
 
 | Method | Returns |
 |---|---|
@@ -76,7 +76,7 @@ Building blocks for card views: `x-laralyze::card`, `x-laralyze::table`, `x-lara
 ## Record your own metrics
 
 ```php
-use Laralyze\Facades\Laralyze;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
 
 Laralyze::record('checkout', $plan, $total)->count()->sum()->max();
 Laralyze::record('import', $source, $milliseconds)->avg()->histogram(); // enables p50/p95/p99
@@ -108,7 +108,7 @@ Everything is merged in memory and written once, after the response is sent.
 namespace App\Laralyze;
 
 use App\Events\OrderPlaced;
-use Laralyze\Recorders\Recorder;
+use MohammedMojaly\Laralyze\Recorders\Recorder;
 
 class Orders extends Recorder
 {

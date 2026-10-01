@@ -4,10 +4,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
-use Laralyze\Facades\Laralyze;
-use Laralyze\Http\Middleware\Authorize;
-use Laralyze\Recorders\Requests;
-use Laralyze\Storage\DatabaseStorage;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
+use MohammedMojaly\Laralyze\Http\Middleware\Authorize;
+use MohammedMojaly\Laralyze\Recorders\Requests;
+use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 /**
  * @return array<string, stdClass>

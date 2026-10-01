@@ -1,11 +1,11 @@
 <?php
 
-namespace Laralyze\Tests;
+namespace MohammedMojaly\Laralyze\Tests;
 
 use Illuminate\Contracts\Config\Repository;
-use Laralyze\LaralyzeServiceProvider;
-use Laralyze\Tests\Concerns\UsesStorage;
 use Livewire\LivewireServiceProvider;
+use MohammedMojaly\Laralyze\LaralyzeServiceProvider;
+use MohammedMojaly\Laralyze\Tests\Concerns\UsesStorage;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra

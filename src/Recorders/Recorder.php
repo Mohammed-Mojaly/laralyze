@@ -1,14 +1,14 @@
 <?php
 
-namespace Laralyze\Recorders;
+namespace MohammedMojaly\Laralyze\Recorders;
 
 use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Http\Request;
-use Laralyze\Http\Middleware\Authorize;
-use Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\Http\Middleware\Authorize;
+use MohammedMojaly\Laralyze\Laralyze;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Recorders;
+namespace MohammedMojaly\Laralyze\Recorders;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Foundation\Application;

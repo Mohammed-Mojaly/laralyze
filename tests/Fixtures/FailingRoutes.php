@@ -1,9 +1,9 @@
 <?php
 
-namespace Laralyze\Tests\Fixtures;
+namespace MohammedMojaly\Laralyze\Tests\Fixtures;
 
 use Illuminate\Support\Collection;
-use Laralyze\Cards\Routes;
+use MohammedMojaly\Laralyze\Cards\Routes;
 
 /**
  * A card swapped in through config('laralyze.cards'): only routes with errors.

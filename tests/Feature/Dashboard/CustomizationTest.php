@@ -2,10 +2,10 @@
 
 use Composer\InstalledVersions;
 use Illuminate\Support\Facades\File;
-use Laralyze\Cards\Routes;
-use Laralyze\Facades\Laralyze;
-use Laralyze\Tests\Fixtures\FailingRoutes;
 use Livewire\Livewire;
+use MohammedMojaly\Laralyze\Cards\Routes;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
+use MohammedMojaly\Laralyze\Tests\Fixtures\FailingRoutes;
 
 beforeEach(function () {
     app()->detectEnvironment(fn () => 'local');

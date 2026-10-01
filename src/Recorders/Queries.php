@@ -1,11 +1,11 @@
 <?php
 
-namespace Laralyze\Recorders;
+namespace MohammedMojaly\Laralyze\Recorders;
 
 use Illuminate\Database\Events\QueryExecuted;
-use Laralyze\Laralyze;
-use Laralyze\Metrics\Histogram;
-use Laralyze\Support\Location;
+use MohammedMojaly\Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\Metrics\Histogram;
+use MohammedMojaly\Laralyze\Support\Location;
 
 /**
  * Times every query. During the request it only adds each duration to a

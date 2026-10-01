@@ -1,5 +1,5 @@
-@use('Laralyze\Support\Chart')
-@use('Laralyze\Support\Format')
+@use('MohammedMojaly\Laralyze\Support\Chart')
+@use('MohammedMojaly\Laralyze\Support\Format')
 <x-laralyze::card :card="$this" title="Servers">
     @if ($servers->isEmpty())
         <x-laralyze::empty

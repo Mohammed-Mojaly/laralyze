@@ -7,7 +7,7 @@
  */
 
 use Composer\InstalledVersions;
-use Laralyze\Benchmarks\Benchmark;
+use MohammedMojaly\Laralyze\Benchmarks\Benchmark;
 
 require __DIR__.'/../vendor/autoload.php';
 

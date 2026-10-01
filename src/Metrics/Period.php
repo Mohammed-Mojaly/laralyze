@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Metrics;
+namespace MohammedMojaly\Laralyze\Metrics;
 
 /**
  * Metrics are stored at two resolutions: minute buckets for recent,

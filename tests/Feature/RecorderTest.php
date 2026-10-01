@@ -1,10 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Event;
-use Laralyze\Facades\Laralyze;
-use Laralyze\Recorders\RecorderManager;
-use Laralyze\Tests\Fixtures\OrderPlaced;
-use Laralyze\Tests\Fixtures\OrdersRecorder;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
+use MohammedMojaly\Laralyze\Recorders\RecorderManager;
+use MohammedMojaly\Laralyze\Tests\Fixtures\OrderPlaced;
+use MohammedMojaly\Laralyze\Tests\Fixtures\OrdersRecorder;
 
 function useOrdersRecorder(array $options = []): void
 {

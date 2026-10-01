@@ -1,10 +1,10 @@
 <?php
 
-namespace Laralyze\Http\Controllers;
+namespace MohammedMojaly\Laralyze\Http\Controllers;
 
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
-use Laralyze\Dashboard\Pages;
+use MohammedMojaly\Laralyze\Dashboard\Pages;
 use RuntimeException;
 
 class PageController

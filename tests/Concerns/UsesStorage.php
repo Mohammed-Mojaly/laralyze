@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Tests\Concerns;
+namespace MohammedMojaly\Laralyze\Tests\Concerns;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;

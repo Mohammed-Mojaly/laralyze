@@ -1,7 +1,7 @@
 <?php
 
-use Laralyze\Tests\Concerns\UsesStorage;
-use Laralyze\Tests\TestCase;
+use MohammedMojaly\Laralyze\Tests\Concerns\UsesStorage;
+use MohammedMojaly\Laralyze\Tests\TestCase;
 
 pest()->extend(TestCase::class)->in('Unit', 'Feature');
 

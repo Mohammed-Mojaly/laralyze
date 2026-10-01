@@ -1,6 +1,6 @@
 <?php
 
-use Laralyze\Facades\Laralyze;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
 
 it('records by default', function () {
     expect(Laralyze::isEnabled())->toBeTrue()

@@ -1,8 +1,8 @@
 <?php
 
-use Laralyze\Dashboard\Pages;
-use Laralyze\LaralyzeServiceProvider;
 use Livewire\Livewire;
+use MohammedMojaly\Laralyze\Dashboard\Pages;
+use MohammedMojaly\Laralyze\LaralyzeServiceProvider;
 
 beforeEach(function () {
     app()->detectEnvironment(fn () => 'local');

@@ -1,8 +1,8 @@
 <?php
 
 use Illuminate\Support\Carbon;
-use Laralyze\Facades\Laralyze;
-use Laralyze\Storage\DatabaseStorage;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
+use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 it('reads back exactly what a brute-force count of the same events gives', function () {
     $now = Carbon::parse('2026-09-30 12:34:56', 'UTC')->getTimestamp();

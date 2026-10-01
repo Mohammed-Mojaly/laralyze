@@ -1,7 +1,7 @@
 <?php
 
-use Laralyze\Laralyze;
-use Laralyze\Recorders\Queries;
+use MohammedMojaly\Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\Recorders\Queries;
 
 function fingerprint(string $sql): string
 {

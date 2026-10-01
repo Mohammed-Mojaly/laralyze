@@ -1,15 +1,15 @@
 <?php
 
-namespace Laralyze;
+namespace MohammedMojaly\Laralyze;
 
 use Closure;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Lottery;
-use Laralyze\Metrics\Buffer;
-use Laralyze\Metrics\PendingMetric;
-use Laralyze\Storage\DatabaseStorage;
+use MohammedMojaly\Laralyze\Metrics\Buffer;
+use MohammedMojaly\Laralyze\Metrics\PendingMetric;
+use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use Throwable;
 
 class Laralyze

@@ -1,11 +1,11 @@
 <?php
 
-namespace Laralyze\Http\Middleware;
+namespace MohammedMojaly\Laralyze\Http\Middleware;
 
 use Closure;
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Http\Request;
-use Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\Laralyze;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

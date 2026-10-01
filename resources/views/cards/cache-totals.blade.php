@@ -1,5 +1,5 @@
-@use('Laralyze\Support\Chart')
-@use('Laralyze\Support\Format')
+@use('MohammedMojaly\Laralyze\Support\Chart')
+@use('MohammedMojaly\Laralyze\Support\Format')
 <x-laralyze::card :card="$this" title="Cache">
     @php($reads = $totals['hit'] + $totals['miss'])
     @if (array_sum($totals) > 0)

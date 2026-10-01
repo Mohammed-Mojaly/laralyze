@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Tests\Fixtures;
+namespace MohammedMojaly\Laralyze\Tests\Fixtures;
 
 use Illuminate\Mail\Mailable;
 

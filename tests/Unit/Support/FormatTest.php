@@ -1,6 +1,6 @@
 <?php
 
-use Laralyze\Support\Format;
+use MohammedMojaly\Laralyze\Support\Format;
 
 it('formats counts', function (int|float|null $value, string $expected) {
     expect(Format::number($value))->toBe($expected);

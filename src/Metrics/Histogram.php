@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Metrics;
+namespace MohammedMojaly\Laralyze\Metrics;
 
 /**
  * Log-scale buckets for estimating percentiles without keeping every

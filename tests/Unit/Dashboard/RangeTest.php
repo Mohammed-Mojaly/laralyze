@@ -1,6 +1,6 @@
 <?php
 
-use Laralyze\Dashboard\Range;
+use MohammedMojaly\Laralyze\Dashboard\Range;
 
 it('reads the period from the query string', function (mixed $value, Range $expected) {
     expect(Range::fromQuery($value))->toBe($expected);

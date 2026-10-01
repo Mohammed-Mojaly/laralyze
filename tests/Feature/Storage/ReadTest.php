@@ -1,8 +1,8 @@
 <?php
 
 use Illuminate\Support\Carbon;
-use Laralyze\Facades\Laralyze;
-use Laralyze\Storage\DatabaseStorage;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
+use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 beforeEach(function () {
     $this->now = Carbon::parse('2026-09-30 12:00:00', 'UTC');

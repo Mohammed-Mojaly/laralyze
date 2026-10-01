@@ -1,4 +1,4 @@
-@use('Laralyze\Support\Format')
+@use('MohammedMojaly\Laralyze\Support\Format')
 <x-laralyze::card :card="$this" title="Cache keys">
     @if ($keys->isEmpty())
         <x-laralyze::empty

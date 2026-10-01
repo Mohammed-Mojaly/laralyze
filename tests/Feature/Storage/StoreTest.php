@@ -1,9 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
-use Laralyze\Facades\Laralyze;
-use Laralyze\Metrics\Period;
-use Laralyze\Storage\DatabaseStorage;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
+use MohammedMojaly\Laralyze\Metrics\Period;
+use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 const STORED_AT = 1_727_700_030;
 

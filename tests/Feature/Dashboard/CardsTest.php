@@ -1,8 +1,8 @@
 <?php
 
-use Laralyze\Facades\Laralyze;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
 
 beforeEach(function () {
     app()->detectEnvironment(fn () => 'local');

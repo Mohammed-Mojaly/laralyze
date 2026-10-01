@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Support;
+namespace MohammedMojaly\Laralyze\Support;
 
 class Format
 {

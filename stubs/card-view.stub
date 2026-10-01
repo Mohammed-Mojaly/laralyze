@@ -15,8 +15,8 @@
                     @foreach ($entries as $entry)
                         <tr wire:key="{{ $entry->key }}">
                             <td>{{ $entry->key }}</td>
-                            <td class="lz-num">{{ \Laralyze\Support\Format::number($entry->count) }}</td>
-                            <td class="lz-num">{{ \Laralyze\Support\Format::number($entry->max) }}</td>
+                            <td class="lz-num">{{ \MohammedMojaly\Laralyze\Support\Format::number($entry->count) }}</td>
+                            <td class="lz-num">{{ \MohammedMojaly\Laralyze\Support\Format::number($entry->max) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

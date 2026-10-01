@@ -1,4 +1,4 @@
-@use('Laralyze\Support\Format')
+@use('MohammedMojaly\Laralyze\Support\Format')
 <x-laralyze::card :card="$this" title="Slow jobs">
     @if ($jobs->isEmpty())
         <x-laralyze::empty

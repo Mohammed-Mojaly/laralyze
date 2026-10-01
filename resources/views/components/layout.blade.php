@@ -1,5 +1,5 @@
 @props(['title' => null])
-@inject('assets', 'Laralyze\Dashboard\Assets')
+@inject('assets', 'MohammedMojaly\Laralyze\Dashboard\Assets')
 <!DOCTYPE html>
 <html lang="en">
 <head>

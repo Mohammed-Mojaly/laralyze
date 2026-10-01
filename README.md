@@ -59,7 +59,7 @@ The gate is checked on the page and on every card update.
 ## Your own metrics
 
 ```php
-use Laralyze\Facades\Laralyze;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
 
 Laralyze::record('checkout', $plan, $total)->count()->sum()->max();
 ```
@@ -85,6 +85,10 @@ Run the storage tests against another database with `LARALYZE_TEST_DB=mysql|mari
 
 `composer bench -- --compare` fails when Laralyze adds more than max(0.5 ms, 1%) to a typical request before the response is sent. Heavier scenarios (1,000 queries, 200 cache calls) are reported, not gated.
 
+## Credits
+
+Created and maintained by [Mohammed Mojaly](https://github.com/Mohammed-Mojaly).
+
 ## License
 
-MIT
+MIT. See [LICENSE.md](LICENSE.md).

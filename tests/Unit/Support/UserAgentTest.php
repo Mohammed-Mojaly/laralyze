@@ -1,6 +1,6 @@
 <?php
 
-use Laralyze\Support\UserAgent;
+use MohammedMojaly\Laralyze\Support\UserAgent;
 
 it('recognises real browsers and devices', function (string $agent, string $device, string $os, string $browser) {
     expect(UserAgent::parse($agent))->toBe(['device' => $device, 'os' => $os, 'browser' => $browser, 'bot' => null]);

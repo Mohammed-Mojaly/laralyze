@@ -6,7 +6,7 @@
 @endphp
 <figure {{ $attributes->class('lz-chart') }}>
     <div class="lz-chart-y" aria-hidden="true">
-        <span>{{ $format === 'duration' ? \Laralyze\Support\Format::duration($max) : \Laralyze\Support\Format::number($max) }}</span>
+        <span>{{ $format === 'duration' ? \MohammedMojaly\Laralyze\Support\Format::duration($max) : \MohammedMojaly\Laralyze\Support\Format::number($max) }}</span>
         <span>0</span>
     </div>
 

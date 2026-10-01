@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Recorders;
+namespace MohammedMojaly\Laralyze\Recorders;
 
 use Illuminate\Cache\Events\CacheEvent;
 use Illuminate\Cache\Events\CacheHit;

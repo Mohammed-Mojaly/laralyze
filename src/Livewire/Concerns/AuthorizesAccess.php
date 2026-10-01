@@ -1,9 +1,9 @@
 <?php
 
-namespace Laralyze\Livewire\Concerns;
+namespace MohammedMojaly\Laralyze\Livewire\Concerns;
 
 use Illuminate\Support\Facades\Gate;
-use Laralyze\Http\Middleware\Authorize;
+use MohammedMojaly\Laralyze\Http\Middleware\Authorize;
 
 /**
  * Cards check the gate themselves instead of trusting Livewire's persistent

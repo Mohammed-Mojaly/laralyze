@@ -1,9 +1,9 @@
 <?php
 
-use Laralyze\Facades\Laralyze;
-use Laralyze\Metrics\Buffer;
-use Laralyze\Metrics\Histogram;
-use Laralyze\Metrics\Period;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
+use MohammedMojaly\Laralyze\Metrics\Buffer;
+use MohammedMojaly\Laralyze\Metrics\Histogram;
+use MohammedMojaly\Laralyze\Metrics\Period;
 
 const AT = 1_727_700_030; // 2024-09-30 12:40:30 UTC
 

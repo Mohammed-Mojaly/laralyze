@@ -1,10 +1,10 @@
 <?php
 
-namespace Laralyze\Support;
+namespace MohammedMojaly\Laralyze\Support;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Laralyze\Dashboard\Range;
+use MohammedMojaly\Laralyze\Dashboard\Range;
 
 /**
  * Prepares graph() results for the chart components.

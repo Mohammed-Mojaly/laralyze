@@ -1,10 +1,10 @@
 <?php
 
-namespace Laralyze\Recorders;
+namespace MohammedMojaly\Laralyze\Recorders;
 
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
-use Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\Laralyze;
 use Throwable;
 
 class RecorderManager

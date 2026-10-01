@@ -7,7 +7,7 @@
         <p class="lz-tip-row lz-s-{{ $name }}">
             <span class="lz-swatch"></span>
             <span>{{ $name }}</span>
-            <b>{{ $format === 'duration' ? \Laralyze\Support\Format::duration($value) : \Laralyze\Support\Format::number($value ?? 0) }}</b>
+            <b>{{ $format === 'duration' ? \MohammedMojaly\Laralyze\Support\Format::duration($value) : \MohammedMojaly\Laralyze\Support\Format::number($value ?? 0) }}</b>
         </p>
     @endforeach
 </div>

@@ -16,7 +16,7 @@
                 {{ $actions ?? '' }}
 
                 @if ($card)
-                    <span class="lz-took" title="Time spent reading this card's data">{{ \Laralyze\Support\Format::duration($card->queryTime()) }}</span>
+                    <span class="lz-took" title="Time spent reading this card's data">{{ \MohammedMojaly\Laralyze\Support\Format::duration($card->queryTime()) }}</span>
                 @endif
             </div>
         </header>

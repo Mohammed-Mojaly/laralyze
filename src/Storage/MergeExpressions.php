@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Storage;
+namespace MohammedMojaly\Laralyze\Storage;
 
 use Illuminate\Database\Connection;
 use Illuminate\Database\Query\Expression;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Support;
+namespace MohammedMojaly\Laralyze\Support;
 
 /**
  * A deliberately small user-agent parser: enough to tell device type, OS,

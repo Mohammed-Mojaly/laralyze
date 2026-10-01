@@ -1,4 +1,4 @@
-@use('Laralyze\Support\Format')
+@use('MohammedMojaly\Laralyze\Support\Format')
 <x-laralyze::card :card="$this" title="Routes">
     <x-slot:actions>
         <div class="lz-segmented" role="group" aria-label="Sort routes by">
@@ -34,7 +34,7 @@
                             <td>
                                 <div class="lz-route">
                                     <span class="lz-method">{{ $route->method }}</span>
-                                    <span @class(['lz-path', 'is-unmatched' => $route->path === \Laralyze\Recorders\Requests::UNMATCHED]) title="{{ $route->path }}">{{ $route->path }}</span>
+                                    <span @class(['lz-path', 'is-unmatched' => $route->path === \MohammedMojaly\Laralyze\Recorders\Requests::UNMATCHED]) title="{{ $route->path }}">{{ $route->path }}</span>
                                 </div>
                             </td>
                             <td class="lz-num">{{ Format::number($route->{'2xx'}) }}</td>

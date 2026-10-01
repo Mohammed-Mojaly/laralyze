@@ -1,9 +1,9 @@
 <?php
 
-namespace Laralyze\Dashboard;
+namespace MohammedMojaly\Laralyze\Dashboard;
 
 use Illuminate\Contracts\Config\Repository;
-use Laralyze\Recorders;
+use MohammedMojaly\Laralyze\Recorders;
 
 /**
  * The sidebar: built-in pages whose recorders are enabled, plus the

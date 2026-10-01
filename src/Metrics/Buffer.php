@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Metrics;
+namespace MohammedMojaly\Laralyze\Metrics;
 
 /**
  * Holds metrics for the current execution, already aggregated per bucket.

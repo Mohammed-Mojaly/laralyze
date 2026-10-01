@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Recorders;
+namespace MohammedMojaly\Laralyze\Recorders;
 
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -9,7 +9,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobQueued;
 use Illuminate\Support\Facades\Date;
-use Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\Laralyze;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

@@ -1,8 +1,8 @@
 <?php
 
-namespace Laralyze\Tests\Fixtures;
+namespace MohammedMojaly\Laralyze\Tests\Fixtures;
 
-use Laralyze\Recorders\Recorder;
+use MohammedMojaly\Laralyze\Recorders\Recorder;
 use RuntimeException;
 
 class OrdersRecorder extends Recorder

@@ -1,6 +1,6 @@
 <?php
 
-use Laralyze\Metrics\Period;
+use MohammedMojaly\Laralyze\Metrics\Period;
 
 it('floors a timestamp to the start of its bucket', function (int $timestamp, int $period, int $expected) {
     expect(Period::bucket($timestamp, $period))->toBe($expected);

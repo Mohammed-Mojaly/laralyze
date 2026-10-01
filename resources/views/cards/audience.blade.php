@@ -1,4 +1,4 @@
-@use('Laralyze\Support\Format')
+@use('MohammedMojaly\Laralyze\Support\Format')
 <x-laralyze::card :card="$this" title="Visitors">
     @if (collect($groups)->flatten()->sum() <= 0)
         <x-laralyze::empty

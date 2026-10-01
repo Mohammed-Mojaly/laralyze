@@ -1,11 +1,11 @@
 <?php
 
-namespace Laralyze\Recorders;
+namespace MohammedMojaly\Laralyze\Recorders;
 
 use Illuminate\Database\QueryException;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Str;
-use Laralyze\Support\Location;
+use MohammedMojaly\Laralyze\Support\Location;
 use Throwable;
 
 /**

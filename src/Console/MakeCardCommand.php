@@ -1,12 +1,12 @@
 <?php
 
-namespace Laralyze\Console;
+namespace MohammedMojaly\Laralyze\Console;
 
 use Composer\InstalledVersions;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
-use Laralyze\LaralyzeServiceProvider;
+use MohammedMojaly\Laralyze\LaralyzeServiceProvider;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'laralyze:make-card')]

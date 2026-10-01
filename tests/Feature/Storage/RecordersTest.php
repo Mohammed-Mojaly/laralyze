@@ -29,14 +29,14 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
-use Laralyze\Facades\Laralyze;
-use Laralyze\Recorders;
-use Laralyze\Storage\DatabaseStorage;
-use Laralyze\Tests\Fixtures\InvoicePaid;
-use Laralyze\Tests\Fixtures\SendInvoice;
-use Laralyze\Tests\Fixtures\WelcomeMail;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
+use MohammedMojaly\Laralyze\Recorders;
+use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
+use MohammedMojaly\Laralyze\Tests\Fixtures\InvoicePaid;
+use MohammedMojaly\Laralyze\Tests\Fixtures\SendInvoice;
+use MohammedMojaly\Laralyze\Tests\Fixtures\WelcomeMail;
 use Symfony\Component\Mime\Email;
 
 beforeEach(function () {

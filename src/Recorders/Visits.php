@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Recorders;
+namespace MohammedMojaly\Laralyze\Recorders;
 
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Auth\Factory as Auth;
@@ -8,8 +8,8 @@ use Illuminate\Contracts\Cache\Factory as Cache;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
-use Laralyze\Laralyze;
-use Laralyze\Support\UserAgent;
+use MohammedMojaly\Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\Support\UserAgent;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

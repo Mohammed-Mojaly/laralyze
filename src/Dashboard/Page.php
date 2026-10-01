@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Dashboard;
+namespace MohammedMojaly\Laralyze\Dashboard;
 
 final readonly class Page
 {

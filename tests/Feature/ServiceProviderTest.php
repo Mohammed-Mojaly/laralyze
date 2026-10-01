@@ -1,6 +1,6 @@
 <?php
 
-use Laralyze\Facades\Laralyze;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
 
 it('merges the package config', function () {
     expect(config('laralyze.enabled'))->toBeTrue();

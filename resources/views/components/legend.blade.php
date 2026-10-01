@@ -5,9 +5,9 @@
         <div @class(["lz-legend-item lz-s-{$name}", 'is-zero' => ! $value])>
             <dt><span class="lz-swatch"></span>{{ $name }}</dt>
             <dd>
-                {{ $format === 'duration' ? \Laralyze\Support\Format::duration($value) : \Laralyze\Support\Format::number($value) }}
+                {{ $format === 'duration' ? \MohammedMojaly\Laralyze\Support\Format::duration($value) : \MohammedMojaly\Laralyze\Support\Format::number($value) }}
                 @if ($total)
-                    <small>{{ \Laralyze\Support\Format::percent($value, $total) }}</small>
+                    <small>{{ \MohammedMojaly\Laralyze\Support\Format::percent($value, $total) }}</small>
                 @endif
             </dd>
         </div>

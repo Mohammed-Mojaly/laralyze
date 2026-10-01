@@ -1,10 +1,10 @@
 <?php
 
-namespace Laralyze\Cards;
+namespace MohammedMojaly\Laralyze\Cards;
 
 use Illuminate\Contracts\View\View;
-use Laralyze\Livewire\Card;
 use Livewire\Attributes\Lazy;
+use MohammedMojaly\Laralyze\Livewire\Card;
 
 /**
  * How long requests take: average, p95 and the slowest one.

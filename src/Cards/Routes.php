@@ -1,12 +1,12 @@
 <?php
 
-namespace Laralyze\Cards;
+namespace MohammedMojaly\Laralyze\Cards;
 
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
-use Laralyze\Livewire\Card;
-use Laralyze\Recorders\Requests;
 use Livewire\Attributes\Lazy;
+use MohammedMojaly\Laralyze\Livewire\Card;
+use MohammedMojaly\Laralyze\Recorders\Requests;
 use stdClass;
 
 /**

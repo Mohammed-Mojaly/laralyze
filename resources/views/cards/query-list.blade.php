@@ -1,4 +1,4 @@
-@use('Laralyze\Support\Format')
+@use('MohammedMojaly\Laralyze\Support\Format')
 <x-laralyze::card :card="$this" title="Queries">
     <x-slot:actions>
         <x-laralyze::segmented :options="['sum' => 'Total time', 'count' => 'Count', 'avg' => 'Average']" :value="$sort" model="sort" label="Sort queries by" />

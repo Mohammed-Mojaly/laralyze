@@ -1,7 +1,7 @@
-@inject('pages', 'Laralyze\Dashboard\Pages')
+@inject('pages', 'MohammedMojaly\Laralyze\Dashboard\Pages')
 @php
-    $current = $pages->find((string) (request()->route('page') ?? \Laralyze\Dashboard\Pages::HOME));
-    $range = \Laralyze\Dashboard\Range::fromQuery(request()->query('period'));
+    $current = $pages->find((string) (request()->route('page') ?? \MohammedMojaly\Laralyze\Dashboard\Pages::HOME));
+    $range = \MohammedMojaly\Laralyze\Dashboard\Range::fromQuery(request()->query('period'));
 @endphp
 <x-laralyze::layout :title="$current?->label">
     <div class="lz-app">

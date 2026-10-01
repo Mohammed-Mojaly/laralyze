@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Dashboard;
+namespace MohammedMojaly\Laralyze\Dashboard;
 
 use Composer\InstalledVersions;
 use Illuminate\Support\Facades\Vite;

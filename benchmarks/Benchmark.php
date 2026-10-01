@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Benchmarks;
+namespace MohammedMojaly\Laralyze\Benchmarks;
 
 use GuzzleHttp\Promise\Create;
 use GuzzleHttp\Psr7\Response;
@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
-use Laralyze\Laralyze;
-use Laralyze\LaralyzeServiceProvider;
+use MohammedMojaly\Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\LaralyzeServiceProvider;
 use Orchestra\Testbench\Foundation\Application as Testbench;
 
 /**

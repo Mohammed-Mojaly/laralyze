@@ -1,7 +1,7 @@
 <?php
 
-use Laralyze\Dashboard\Range;
-use Laralyze\Support\Chart;
+use MohammedMojaly\Laralyze\Dashboard\Range;
+use MohammedMojaly\Laralyze\Support\Chart;
 
 function chart(): Chart
 {

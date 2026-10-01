@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Console;
+namespace MohammedMojaly\Laralyze\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;

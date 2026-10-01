@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Storage;
+namespace MohammedMojaly\Laralyze\Storage;
 
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Connection;
@@ -10,8 +10,8 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
 use InvalidArgumentException;
-use Laralyze\Metrics\Histogram;
-use Laralyze\Metrics\Period;
+use MohammedMojaly\Laralyze\Metrics\Histogram;
+use MohammedMojaly\Laralyze\Metrics\Period;
 use stdClass;
 
 class DatabaseStorage

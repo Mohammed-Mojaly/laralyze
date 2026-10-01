@@ -1,6 +1,6 @@
 <?php
 
-namespace Laralyze\Dashboard;
+namespace MohammedMojaly\Laralyze\Dashboard;
 
 /**
  * The time windows offered by the period selector.
