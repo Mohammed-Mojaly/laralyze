@@ -316,7 +316,7 @@ it('registers no listeners for recorders that are turned off', function () {
         MessageSent::class,
         NotificationSent::class,
         CommandFinished::class,
-    ])->map(fn (string $event) => count(app('events')->getRawListeners()[$event] ?? []))->all();
+    ])->map(fn (string $event) => count(app('events')->getListeners($event)))->all();
 
     $this->rebootWith(['laralyze.recorders' => []]);
     $baseline = $listeners();
@@ -324,8 +324,23 @@ it('registers no listeners for recorders that are turned off', function () {
     $defaults = (require __DIR__.'/../../../config/laralyze.php')['recorders'];
 
     $this->rebootWith(['laralyze.recorders' => array_map(fn () => ['enabled' => false], $defaults)]);
-
     expect($listeners())->toBe($baseline);
+
+    // The same count sees the listeners once the recorders are on.
+    $this->rebootWith(['laralyze.recorders' => $defaults]);
+    expect(array_map(fn (int $count, int $base) => $count > $base, $listeners(), $baseline))->not->toContain(false);
+});
+
+it('ignores other events whose names start like a recorded one', function () {
+    $reported = [];
+    Laralyze::handleExceptionsUsing(function (Throwable $e) use (&$reported) {
+        $reported[] = $e;
+    });
+
+    event(QueryExecuted::class.'Later', [new stdClass]);
+    DB::select('select 1');
+
+    expect($reported)->toBe([]);
 });
 
 it('keeps query values out of stored exception messages', function () {

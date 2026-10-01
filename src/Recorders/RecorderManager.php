@@ -43,15 +43,17 @@ class RecorderManager
             }
 
             foreach ($recorder->listensTo() as $event) {
-                // Some of these fire thousands of times per request, so this
-                // stays lean: no extra closures, just a guarded call.
-                $this->events->listen($event, function (object $payload) use ($recorder) {
-                    if (! $this->laralyze->isRecording()) {
+                // Some of these fire thousands of times per request. Laravel
+                // rebuilds a plain listener on every dispatch (about 1 µs),
+                // but prepares a wildcard one once and caches it. The name
+                // check keeps the pattern to this one event.
+                $this->events->listen($event.'*', function (string $name, array $payload) use ($event, $recorder) {
+                    if ($name !== $event || ! $this->laralyze->isRecording()) {
                         return;
                     }
 
                     try {
-                        $recorder->record($payload);
+                        $recorder->record($payload[0]);
                     } catch (Throwable $e) {
                         $this->laralyze->report($e);
                     }
