@@ -11,10 +11,10 @@
     },
     "require": {
         "php": "^8.3",
-        "illuminate/console": "^12.0|^13.0",
-        "illuminate/contracts": "^12.0|^13.0",
-        "illuminate/support": "^12.0|^13.0",
-        "livewire/livewire": "^3.8|^4.0"
+        "illuminate/console": "^12.69.2|^13.32",
+        "illuminate/contracts": "^12.69.2|^13.32",
+        "illuminate/support": "^12.69.2|^13.32",
+        "livewire/livewire": "^3.8.3|^4.3.4"
     },
     "require-dev": {
         "larastan/larastan": "^3.12",

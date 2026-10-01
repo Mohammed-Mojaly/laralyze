@@ -85,6 +85,24 @@ it('groups queries by their SQL, with lists folded together', function () {
     showCard('query-totals')->assertSee('queries');
 });
 
+it('counts every query of a long execution exactly', function () {
+    Schema::create('widgets', fn ($table) => $table->id());
+
+    // Durations are buffered and added up every 1,000 queries.
+    for ($i = 0; $i < 2_503; $i++) {
+        DB::table('widgets')->where('id', $i)->first();
+    }
+
+    Laralyze::flush();
+
+    $row = collect(app(DatabaseStorage::class)->aggregate('query', ['count', 'sum', 'max'], 3_600))
+        ->first(fn ($row) => str_contains($row->key, 'widgets') && str_contains($row->key, 'where'));
+
+    expect((float) $row->count)->toBe(2_503.0)
+        ->and((float) $row->sum)->toBeGreaterThan(0.0)
+        ->and((float) $row->max)->toBeLessThanOrEqual((float) $row->sum);
+});
+
 it('lists slow queries with the line that ran them', function () {
     $this->rebootWith(['laralyze.recorders' => [Recorders\Queries::class => ['threshold' => 0]]]);
     app()->detectEnvironment(fn () => 'local');

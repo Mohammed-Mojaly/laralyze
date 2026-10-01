@@ -3,7 +3,9 @@ name: tests
 on:
   push:
     branches: [main]
+    paths-ignore: ['**.md', 'docs/**']
   pull_request:
+    paths-ignore: ['**.md', 'docs/**']
   workflow_dispatch:
 
 # A newer push makes the older run pointless.
@@ -19,8 +21,9 @@ jobs:
       fail-fast: false
       matrix:
         php: ['8.3', '8.4', '8.5']
-        laravel: ['12', '13']
-        livewire: ['3.8', '4.0']
+        # The lowest versions are the first without known security issues.
+        laravel: ['^12.69.2', '^13.32']
+        livewire: ['^3.8.3', '^4.3.4']
         stability: [prefer-lowest, prefer-stable]
 
     name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }} / Livewire ${{ matrix.livewire }} / ${{ matrix.stability }}
@@ -36,7 +39,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          composer require "illuminate/support:^${{ matrix.laravel }}.0" "livewire/livewire:^${{ matrix.livewire }}" --no-update --no-interaction
+          composer require "illuminate/support:${{ matrix.laravel }}" "livewire/livewire:${{ matrix.livewire }}" --no-update --no-interaction
           composer update --${{ matrix.stability }} --prefer-dist --no-interaction --with-all-dependencies
 
       - name: Installed versions

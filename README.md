@@ -7,8 +7,8 @@ Self-hosted production monitoring for Laravel. A dashboard inside your app shows
 ## Requirements
 
 - PHP 8.3+
-- Laravel 12 or 13
-- Livewire 3.8+ or 4 (installed for you; your app doesn't need to use it)
+- Laravel 12.69.2+ or 13.32+
+- Livewire 3.8.3+ or 4.3.4+ (installed for you; your app doesn't need to use it). Earlier releases have a known XSS issue.
 - MySQL, MariaDB, PostgreSQL, SQLite or SQL Server
 
 ## Installation

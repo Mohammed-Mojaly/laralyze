@@ -3,6 +3,7 @@
 namespace Laralyze\Recorders;
 
 use Illuminate\Database\Events\QueryExecuted;
+use Laralyze\Laralyze;
 use Laralyze\Metrics\Histogram;
 use Laralyze\Support\Location;
 
@@ -16,10 +17,26 @@ class Queries extends Recorder
     protected array $listen = [QueryExecuted::class];
 
     /**
+     * Durations kept before they are added to the totals. Work done once
+     * per query is several times dearer than the same work in a loop, so
+     * each query only appends its time.
+     */
+    protected const FOLD_AT = 1_000;
+
+    /**
      * Distinct raw SQL strings kept per execution before new ones are
      * fingerprinted straight away, so long IN lists can't grow memory.
      */
     protected const MAX_DISTINCT = 500;
+
+    /**
+     * [connection][sql] => list of durations
+     *
+     * @var array<string, array<string, list<float>>>
+     */
+    protected array $times = [];
+
+    protected int $buffered = 0;
 
     /**
      * [connection][sql] => [count, sum, max, [bin => count]]
@@ -35,40 +52,89 @@ class Queries extends Recorder
      */
     protected array $slow = [];
 
-    protected ?float $slowFrom = null;
+    /**
+     * The lowest threshold in the config: anything faster is never slow.
+     */
+    protected float $slowFrom;
+
+    public function __construct(Laralyze $laralyze, array $config = [])
+    {
+        parent::__construct($laralyze, $config);
+
+        $threshold = $config['threshold'] ?? 1_000;
+
+        $this->slowFrom = is_array($threshold)
+            ? ($threshold === [] ? 1_000.0 : (float) min($threshold))
+            : (float) $threshold;
+    }
 
     public function record(QueryExecuted $event): void
     {
-        $connection = $event->connectionName;
-        $sql = $event->sql;
-        $time = (float) $event->time;
+        $this->times[$event->connectionName][$event->sql][] = (float) $event->time;
 
-        if (! isset($this->pending[$connection][$sql]) && ++$this->distinct > self::MAX_DISTINCT) {
-            $sql = $this->fingerprint($sql);
+        // One check covers both rare cases.
+        if (++$this->buffered >= self::FOLD_AT || $event->time >= $this->slowFrom) {
+            $this->recordRare($event);
         }
+    }
 
-        $this->pending[$connection][$sql] ??= [0, 0.0, 0.0, []];
-        $entry = &$this->pending[$connection][$sql];
-        $entry[0]++;
-        $entry[1] += $time;
-        $entry[2] = max($entry[2], $time);
-        $bin = Histogram::bin($time);
-        $entry[3][$bin] = ($entry[3][$bin] ?? 0) + 1;
-
+    protected function recordRare(QueryExecuted $event): void
+    {
         // The call stack only exists now, so slow queries grab their location
         // here. The exact per-query threshold is checked later.
-        if ($time >= $this->slowFrom()) {
+        if ($event->time >= $this->slowFrom) {
             $this->slow[] = [
-                'connection' => $connection,
-                'sql' => $sql,
-                'time' => $time,
+                'connection' => $event->connectionName,
+                'sql' => $event->sql,
+                'time' => (float) $event->time,
                 'location' => ($this->config['location'] ?? true) ? Location::here() : null,
             ];
         }
+
+        if ($this->buffered >= self::FOLD_AT) {
+            $this->fold();
+        }
+    }
+
+    /**
+     * Add the buffered durations to the totals.
+     */
+    protected function fold(): void
+    {
+        foreach ($this->times as $connection => $queries) {
+            foreach ($queries as $sql => $times) {
+                $sql = (string) $sql;
+
+                if (! isset($this->pending[$connection][$sql]) && ++$this->distinct > self::MAX_DISTINCT) {
+                    $sql = $this->fingerprint($sql);
+                }
+
+                $entry = $this->pending[$connection][$sql] ?? [0, 0.0, 0.0, []];
+
+                foreach ($times as $time) {
+                    $entry[0]++;
+                    $entry[1] += $time;
+
+                    if ($time > $entry[2]) {
+                        $entry[2] = $time;
+                    }
+
+                    $bin = Histogram::bin($time);
+                    $entry[3][$bin] = ($entry[3][$bin] ?? 0) + 1;
+                }
+
+                $this->pending[$connection][$sql] = $entry;
+            }
+        }
+
+        $this->times = [];
+        $this->buffered = 0;
     }
 
     public function digest(): void
     {
+        $this->fold();
+
         [$pending, $slow] = [$this->pending, $this->slow];
         $this->pending = [];
         $this->slow = [];
@@ -128,23 +194,5 @@ class Queries extends Recorder
     protected function ignores(string $sql): bool
     {
         return str_contains($sql, 'laralyze_aggregates') || str_contains($sql, 'laralyze_values') || $this->shouldIgnore($sql);
-    }
-
-    /**
-     * The lowest threshold in the config: anything faster is never slow.
-     */
-    protected function slowFrom(): float
-    {
-        if ($this->slowFrom !== null) {
-            return $this->slowFrom;
-        }
-
-        $threshold = $this->config['threshold'] ?? 1_000;
-
-        if (is_array($threshold)) {
-            return $this->slowFrom = $threshold === [] ? 1_000.0 : (float) min($threshold);
-        }
-
-        return $this->slowFrom = (float) $threshold;
     }
 }
