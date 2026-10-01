@@ -188,6 +188,72 @@ jobs:
         working-directory: app
         run: cat storage/logs/laravel.log serve.log 2>/dev/null || true
 
+  octane:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - server: swoole
+            extensions: pdo_sqlite, sqlite3, swoole
+            options: --task-workers=0
+          - server: frankenphp
+            extensions: pdo_sqlite, sqlite3
+            options: ''
+
+    name: Octane on ${{ matrix.server }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: package
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: ${{ matrix.extensions }}
+          coverage: none
+
+      - name: Create a Laravel app with Octane and Laralyze
+        run: |
+          composer create-project "laravel/laravel:^13.0" app --prefer-dist --no-interaction
+          cd app
+          composer config repositories.laralyze path ../package
+          composer require "mohammed-mojaly/laralyze:@dev" laravel/octane --no-interaction
+          php artisan laralyze:install --no-interaction
+          php artisan octane:install --server=${{ matrix.server }} --no-interaction
+          echo "Route::get('/memory', fn () => memory_get_usage());" >> routes/web.php
+
+      # One worker, so every request lands in the same long-lived app.
+      - name: Serve many requests from one worker
+        working-directory: app
+        run: |
+          php artisan octane:start --server=${{ matrix.server }} --host=127.0.0.1 --port=8000 --workers=1 --max-requests=100000 ${{ matrix.options }} > octane.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/up > /dev/null && break; sleep 1; done
+
+          for i in $(seq 1 500); do curl -sf -o /dev/null http://127.0.0.1:8000/; done
+          before=$(curl -sf http://127.0.0.1:8000/memory)
+          for i in $(seq 1 2500); do curl -sf -o /dev/null http://127.0.0.1:8000/; done
+          after=$(curl -sf http://127.0.0.1:8000/memory)
+          sleep 2
+
+          curl -sf http://127.0.0.1:8000/laralyze | grep -q '<title>Dashboard · Laralyze</title>'
+
+          # Each request is recorded exactly once: nothing lost, nothing carried
+          # over into the next request.
+          count=$(php -r '$db = new PDO("sqlite:database/database.sqlite"); echo (int) $db->query("select sum(value) from laralyze_aggregates where period = 3600 and type = \x27request\x27 and aggregate = \x27count\x27 and key = \x27GET /\x27")->fetchColumn();')
+          echo "Requests to / recorded: $count of 3000"
+          echo "Worker memory after 500 requests: $before bytes, after 3000: $after bytes ($((after - before)) bytes growth)"
+
+          test "$count" -eq 3000
+          test $((after - before)) -lt 1048576
+
+      - name: Logs
+        if: failure()
+        working-directory: app
+        run: cat octane.log storage/logs/laravel.log 2>/dev/null || true
+
   quality:
     runs-on: ubuntu-latest
 
