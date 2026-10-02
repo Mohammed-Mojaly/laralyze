@@ -43,6 +43,7 @@ Everything lives in `config/laralyze.php`, published by `php artisan laralyze:in
 | `Logs` | `LARALYZE_LOGS_ENABLED` | Messages per level | `ignore` matches the level, e.g. `'/^debug$/'`. |
 | `Users` | `LARALYZE_USERS_ENABLED` | Signed-in users over time, their share of requests, and per user: requests by status, timings, slow requests, queued jobs, exceptions and last seen | Only users the app already loaded are counted, so it never adds a query. See `Laralyze::user()`. |
 | `Servers` | `LARALYZE_SERVERS_ENABLED` | CPU, memory and disks, every minute | Runs from your scheduler. `server_name` (`LARALYZE_SERVER_NAME`), `directories` (`LARALYZE_SERVER_DIRECTORIES`, comma separated). |
+| `Traces` | `LARALYZE_TRACES_ENABLED` | Single requests, jobs and commands with their queries, cache calls, outgoing requests, mail, notifications, queued jobs, logs and exceptions in order | Slow (`threshold`), failed and throwing ones are always kept; the rest by `sample_rate` (`LARALYZE_TRACES_SAMPLE_RATE`, 0.1). Kept `keep_days` (`LARALYZE_TRACES_DAYS`, 7). Up to `max_events` (500) events each. Long-running commands like `queue:work` aren't traced themselves; their jobs are. |
 | `Visits` | `LARALYZE_VISITS_ENABLED` | Page views, unique visitors, visitors right now, devices, systems, browsers, top pages, bots | See below. |
 
 ### Visits

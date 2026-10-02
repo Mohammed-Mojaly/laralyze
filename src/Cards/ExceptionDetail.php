@@ -38,7 +38,9 @@ class ExceptionDetail extends Card
         $exception = (object) [
             'class' => $class,
             'location' => $location,
-            'message' => (string) ($this->values('exception_message', [$this->name])->first()->value ?? ''),
+            'message' => (string) ($details['message'] ?? $this->values('exception_message', [$this->name])->first()->value ?? ''),
+            'previous' => $details['previous'] ?? [],
+            'context' => $details['context'] ?? null,
             'code' => $details['code'] ?? null,
             'source' => $details['source'] ?? null,
             'server' => $details['server'] ?? null,
@@ -139,6 +141,14 @@ class ExceptionDetail extends Card
             }
 
             $lines[] = '```';
+        }
+
+        foreach ($exception->previous as $previous) {
+            $lines = [...$lines, '', "### Caused by {$previous['class']}", '', $previous['message'], '', "- **Location:** `{$previous['location']}`"];
+        }
+
+        if (is_array($exception->context)) {
+            $lines = [...$lines, '', '### Context', '', '```json', (string) json_encode($exception->context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), '```'];
         }
 
         foreach (array_slice(array_filter($exception->frames, fn (array $frame) => isset($frame['code'])), 0, 3) as $frame) {

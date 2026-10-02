@@ -20,6 +20,8 @@ class DatabaseStorage
 
     public const VALUES = 'laralyze_values';
 
+    public const EXECUTIONS = 'laralyze_executions';
+
     protected const UNIQUE_AGGREGATE = ['bucket', 'period', 'type', 'aggregate', 'key_hash'];
 
     protected const READABLE = ['count', 'sum', 'min', 'max', 'avg'];
@@ -44,17 +46,18 @@ class DatabaseStorage
     /**
      * @param  list<array{bucket: int, period: int, type: string, aggregate: string, key: string, value: float}>  $rows
      * @param  list<array{timestamp: int, type: string, key: string, value: string}>  $values
+     * @param  list<array<string, mixed>>  $executions
      */
-    public function store(array $rows, array $values): void
+    public function store(array $rows, array $values, array $executions = []): void
     {
-        if ($rows === [] && $values === []) {
+        if ($rows === [] && $values === [] && $executions === []) {
             return;
         }
 
         $connection = $this->connection();
         $merge = new MergeExpressions($connection, self::AGGREGATES);
 
-        $this->retryingUniqueRaces(fn () => $connection->transaction(function () use ($connection, $merge, $rows, $values) {
+        $this->retryingUniqueRaces(fn () => $connection->transaction(function () use ($connection, $merge, $rows, $values, $executions) {
             foreach ($this->groupByMerge($rows) as $kind => $group) {
                 foreach ($this->chunk($connection, $this->prepareAggregates($group), 7) as $chunk) {
                     $connection->table(self::AGGREGATES)->upsert($chunk, self::UNIQUE_AGGREGATE, [
@@ -65,6 +68,10 @@ class DatabaseStorage
 
             foreach ($this->chunk($connection, $this->prepareValues($values), 5) as $chunk) {
                 $connection->table(self::VALUES)->upsert($chunk, ['type', 'key_hash'], ['timestamp', 'value']);
+            }
+
+            foreach ($this->chunk($connection, $this->prepareExecutions($executions), 15) as $chunk) {
+                $connection->table(self::EXECUTIONS)->insert($chunk);
             }
         }, attempts: 3));
     }
@@ -136,10 +143,101 @@ class DatabaseStorage
     }
 
     /**
+     * @param  list<array<string, mixed>>  $executions
+     * @return list<array<string, int|string|null>>
+     */
+    protected function prepareExecutions(array $executions): array
+    {
+        return array_map(fn (array $execution) => [
+            'uuid' => (string) $execution['uuid'],
+            'trace' => (string) $execution['trace'],
+            'type' => (string) $execution['type'],
+            'name' => (string) $execution['name'],
+            'name_hash' => hash('xxh128', (string) $execution['name']),
+            'status' => (string) $execution['status'],
+            'failed' => $execution['failed'] ? 1 : 0,
+            'duration' => sprintf('%.2F', $execution['duration']),
+            'user_id' => $execution['user_id'] === null ? null : (string) $execution['user_id'],
+            'server' => (string) $execution['server'],
+            'started_at' => (int) $execution['started_at'],
+            'exceptions' => $execution['exceptions'] === [] ? '' : ','.implode(',', $execution['exceptions']).',',
+            'counts' => (string) json_encode($execution['counts']),
+            'events' => (string) json_encode($execution['events'], JSON_INVALID_UTF8_SUBSTITUTE),
+        ], $executions);
+    }
+
+    /**
+     * Single requests, jobs or commands, newest or slowest first. Filter by
+     * what ran (type and name), by user, or by an exception they reported.
+     *
+     * @param  array{type?: string, name?: string, user?: string, exception?: string}  $filters
+     * @return Collection<int, stdClass>
+     */
+    public function executions(array $filters, int $window, string $order = 'recent', int $limit = 50): Collection
+    {
+        return $this->connection()->table(self::EXECUTIONS)
+            ->select(['uuid', 'trace', 'type', 'name', 'status', 'failed', 'duration', 'user_id', 'server', 'started_at', 'counts'])
+            ->where('started_at', '>=', $this->now() - $window)
+            ->when($filters['type'] ?? null, fn (Builder $query, string $type) => $query->where('type', $type))
+            ->when($filters['name'] ?? null, fn (Builder $query, string $name) => $query->where('name_hash', hash('xxh128', $name)))
+            ->when($filters['user'] ?? null, fn (Builder $query, string $user) => $query->where('user_id', $user))
+            ->when($filters['exception'] ?? null, fn (Builder $query, string $hash) => $query->where('exceptions', 'like', '%,'.$hash.',%'))
+            ->orderByDesc($order === 'slowest' ? 'duration' : 'started_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->map(fn (stdClass $row) => $this->castExecution($row));
+    }
+
+    /**
+     * One execution with its events, or null when it's gone.
+     */
+    public function execution(string $uuid): ?stdClass
+    {
+        $row = $this->connection()->table(self::EXECUTIONS)->where('uuid', $uuid)->first();
+
+        return $row === null ? null : $this->castExecution($row);
+    }
+
+    /**
+     * Everything else in the same trace, e.g. the jobs a request queued.
+     *
+     * @return Collection<int, stdClass>
+     */
+    public function related(string $trace, string $except): Collection
+    {
+        return $this->connection()->table(self::EXECUTIONS)
+            ->select(['uuid', 'trace', 'type', 'name', 'status', 'failed', 'duration', 'user_id', 'server', 'started_at', 'counts'])
+            ->where('trace', $trace)
+            ->where('uuid', '!=', $except)
+            ->orderBy('started_at')
+            ->orderBy('id')
+            ->limit(100)
+            ->get()
+            ->map(fn (stdClass $row) => $this->castExecution($row));
+    }
+
+    protected function castExecution(stdClass $row): stdClass
+    {
+        $row->failed = (bool) $row->failed;
+        $row->duration = (float) $row->duration;
+        $row->started_at = (int) $row->started_at;
+        $row->counts = json_decode((string) $row->counts, true) ?: [];
+
+        if (property_exists($row, 'events')) {
+            $row->events = json_decode((string) $row->events, true) ?: [];
+        }
+
+        return $row;
+    }
+
+    /**
      * Split rows so no statement goes past the driver's placeholder limit.
      *
-     * @param  list<array<string, int|string>>  $rows
-     * @return list<list<array<string, int|string>>>
+     * @template TRow of array<string, int|string|null>
+     *
+     * @param  list<TRow>  $rows
+     * @return list<list<TRow>>
      */
     protected function chunk(Connection $connection, array $rows, int $columns): array
     {
@@ -159,10 +257,14 @@ class DatabaseStorage
      * Drop minute buckets older than a day and everything older than the
      * retention period.
      */
-    public function trim(int $retentionDays): void
+    public function trim(int $retentionDays, int $traceDays = 7): void
     {
         $now = $this->now();
         $connection = $this->connection();
+
+        $connection->table(self::EXECUTIONS)
+            ->where('started_at', '<', $now - min($traceDays, $retentionDays) * 86_400)
+            ->delete();
 
         $connection->table(self::AGGREGATES)
             ->where('period', Period::MINUTE)

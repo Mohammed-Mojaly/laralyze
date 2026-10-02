@@ -35,7 +35,8 @@ it('publishes the migration and creates the tables', function () {
 
     expect(publishedMigrations())->toHaveCount(1)
         ->and(Schema::hasTable('laralyze_aggregates'))->toBeTrue()
-        ->and(Schema::hasTable('laralyze_values'))->toBeTrue();
+        ->and(Schema::hasTable('laralyze_values'))->toBeTrue()
+        ->and(Schema::hasTable('laralyze_executions'))->toBeTrue();
 });
 
 it('does not publish the migration twice', function () {

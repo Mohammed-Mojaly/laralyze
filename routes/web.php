@@ -1,9 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use MohammedMojaly\Laralyze\Http\Controllers\ExecutionController;
 use MohammedMojaly\Laralyze\Http\Controllers\GroupController;
 use MohammedMojaly\Laralyze\Http\Controllers\PageController;
 
 Route::get('/', PageController::class)->name('laralyze.dashboard');
+Route::get('executions/{execution}', ExecutionController::class)->where('execution', '[0-9A-Z]{26}')->name('laralyze.execution');
 Route::get('{page}', PageController::class)->name('laralyze.page');
 Route::get('{page}/{group}', GroupController::class)->where('group', '[0-9a-f]{32}')->name('laralyze.group');

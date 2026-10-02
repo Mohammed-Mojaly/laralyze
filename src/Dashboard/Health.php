@@ -51,7 +51,7 @@ final class Health
         try {
             $schema = $this->storage->connection()->getSchemaBuilder();
 
-            if (! $schema->hasTable(DatabaseStorage::AGGREGATES) || ! $schema->hasTable(DatabaseStorage::VALUES)) {
+            if (! $schema->hasTable(DatabaseStorage::AGGREGATES) || ! $schema->hasTable(DatabaseStorage::VALUES) || ! $schema->hasTable(DatabaseStorage::EXECUTIONS)) {
                 $this->blocking = true;
 
                 return [$this->bad("Laralyze's tables are missing.", 'Run `php artisan migrate`.')];

@@ -12,12 +12,12 @@ use Throwable;
  */
 final class Trace
 {
-    public const FRAMES = 50;
+    public const FRAMES = 100;
 
     /**
      * App frames that get the code around their line.
      */
-    public const SNIPPETS = 10;
+    public const SNIPPETS = 20;
 
     /**
      * Lines of code shown above and below.

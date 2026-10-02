@@ -51,7 +51,7 @@ class Requests extends Recorder
      * "GET /users/{user}", so every user's page lands on the same row.
      * Livewire updates are grouped by component and method instead.
      */
-    protected function key(Request $request): string
+    public function key(Request $request): string
     {
         $route = $request->route();
 

@@ -7,10 +7,8 @@ use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\QueryException;
 use Illuminate\Log\Events\MessageLogged;
-use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
-use Illuminate\Queue\Events\JobReleasedAfterException;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Str;
 use MohammedMojaly\Laralyze\Laralyze;
@@ -35,8 +33,6 @@ class Exceptions extends Recorder
         CommandStarting::class,
         JobProcessing::class,
         JobProcessed::class,
-        JobFailed::class,
-        JobReleasedAfterException::class,
     ];
 
     protected ?string $command = null;
@@ -59,13 +55,14 @@ class Exceptions extends Recorder
         parent::__construct($laralyze, $config);
     }
 
-    public function record(MessageLogged|CommandStarting|JobProcessing|JobProcessed|JobFailed|JobReleasedAfterException $event): void
+    public function record(MessageLogged|CommandStarting|JobProcessing|JobProcessed $event): void
     {
         match (true) {
             $event instanceof CommandStarting => $this->command = $event->command,
             $event instanceof JobProcessing => $this->job = $event->job->resolveName(),
             $event instanceof MessageLogged => $this->logged($event),
-            // The job's exception is reported before these, so it still knows its job.
+            // A failed job's exception is reported after its failed event,
+            // so only a job that went fine clears it.
             default => $this->job = null,
         };
     }
@@ -75,11 +72,14 @@ class Exceptions extends Recorder
         $exception = $event->context['exception'] ?? null;
 
         if ($exception instanceof Throwable) {
-            $this->recordException($exception, $this->wasHandled());
+            $this->recordException($exception, $this->wasHandled(), $event->context);
         }
     }
 
-    public function recordException(Throwable $e, bool $handled): void
+    /**
+     * @param  array<string, mixed>  $context  What the app logged with it.
+     */
+    public function recordException(Throwable $e, bool $handled, array $context = []): void
     {
         $class = $e::class;
 
@@ -87,17 +87,20 @@ class Exceptions extends Recorder
             return;
         }
 
-        $location = Location::fromTrace($e->getTrace(), $e->getFile(), $e->getLine()) ?? Location::relative($e->getFile()).':'.$e->getLine();
-        $key = (string) json_encode([$class, $location]);
+        $key = self::keyFor($e);
 
         $user = $this->userId();
 
         // The value is when it happened, so min and max are first and last seen.
         $this->laralyze->record('exception', $key, time())->count()->min()->max();
         $this->laralyze->record($handled ? 'exception_handled' : 'exception_unhandled', $key)->count();
-        $this->laralyze->set('exception_message', $key, Str::limit($this->message($e), 500));
+        $this->laralyze->set('exception_message', $key, Str::limit(self::messageFor($e), 500));
+        // Everything about the latest occurrence, for people and for AI tools later.
         $this->laralyze->set('exception_details', $key, (string) json_encode([
             ...$this->trace($e, $key),
+            'message' => Str::limit(self::messageFor($e), 10_000),
+            'previous' => $this->previous($e),
+            'context' => $this->context($context),
             'handled' => $handled,
             'source' => $this->source(),
             'user' => $user,
@@ -109,6 +112,43 @@ class Exceptions extends Recorder
         if ($user !== null) {
             $this->laralyze->record('exception_user', hash('xxh128', $key).':'.$user)->count();
         }
+    }
+
+    /**
+     * The exceptions that caused this one, innermost last.
+     *
+     * @return list<array{class: string, message: string, location: string}>
+     */
+    protected function previous(Throwable $e): array
+    {
+        $chain = [];
+
+        for ($previous = $e->getPrevious(); $previous !== null && count($chain) < 5; $previous = $previous->getPrevious()) {
+            $chain[] = [
+                'class' => $previous::class,
+                'message' => Str::limit(self::messageFor($previous), 2_000),
+                'location' => Location::fromTrace($previous->getTrace(), $previous->getFile(), $previous->getLine()) ?? Location::relative($previous->getFile()).':'.$previous->getLine(),
+            ];
+        }
+
+        return $chain;
+    }
+
+    /**
+     * The log context the app added, e.g. from the exception's context()
+     * method, as long as it's small and plain.
+     *
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>|null
+     */
+    protected function context(array $context): ?array
+    {
+        unset($context['exception']);
+
+        $context = array_filter($context, fn ($value) => is_scalar($value) || is_null($value) || is_array($value));
+        $json = json_encode($context, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+        return $context === [] || $json === false || strlen($json) > 4_000 ? null : $context;
     }
 
     /**
@@ -169,12 +209,22 @@ class Exceptions extends Recorder
     }
 
     /**
+     * Exceptions are grouped by class and the line in your code that threw them.
+     */
+    public static function keyFor(Throwable $e): string
+    {
+        $location = Location::fromTrace($e->getTrace(), $e->getFile(), $e->getLine()) ?? Location::relative($e->getFile()).':'.$e->getLine();
+
+        return (string) json_encode([$e::class, $location]);
+    }
+
+    /**
      * Database errors repeat the values involved ("Duplicate entry
      * 'sara@example.com'"), in the SQL and in every driver's own wording.
      * Keep the SQLSTATE code, a fixed description and the SQL with its
      * placeholders instead.
      */
-    protected function message(Throwable $e): string
+    public static function messageFor(Throwable $e): string
     {
         if (! $e instanceof QueryException) {
             return $e->getMessage();

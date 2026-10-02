@@ -56,6 +56,7 @@ class LaralyzeServiceProvider extends ServiceProvider
         'users' => Cards\UserList::class,
         'servers' => Cards\ServerList::class,
         'group' => Cards\Group::class,
+        'executions' => Cards\ExecutionList::class,
     ];
 
     public function register(): void
@@ -150,7 +151,7 @@ class LaralyzeServiceProvider extends ServiceProvider
             ], $flush);
 
             // Octane reuses the process, so nothing may leak into the next request.
-            $events->listen('Laravel\Octane\Events\RequestReceived', fn () => $this->app->make(Laralyze::class)->buffer()->clear());
+            $events->listen('Laravel\Octane\Events\RequestReceived', fn () => $this->app->make(Laralyze::class)->reset());
         });
     }
 

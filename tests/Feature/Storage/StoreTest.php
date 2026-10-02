@@ -94,7 +94,7 @@ it('keeps the buffer when the storage connection is inside a transaction', funct
 it('never throws when storage fails', function () {
     app()->instance(DatabaseStorage::class, new class(app('db'), config()) extends DatabaseStorage
     {
-        public function store(array $rows, array $values): void
+        public function store(array $rows, array $values, array $executions = []): void
         {
             throw new RuntimeException('Database is down');
         }

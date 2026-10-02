@@ -40,6 +40,30 @@ return new class extends Migration
 
             $table->unique(['type', 'key_hash']);
         });
+
+        // Single requests, jobs and commands, with what happened inside them.
+        $schema->create('laralyze_executions', function (Blueprint $table) {
+            $table->id();
+            $table->char('uuid', 26)->unique();
+            $table->char('trace', 26)->index();
+            $table->string('type', 16);
+            $table->text('name');
+            $table->char('name_hash', 32);
+            $table->string('status', 16);
+            $table->boolean('failed');
+            $table->decimal('duration', 12, 2);
+            $table->string('user_id', 64)->nullable();
+            $table->string('server', 128);
+            $table->bigInteger('started_at');
+            // ",<hash>,<hash>," of the exceptions it reported, for the exception page.
+            $table->text('exceptions');
+            $table->text('counts');
+            $table->longText('events');
+
+            $table->index(['type', 'name_hash', 'started_at']);
+            $table->index(['user_id', 'started_at']);
+            $table->index('started_at');
+        });
     }
 
     public function down(): void
@@ -48,5 +72,6 @@ return new class extends Migration
 
         $schema->dropIfExists('laralyze_aggregates');
         $schema->dropIfExists('laralyze_values');
+        $schema->dropIfExists('laralyze_executions');
     }
 };

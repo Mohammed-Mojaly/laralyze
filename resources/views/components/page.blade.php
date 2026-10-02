@@ -1,9 +1,9 @@
 {{-- A dashboard page. A group page passes its own title, and links back to its list. --}}
-@props(['title' => null, 'mono' => false])
+@props(['title' => null, 'mono' => false, 'page' => null])
 @inject('pages', 'MohammedMojaly\Laralyze\Dashboard\Pages')
 @inject('health', 'MohammedMojaly\Laralyze\Dashboard\Health')
 @php
-    $current = $pages->find((string) (request()->route('page') ?? \MohammedMojaly\Laralyze\Dashboard\Pages::HOME));
+    $current = $pages->find((string) ($page ?? request()->route('page') ?? \MohammedMojaly\Laralyze\Dashboard\Pages::HOME));
     $range = \MohammedMojaly\Laralyze\Dashboard\Range::fromQuery(request()->query('period'));
 @endphp
 <x-laralyze::layout :title="$title ? \Illuminate\Support\Str::limit($title, 60) : $current?->label">

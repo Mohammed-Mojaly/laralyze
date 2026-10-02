@@ -1683,3 +1683,150 @@ body.lz-root {
     text-align: right;
     user-select: none;
 }
+
+.lz-previous {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--lz-line);
+}
+
+.lz-previous-label {
+    margin-bottom: 6px;
+    color: var(--lz-ink-3);
+    font-family: var(--lz-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.lz-badge-warn {
+    background: color-mix(in srgb, var(--lz-warn) 18%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lz-warn) 45%, transparent);
+    color: var(--lz-warn);
+}
+
+/* One execution: counts and timeline */
+.lz-tally {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+}
+
+.lz-tally > div {
+    padding: 10px 12px;
+    border: 1px solid var(--lz-line);
+    border-radius: 6px;
+}
+
+.lz-tally dt {
+    color: var(--lz-ink-3);
+    font-size: 12px;
+}
+
+.lz-tally dd {
+    margin-top: 2px;
+    font-family: var(--lz-mono);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.lz-tally .is-zero dd {
+    color: var(--lz-ink-3);
+}
+
+.lz-tally .lz-bad dd {
+    color: var(--lz-bad);
+}
+
+.lz-note {
+    margin-bottom: 10px;
+    color: var(--lz-ink-3);
+    font-size: 13px;
+}
+
+.lz-timeline {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lz-event {
+    display: grid;
+    grid-template-columns: 64px 92px minmax(0, 1fr) minmax(120px, 28%) 64px;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-top: 1px solid var(--lz-line);
+    font-size: 12.5px;
+}
+
+.lz-event:first-child {
+    border-top: 0;
+}
+
+.lz-event-at,
+.lz-event-ms {
+    color: var(--lz-ink-3);
+    font-family: var(--lz-mono);
+    font-size: 12px;
+    text-align: right;
+}
+
+.lz-event-kind {
+    color: var(--lz-ink-2);
+    font-family: var(--lz-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.lz-event-label {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.lz-event-label code {
+    font-family: var(--lz-mono);
+    font-size: 12px;
+}
+
+.lz-event-bar {
+    position: relative;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--lz-surface-2);
+}
+
+.lz-event-bar > span {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    min-width: 3px;
+    border-radius: 4px;
+    background: var(--lz-data);
+}
+
+.lz-event-exception .lz-event-bar > span,
+.lz-event-exception .lz-event-kind {
+    background: var(--lz-bad);
+    color: var(--lz-bad);
+}
+
+.lz-event-exception .lz-event-kind {
+    background: none;
+}
+
+.lz-event-http .lz-event-bar > span {
+    background: var(--lz-warn);
+}
+
+@media (max-width: 760px) {
+    .lz-event {
+        grid-template-columns: 56px minmax(0, 1fr) 56px;
+    }
+
+    .lz-event-kind,
+    .lz-event-bar {
+        display: none;
+    }
+}

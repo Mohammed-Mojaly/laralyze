@@ -121,6 +121,9 @@ it('says so when its database is out of reach', function () {
     config(['laralyze.storage.connection' => 'nowhere']);
 
     $this->get('/laralyze')->assertOk()->assertSee("Laralyze can't reach its database [nowhere].");
+
+    // Teardown on a real database goes through this connection again.
+    config(['laralyze.storage.connection' => null]);
 });
 
 it('shows its health in php artisan about', function () {

@@ -36,12 +36,13 @@ Then open `/laralyze`. Make sure Laravel's scheduler runs (`* * * * * php artisa
 | Visits | Visitors right now, page views, unique visitors, devices, systems, browsers, top pages, bots |
 | Users | Signed-in users over time, signed-in vs guest requests, and per user: statuses, timings, jobs, exceptions, last seen |
 | Logs, Servers | Log levels, CPU/memory/disk |
+| Timelines | Single requests, jobs and commands with everything inside them in order: queries, cache, outgoing requests, mail, notifications, queued jobs, logs and exceptions. Jobs link to the request that queued them. Slow, failed and throwing ones are always kept, the rest sampled |
 
-Each page shows the last 15 minutes, hour, 24 hours, 7, 14 or 30 days. Lists can be searched and sorted by any column, and every route, job, command, query and outgoing URL opens a page of its own: calls and outcomes over time, duration (avg and p95), totals, and the SQL formatted and highlighted. Every recorder can be turned off; a page disappears with its recorder.
+Each page shows the last 15 minutes, hour, 24 hours, 7, 14 or 30 days. Lists can be searched and sorted by any column, and every route, job, command, query and outgoing URL opens a page of its own: calls and outcomes over time, duration (avg and p95), totals, and the SQL formatted and highlighted. Routes, jobs, commands, users and exceptions also list their slowest and latest runs, each opening its timeline. Every recorder can be turned off; a page disappears with its recorder.
 
 ## Privacy
 
-Laralyze stores counts and timings, not payloads. Query bindings, request bodies and cache values are never recorded; SQL is stored with its values replaced by `?`. For each exception, the latest message and stack trace are kept (file, line and function names only, no arguments), with a few lines of your own code around each app frame; for database errors only the kind of error and the SQL with placeholders, since the driver's text repeats the values. Visits never store IP addresses or user agents, and count pages by route; guests are told apart by a hash that changes daily. Keys you choose (cache keys, custom metrics) are stored as given, after grouping; drop anything sensitive with `Laralyze::filter()`.
+Laralyze stores counts and timings, not payloads. Timelines keep the SQL (with `?` placeholders), cache keys, outgoing URLs without their query string, and log messages, for 7 days by default. Query bindings, request bodies and cache values are never recorded; SQL is stored with its values replaced by `?`. For each exception, the latest message and stack trace are kept (file, line and function names only, no arguments), with a few lines of your own code around each app frame; for database errors only the kind of error and the SQL with placeholders, since the driver's text repeats the values. Visits never store IP addresses or user agents, and count pages by route; guests are told apart by a hash that changes daily. Keys you choose (cache keys, custom metrics) are stored as given, after grouping; drop anything sensitive with `Laralyze::filter()`.
 
 ## Authorization
 

@@ -7,7 +7,7 @@
         />
     @else
         <div class="lz-table-wrap">
-            <table class="lz-table">
+            <table class="lz-table lz-table-links">
                 <thead>
                     <tr>
                         <th scope="col">Route</th>
@@ -20,10 +20,10 @@
                     @foreach ($requests as $request)
                         <tr wire:key="{{ $request->key }}">
                             <td>
-                                <div class="lz-route">
+                                <a class="lz-row-link lz-route" href="{{ $this->groupUrl('requests', (string) $request->key) }}" title="See its slowest requests, step by step">
                                     <span class="lz-method">{{ $request->method }}</span>
                                     <span @class(['lz-path', 'is-unmatched' => $request->path === \MohammedMojaly\Laralyze\Recorders\Requests::UNMATCHED]) title="{{ $request->path }}">{{ $request->path }}</span>
-                                </div>
+                                </a>
                             </td>
                             <td class="lz-num lz-strong">{{ Format::number($request->count) }}</td>
                             <td class="lz-num lz-bad">{{ Format::duration($request->max) }}</td>

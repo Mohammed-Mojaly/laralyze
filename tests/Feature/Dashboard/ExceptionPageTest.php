@@ -3,6 +3,7 @@
 use Illuminate\Auth\GenericUser;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Route;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
@@ -111,9 +112,13 @@ it('knows the job an exception happened in', function () {
     $job->shouldReceive('resolveName')->andReturn('App\Jobs\RestockShelves');
     $job->shouldReceive('payload')->andReturn([]);
 
+    // Laravel reports a failed job's exception after its failed event.
     event(new JobProcessing('redis', $job));
-    report(new RuntimeException('Supplier timed out'));
     event(new JobFailed('redis', $job, new RuntimeException('Supplier timed out')));
+    report(new RuntimeException('Supplier timed out'));
+
+    event(new JobProcessing('redis', $job));
+    event(new JobProcessed('redis', $job));
     report(new LogicException('After the job'));
     Laralyze::flush();
 
@@ -146,3 +151,30 @@ it('filters handled and unhandled exceptions, and searches them', function () {
 it('won\'t let the browser point the exception card elsewhere', function () {
     Livewire::withoutLazyLoading()->test('laralyze.exception', ['name' => '["A","b.php:1"]'])->set('name', '["B","c.php:2"]');
 })->throws(CannotUpdateLockedPropertyException::class);
+
+it('keeps the whole exception: the full message, what caused it, and its context', function () {
+    $exception = new class(str_repeat('Payment failed. ', 60), 0, new LogicException('Card expired')) extends RuntimeException
+    {
+        public function context(): array
+        {
+            return ['order' => 42];
+        }
+    };
+
+    report($exception);
+    Laralyze::flush();
+
+    $details = latestDetails();
+
+    expect(strlen($details['message']))->toBeGreaterThan(900)
+        ->and($details['previous'][0]['class'])->toBe(LogicException::class)
+        ->and($details['previous'][0]['message'])->toBe('Card expired')
+        ->and($details['previous'][0]['location'])->toContain('ExceptionPageTest.php:')
+        ->and($details['context'])->toBe(['order' => 42]);
+
+    Livewire::withoutLazyLoading()->test('laralyze.exception', ['name' => onlyExceptionKey()])
+        ->assertSee('Caused by')
+        ->assertSee('Card expired')
+        ->assertSee('### Caused by LogicException')
+        ->assertSee('"order": 42');
+});

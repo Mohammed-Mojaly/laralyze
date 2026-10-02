@@ -93,5 +93,20 @@
                 @endforeach
             </ol>
         @endif
+
+        @foreach ($exception->previous as $previous)
+            <div class="lz-previous">
+                <p class="lz-previous-label">Caused by</p>
+                <p><x-laralyze::class-name :name="$previous['class']" /> <span class="lz-sub lz-mono">{{ $previous['location'] }}</span></p>
+                <p class="lz-exception-message">{{ $previous['message'] }}</p>
+            </div>
+        @endforeach
+
+        @if (is_array($exception->context))
+            <div class="lz-previous">
+                <p class="lz-previous-label">Context</p>
+                <pre class="lz-code"><code>{{ json_encode($exception->context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</code></pre>
+            </div>
+        @endif
     </x-laralyze::card>
 </div>

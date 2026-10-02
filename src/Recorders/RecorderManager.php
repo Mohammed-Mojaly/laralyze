@@ -23,6 +23,8 @@ class RecorderManager
      */
     public function register(array $recorders): void
     {
+        $byEvent = [];
+
         foreach ($recorders as $class => $config) {
             if (($config['enabled'] ?? true) === false) {
                 continue;
@@ -43,22 +45,29 @@ class RecorderManager
             }
 
             foreach ($recorder->listensTo() as $event) {
-                // Some of these fire thousands of times per request. Laravel
-                // rebuilds a plain listener on every dispatch (about 1 µs),
-                // but prepares a wildcard one once and caches it. The name
-                // check keeps the pattern to this one event.
-                $this->events->listen($event.'*', function (string $name, array $payload) use ($event, $recorder) {
-                    if ($name !== $event || ! $this->laralyze->isRecording()) {
-                        return;
-                    }
+                $byEvent[$event][] = $recorder;
+            }
+        }
 
+        foreach ($byEvent as $event => $listening) {
+            // Some of these fire thousands of times per request. Laravel
+            // rebuilds a plain listener on every dispatch (about 1 µs),
+            // but prepares a wildcard one once and caches it. The name
+            // check keeps the pattern to this one event, and one listener
+            // serves every recorder that wants it.
+            $this->events->listen($event.'*', function (string $name, array $payload) use ($event, $listening) {
+                if ($name !== $event || ! $this->laralyze->isRecording()) {
+                    return;
+                }
+
+                foreach ($listening as $recorder) {
                     try {
                         $recorder->record($payload[0]);
                     } catch (Throwable $e) {
                         $this->laralyze->report($e);
                     }
-                });
-            }
+                }
+            });
         }
     }
 }

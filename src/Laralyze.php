@@ -42,6 +42,13 @@ class Laralyze
     protected int $dropped = 0;
 
     /**
+     * Finished requests, jobs and commands waiting to be written.
+     *
+     * @var list<array<string, mixed>>
+     */
+    protected array $executions = [];
+
+    /**
      * Callbacks that turn what recorders collected into metrics, run
      * before each flush.
      *
@@ -154,6 +161,31 @@ class Laralyze
     }
 
     /**
+     * @internal Keep a finished execution until the next flush.
+     *
+     * @param  array<string, mixed>  $execution
+     */
+    public function addExecution(array $execution): void
+    {
+        // A worker that can't write keeps only the latest few.
+        if (count($this->executions) >= 100) {
+            array_shift($this->executions);
+        }
+
+        $this->executions[] = $execution;
+    }
+
+    /**
+     * Forget everything not written yet, e.g. between Octane requests.
+     */
+    public function reset(): void
+    {
+        $this->buffer->clear();
+        $this->executions = [];
+        $this->dropped = 0;
+    }
+
+    /**
      * @internal Recorders that collect cheaply during a request use this to
      *           turn their data into metrics once the response is sent.
      *
@@ -221,12 +253,12 @@ class Laralyze
             $this->rescue($digester);
         }
 
-        if ($this->buffer->isEmpty()) {
+        if ($this->buffer->isEmpty() && $this->executions === []) {
             return;
         }
 
         if (Outage::active()) {
-            $this->buffer->clear();
+            $this->reset();
 
             return;
         }
@@ -241,13 +273,15 @@ class Laralyze
                 }
 
                 [$rows, $values] = $this->buffer->drain();
+                $executions = $this->executions;
+                $this->executions = [];
 
-                $storage->store([...$this->filtered($rows), ...$this->droppedRows()], $this->filtered($values));
+                $storage->store([...$this->filtered($rows), ...$this->droppedRows()], $this->filtered($values), $executions);
 
                 $this->trimWhenOverdue($storage);
             });
         } catch (Throwable $e) {
-            $this->buffer->clear();
+            $this->reset();
             $this->failed($e);
         }
     }
@@ -337,7 +371,7 @@ class Laralyze
     public function trim(): void
     {
         $this->rescue(fn () => $this->ignore(
-            fn () => $this->app->make(DatabaseStorage::class)->trim((int) $this->config->get('laralyze.retention', 30)),
+            fn () => $this->app->make(DatabaseStorage::class)->trim((int) $this->config->get('laralyze.retention', 30), $this->traceDays()),
         ));
     }
 
@@ -354,8 +388,16 @@ class Laralyze
         }
 
         if (($storage->lastTrimmedAt() ?? 0) < time() - 2 * 3_600) {
-            $storage->trim((int) $this->config->get('laralyze.retention', 30));
+            $storage->trim((int) $this->config->get('laralyze.retention', 30), $this->traceDays());
         }
+    }
+
+    /**
+     * How long single requests, jobs and commands are kept.
+     */
+    protected function traceDays(): int
+    {
+        return (int) ($this->config->get('laralyze.recorders.'.Recorders\Traces::class.'.keep_days') ?? 7);
     }
 
     /**

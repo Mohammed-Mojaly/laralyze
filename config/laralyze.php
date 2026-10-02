@@ -179,6 +179,25 @@ return [
             'threshold' => (int) env('LARALYZE_SLOW_REQUESTS_THRESHOLD', 1000),
         ],
 
+        Recorders\Traces::class => [
+            'enabled' => env('LARALYZE_TRACES_ENABLED', true),
+
+            // Share of requests, jobs and commands kept with everything that
+            // happened inside them. Slow, failed and throwing ones are always kept.
+            'sample_rate' => (float) env('LARALYZE_TRACES_SAMPLE_RATE', 0.1),
+
+            // Milliseconds after which one is slow and always kept.
+            'threshold' => (int) env('LARALYZE_SLOW_REQUESTS_THRESHOLD', 1000),
+
+            'keep_days' => (int) env('LARALYZE_TRACES_DAYS', 7),
+
+            // Events kept per execution; the counts still include the rest.
+            'max_events' => 500,
+
+            // Commands to leave out, as regular expressions.
+            'ignore' => [],
+        ],
+
         Recorders\Servers::class => [
             'enabled' => env('LARALYZE_SERVERS_ENABLED', true),
 

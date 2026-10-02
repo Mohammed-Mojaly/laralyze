@@ -6,7 +6,7 @@
             hint="A job counts as slow once it runs longer than its threshold in config/laralyze.php."
         />
     @else
-        <x-laralyze::table>
+        <x-laralyze::table class="lz-table-links">
             <x-slot:head>
                 <th scope="col">Job</th>
                 <th scope="col" class="lz-num">Count</th>
@@ -16,7 +16,7 @@
 
             @foreach ($jobs as $job)
                 <tr wire:key="{{ $job->key }}">
-                    <td><x-laralyze::class-name :name="$job->key" /></td>
+                    <td><a class="lz-row-link" href="{{ $this->groupUrl('jobs', (string) $job->key) }}"><x-laralyze::class-name :name="$job->key" /></a></td>
                     <td class="lz-num lz-strong">{{ Format::number($job->count) }}</td>
                     <td class="lz-num lz-bad">{{ Format::duration($job->max) }}</td>
                     <td class="lz-num lz-muted">{{ Format::duration($job->threshold) }}</td>
