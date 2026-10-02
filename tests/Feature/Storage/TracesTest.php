@@ -19,8 +19,8 @@ use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Recorders;
 use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use MohammedMojaly\Laralyze\Tests\Fixtures\SendInvoice;
+use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Input\StringInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
 beforeEach(function () {
@@ -237,7 +237,7 @@ it('splits a request into stages and adds up time per kind', function () {
 it('keeps the command line, with secrets hidden', function () {
     traceWith(['sample_rate' => 1]);
 
-    $input = new StringInput('books:import --limit=5 --api-key=abc123 --password secret');
+    $input = new ArgvInput(['artisan', 'books:import', '--limit=5', '--api-key=abc123', '--password', 'secret']);
     $output = new BufferedOutput;
 
     event(new CommandStarting('books:import', $input, $output));
@@ -246,7 +246,7 @@ it('keeps the command line, with secrets hidden', function () {
 
     $execution = kept()->sole();
 
-    expect($execution->meta['line'])->toContain('--limit=5')
+    expect($execution->meta['line'])->toStartWith('books:import --limit=5')
         ->not->toContain('abc123')
         ->not->toContain('secret')
         ->and($execution->failed)->toBeTrue()

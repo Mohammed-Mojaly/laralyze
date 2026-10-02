@@ -37,7 +37,7 @@ Then open `/laralyze`. Make sure Laravel's scheduler runs (`* * * * * php artisa
 | Users | Signed-in users over time, signed-in vs guest requests, and per user: statuses, timings, jobs, exceptions, last seen |
 | Logs, Servers | Log levels, CPU/memory/disk |
 | Findings | N+1 queries and duplicate queries, found in every request, job and command: the SQL, the line in your code, how often, an example timeline, and the fix (e.g. `->with('author')`) |
-| Timelines | Single requests, jobs and commands with everything inside them in order: queries, cache, outgoing requests, mail, notifications, queued jobs, logs and exceptions. Jobs link to the request that queued them. Slow, failed and throwing ones are always kept, the rest sampled |
+| Timelines | Single requests, jobs and commands with everything inside them in order: queries, cache, outgoing requests, mail, notifications, queued jobs, logs and exceptions. Split into stages (bootstrap, middleware, handle, terminating), with time per kind. Jobs link to the request or command that queued them and to their other attempts; commands keep their full command line (secrets hidden). Lists filter by status and speed. Slow, failed and throwing ones are always kept, the rest sampled |
 
 Each page shows the last 15 minutes, hour, 24 hours, 7, 14 or 30 days. Lists can be searched and sorted by any column, and every route, job, command, query and outgoing URL opens a page of its own: calls and outcomes over time, duration (avg and p95), totals, and the SQL formatted and highlighted. Routes, jobs, commands, users and exceptions also list their slowest and latest runs, each opening its timeline. Every recorder can be turned off; a page disappears with its recorder.
 

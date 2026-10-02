@@ -296,7 +296,8 @@ class Traces extends Recorder
      */
     protected function commandLine(CommandStarting $event): string
     {
-        $line = (string) $event->input;
+        // Symfony quotes tokens with a colon: "books:import" --limit=5.
+        $line = (string) preg_replace('/^(["\'])([^"\']+)\1/', '$2', (string) $event->input);
         $line = (string) preg_replace('/((?:^|\s)--?[\w-]*(?:pass|secret|token|key)[\w-]*[= ])(\S+)/i', '$1***', $line);
 
         return Str::limit($line === '' ? (string) $event->command : $line, 1_000);
