@@ -70,7 +70,7 @@ class DatabaseStorage
                 $connection->table(self::VALUES)->upsert($chunk, ['type', 'key_hash'], ['timestamp', 'value']);
             }
 
-            foreach ($this->chunk($connection, $this->prepareExecutions($executions), 15) as $chunk) {
+            foreach ($this->chunk($connection, $this->prepareExecutions($executions), 17) as $chunk) {
                 $connection->table(self::EXECUTIONS)->insert($chunk);
             }
         }, attempts: 3));
@@ -162,6 +162,8 @@ class DatabaseStorage
             'started_at' => (int) $execution['started_at'],
             'exceptions' => $execution['exceptions'] === [] ? '' : ','.implode(',', $execution['exceptions']).',',
             'counts' => (string) json_encode($execution['counts']),
+            'meta' => (string) json_encode($execution['meta'] ?? [], JSON_INVALID_UTF8_SUBSTITUTE),
+            'job_uuid' => isset($execution['job_uuid']) ? (string) $execution['job_uuid'] : null,
             'events' => (string) json_encode($execution['events'], JSON_INVALID_UTF8_SUBSTITUTE),
         ], $executions);
     }
@@ -170,20 +172,23 @@ class DatabaseStorage
      * Single requests, jobs or commands, newest or slowest first. Filter by
      * what ran (type and name), by user, or by an exception they reported.
      *
-     * @param  array{type?: string, name?: string, user?: string, exception?: string}  $filters
+     * @param  array{type?: string, name?: string, user?: string, exception?: string, failed?: bool, slower?: float}  $filters
      * @return Collection<int, stdClass>
      */
-    public function executions(array $filters, int $window, string $order = 'recent', int $limit = 50): Collection
+    public function executions(array $filters, int $window, string $order = 'recent', int $limit = 50, int $offset = 0): Collection
     {
         return $this->connection()->table(self::EXECUTIONS)
-            ->select(['uuid', 'trace', 'type', 'name', 'status', 'failed', 'duration', 'user_id', 'server', 'started_at', 'counts'])
+            ->select(['uuid', 'trace', 'type', 'name', 'status', 'failed', 'duration', 'user_id', 'server', 'started_at', 'counts', 'meta', 'job_uuid'])
             ->where('started_at', '>=', $this->now() - $window)
             ->when($filters['type'] ?? null, fn (Builder $query, string $type) => $query->where('type', $type))
             ->when($filters['name'] ?? null, fn (Builder $query, string $name) => $query->where('name_hash', hash('xxh128', $name)))
             ->when($filters['user'] ?? null, fn (Builder $query, string $user) => $query->where('user_id', $user))
             ->when($filters['exception'] ?? null, fn (Builder $query, string $hash) => $query->where('exceptions', 'like', '%,'.$hash.',%'))
+            ->when(isset($filters['failed']), fn (Builder $query) => $query->where('failed', $filters['failed'] ?? false))
+            ->when($filters['slower'] ?? null, fn (Builder $query, float $ms) => $query->where('duration', '>=', $ms))
             ->orderByDesc($order === 'slowest' ? 'duration' : 'started_at')
             ->orderByDesc('id')
+            ->offset($offset)
             ->limit($limit)
             ->get()
             ->map(fn (stdClass $row) => $this->castExecution($row));
@@ -207,12 +212,29 @@ class DatabaseStorage
     public function related(string $trace, string $except): Collection
     {
         return $this->connection()->table(self::EXECUTIONS)
-            ->select(['uuid', 'trace', 'type', 'name', 'status', 'failed', 'duration', 'user_id', 'server', 'started_at', 'counts'])
+            ->select(['uuid', 'trace', 'type', 'name', 'status', 'failed', 'duration', 'user_id', 'server', 'started_at', 'counts', 'meta', 'job_uuid'])
             ->where('trace', $trace)
             ->where('uuid', '!=', $except)
             ->orderBy('started_at')
             ->orderBy('id')
             ->limit(100)
+            ->get()
+            ->map(fn (stdClass $row) => $this->castExecution($row));
+    }
+
+    /**
+     * Every attempt of one queued job, first to last.
+     *
+     * @return Collection<int, stdClass>
+     */
+    public function attempts(string $jobUuid): Collection
+    {
+        return $this->connection()->table(self::EXECUTIONS)
+            ->select(['uuid', 'trace', 'type', 'name', 'status', 'failed', 'duration', 'user_id', 'server', 'started_at', 'counts', 'meta', 'job_uuid'])
+            ->where('job_uuid', $jobUuid)
+            ->orderBy('started_at')
+            ->orderBy('id')
+            ->limit(50)
             ->get()
             ->map(fn (stdClass $row) => $this->castExecution($row));
     }
@@ -223,6 +245,7 @@ class DatabaseStorage
         $row->duration = (float) $row->duration;
         $row->started_at = (int) $row->started_at;
         $row->counts = json_decode((string) $row->counts, true) ?: [];
+        $row->meta = json_decode((string) ($row->meta ?? ''), true) ?: [];
 
         if (property_exists($row, 'events')) {
             $row->events = json_decode((string) $row->events, true) ?: [];

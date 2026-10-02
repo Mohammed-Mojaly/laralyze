@@ -73,7 +73,7 @@ class Group extends Card
             'requests' => ['request', $statuses('request'), true],
             'outgoing-requests' => ['http', [...$statuses('http'), 'failed' => 'http_failed'], true],
             'jobs' => ['job', ['processed' => 'job', 'failed' => 'job_failed'], true],
-            'commands' => ['command', ['processed' => 'command', 'failed' => 'command_failed'], false],
+            'commands' => ['command', ['processed' => 'command', 'failed' => 'command_failed'], true],
             'queries' => ['query', ['calls' => 'query'], true],
             'users' => ['user_request', $statuses('user_request'), false],
             default => abort(404),

@@ -111,6 +111,9 @@ it('knows the job an exception happened in', function () {
     $job = Mockery::mock(Job::class);
     $job->shouldReceive('resolveName')->andReturn('App\Jobs\RestockShelves');
     $job->shouldReceive('payload')->andReturn([]);
+    $job->shouldReceive('getQueue')->andReturn('default');
+    $job->shouldReceive('attempts')->andReturn(1);
+    $job->shouldReceive('uuid')->andReturn('5b6a2d1e-0000-4000-8000-000000000001');
 
     // Laravel reports a failed job's exception after its failed event.
     event(new JobProcessing('redis', $job));

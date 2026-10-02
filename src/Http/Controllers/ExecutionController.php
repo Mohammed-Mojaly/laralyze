@@ -25,6 +25,7 @@ class ExecutionController
             'related' => $storage->related($found->trace, $found->uuid),
             'parent' => $found->trace === $found->uuid ? null : $storage->execution($found->trace),
             'user' => $found->user_id === null ? null : json_decode((string) $storage->values('user', [$found->user_id])->first()?->value, true),
+            'attempts' => $found->job_uuid === null ? collect() : $storage->attempts((string) $found->job_uuid),
         ]);
     }
 }

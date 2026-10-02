@@ -58,6 +58,10 @@ return new class extends Migration
             // ",<hash>,<hash>," of the exceptions it reported, for the exception page.
             $table->text('exceptions');
             $table->text('counts');
+            // Command line, job connection, queue and attempt, stages, time per kind.
+            $table->text('meta');
+            // A job's attempts share it.
+            $table->string('job_uuid', 36)->nullable()->index();
             $table->longText('events');
 
             $table->index(['type', 'name_hash', 'started_at']);

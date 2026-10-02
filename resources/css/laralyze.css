@@ -1867,3 +1867,76 @@ body.lz-root {
     color: var(--lz-ink-2);
     font-size: 13px;
 }
+
+.lz-pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.lz-button:disabled {
+    opacity: .4;
+    cursor: default;
+}
+
+/* Execution page: attempts, events, lists, stages */
+.lz-attempts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.lz-button.is-active {
+    border-color: var(--lz-ink-3);
+    color: var(--lz-ink);
+}
+
+.lz-info-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    column-gap: 28px;
+}
+
+.lz-info .is-zero dd {
+    color: var(--lz-ink-3);
+}
+
+.lz-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lz-list li {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-top: 1px solid var(--lz-line);
+    overflow-wrap: anywhere;
+}
+
+.lz-list li:first-child {
+    border-top: 0;
+}
+
+.lz-stage {
+    background: var(--lz-surface-2);
+    font-weight: 600;
+}
+
+.lz-stage .lz-event-kind {
+    color: var(--lz-ink);
+}
+
+.lz-stage .lz-event-bar > span {
+    background: var(--lz-data-soft);
+}
+
+.lz-in-stage .lz-event-kind {
+    padding-left: 12px;
+}

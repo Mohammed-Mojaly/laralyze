@@ -39,7 +39,7 @@ class Commands extends Recorder
             return;
         }
 
-        $this->laralyze->record('command', $name, (microtime(true) - $startedAt) * 1_000)->avg()->max();
+        $this->laralyze->record('command', $name, (microtime(true) - $startedAt) * 1_000)->avg()->max()->histogram();
 
         if ($event->exitCode !== 0) {
             $this->laralyze->record('command_failed', $name)->count();

@@ -11,7 +11,10 @@ use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Foundation\Http\Events\RequestHandled;
+use Illuminate\Foundation\Http\Kernel as FoundationKernel;
 use Illuminate\Http\Client\Events\ConnectionFailed;
 use Illuminate\Http\Client\Events\ResponseReceived;
 use Illuminate\Http\Request;
@@ -23,6 +26,7 @@ use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Events\JobQueued;
 use Illuminate\Queue\Events\JobReleasedAfterException;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Queue\Queue;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Str;
@@ -39,7 +43,7 @@ use Throwable;
  *
  * Slow and failed ones are always kept; the rest are sampled.
  *
- * @phpstan-type Execution array{uuid: string, trace: string, type: string, name: string, sampled: bool, start: float, events: list<array<int, mixed>>, counts: array<string, int>, exceptions: list<string>, queries: array<string, int>, first: array<string, array<mixed>>, same: array<string, int>, extra: array<string, int>, where: array<string, string|null>}
+ * @phpstan-type Execution array{uuid: string, trace: string, type: string, name: string, sampled: bool, start: float, events: list<array<int, mixed>>, counts: array<string, int>, exceptions: list<string>, queries: array<string, int>, first: array<string, array<mixed>>, same: array<string, int>, extra: array<string, int>, where: array<string, string|null>, begun: float, ms: array<string, float>, stages: list<array{0: string, 1: float, 2: float|null}>, meta: array<string, mixed>}
  */
 class Traces extends Recorder
 {
@@ -62,6 +66,8 @@ class Traces extends Recorder
         JobReleasedAfterException::class,
         CommandStarting::class,
         CommandFinished::class,
+        RequestHandled::class,
+        Looping::class,
     ];
 
     /**
@@ -98,6 +104,14 @@ class Traces extends Recorder
     public const REPEATS = 5;
 
     protected int $maxEvents;
+
+    /**
+     * Events before anything started, with their time: the app booting
+     * before a request or command, or a worker reserving the next job.
+     *
+     * @var list<array{0: string, 1: float, 2: float|null, 3: string, 4: string|null, 5: string|null}>
+     */
+    protected array $early = [];
 
     /**
      * @param  array<string, mixed>  $config
@@ -143,6 +157,8 @@ class Traces extends Recorder
             $event instanceof JobQueued => $this->add('job', is_object($event->job) ? $event->job::class : (string) $event->job, null, (string) $event->queue),
             $event instanceof MessageLogged => $this->logged($event),
             $event instanceof RouteMatched => $this->startRequest(),
+            $event instanceof RequestHandled => $this->stage('request', 'terminating'),
+            $event instanceof Looping => $this->early = [],
             $event instanceof JobProcessing => $this->startJob($event),
             $event instanceof CommandStarting => $this->startCommand($event),
             $event instanceof JobProcessed, $event instanceof JobFailed, $event instanceof JobReleasedAfterException => $this->finishJob($event),
@@ -156,7 +172,23 @@ class Traces extends Recorder
         // A new request, in a fresh process or on Octane: nothing before it belongs to it.
         $this->stack = array_values(array_filter($this->stack, fn (array $execution) => $execution['type'] !== 'request'));
 
-        $this->start('request', '', null);
+        $now = microtime(true);
+        $kernel = $this->app->bound(HttpKernel::class) ? $this->app->make(HttpKernel::class) : null;
+        $handled = $kernel instanceof FoundationKernel ? $kernel->requestStartedAt() : null;
+        $handled = $handled instanceof CarbonInterface ? (float) $handled->format('U.u') : $now;
+
+        // LARAVEL_START is when PHP started on this request; on Octane it's long gone.
+        $started = $this->laravelStart();
+        $booted = $started !== null && $started <= $handled && $started > $handled - 30 ? $started : $handled;
+
+        $this->start('request', '', null, $booted);
+
+        if ($booted < $handled) {
+            $this->stage('request', 'bootstrap', $booted);
+        }
+
+        $this->stage('request', 'middleware', $handled);
+        $this->stage('request', 'handle', $now);
     }
 
     public function finishRequest(CarbonInterface $startedAt, Request $request, Response $response): void
@@ -178,9 +210,18 @@ class Traces extends Recorder
     {
         $this->digest();
 
-        $parent = $event->job->payload()['laralyze'] ?? null;
+        $job = $event->job;
+        $payload = $job->payload();
+        $parent = $payload['laralyze'] ?? null;
 
-        $this->start('job', $event->job->resolveName(), is_array($parent) ? $parent : null);
+        // The worker reserving this job belongs to it.
+        $this->start('job', $job->resolveName(), is_array($parent) ? $parent : null, $this->early[0][1] ?? microtime(true), [
+            'connection' => $event->connectionName,
+            'queue' => $job->getQueue(),
+            'attempt' => $job->attempts(),
+            'queued_at' => is_numeric($payload['createdAt'] ?? null) ? (int) $payload['createdAt'] : null,
+            'job_uuid' => is_string($uuid = $job->uuid()) ? $uuid : null,
+        ]);
     }
 
     protected function finishJob(JobProcessed|JobFailed|JobReleasedAfterException $event): void
@@ -197,7 +238,7 @@ class Traces extends Recorder
             default => 'failed',
         };
 
-        $duration = (microtime(true) - $execution['start']) * 1_000;
+        $duration = (microtime(true) - $execution['begun']) * 1_000;
 
         if ($status === 'processed') {
             $this->finish($execution, $execution['name'], $status, false, $duration, null);
@@ -224,9 +265,41 @@ class Traces extends Recorder
     {
         $name = (string) $event->command;
 
-        if ($name !== '' && ! in_array($name, self::LONG_RUNNING, true) && ! $this->shouldIgnore($name)) {
-            $this->start('command', $name, null);
+        if ($name === '' || in_array($name, self::LONG_RUNNING, true) || $this->shouldIgnore($name)) {
+            return;
         }
+
+        $now = microtime(true);
+
+        // A command run from the terminal: booting the app is part of it.
+        $started = $this->laravelStart();
+        $booted = $this->stack === [] && $started !== null && $started <= $now ? $started : $now;
+
+        $this->start('command', $name, null, $booted, ['line' => $this->commandLine($event)]);
+
+        if ($booted < $now) {
+            $this->stage('command', 'bootstrap', $booted);
+        }
+
+        $this->stage('command', 'handle', $now);
+    }
+
+    protected function laravelStart(): ?float
+    {
+        $start = defined('LARAVEL_START') ? constant('LARAVEL_START') : null;
+
+        return is_numeric($start) ? (float) $start : null;
+    }
+
+    /**
+     * The command as it was typed, with secret-looking values hidden.
+     */
+    protected function commandLine(CommandStarting $event): string
+    {
+        $line = (string) $event->input;
+        $line = (string) preg_replace('/((?:^|\s)--?[\w-]*(?:pass|secret|token|key)[\w-]*[= ])(\S+)/i', '$1***', $line);
+
+        return Str::limit($line === '' ? (string) $event->command : $line, 1_000);
     }
 
     protected function finishCommand(CommandFinished $event): void
@@ -240,11 +313,14 @@ class Traces extends Recorder
 
     /**
      * @param  array{trace?: mixed, sampled?: mixed}|null  $parent
+     * @param  array<string, mixed>  $meta
      */
-    protected function start(string $type, string $name, ?array $parent): void
+    protected function start(string $type, string $name, ?array $parent, ?float $from = null, array $meta = []): void
     {
         $uuid = (string) Str::ulid();
         $rate = $this->sampleRate();
+        $now = microtime(true);
+        $from ??= $now;
 
         $this->stack[] = [
             'uuid' => $uuid,
@@ -253,8 +329,12 @@ class Traces extends Recorder
             'name' => $name,
             // Decided once at the start, so a sampled request keeps its jobs too.
             'sampled' => is_bool($parent['sampled'] ?? null) ? $parent['sampled'] : ($rate >= 1 || ($rate > 0 && mt_rand() / mt_getrandmax() < $rate)),
-            'start' => microtime(true),
-            'events' => [],
+            'start' => $from,
+            'begun' => $now,
+            'events' => $this->earlyEvents($from),
+            'ms' => [],
+            'stages' => [],
+            'meta' => $meta,
             'counts' => [],
             'exceptions' => [],
             'queries' => [],
@@ -263,6 +343,48 @@ class Traces extends Recorder
             'extra' => [],
             'where' => [],
         ];
+    }
+
+    /**
+     * Events from before it started that belong to it, as offsets.
+     *
+     * @return list<array<int, mixed>>
+     */
+    protected function earlyEvents(float $from): array
+    {
+        $events = [];
+
+        foreach ($this->early as [$kind, $time, $duration, $label, $detail, $link]) {
+            if ($time >= $from) {
+                $events[] = [$kind, round(max(0, ($time - $from) * 1_000), 2), $duration, $label, $detail, $link];
+            }
+        }
+
+        $this->early = [];
+
+        return $events;
+    }
+
+    /**
+     * Begin a stage of what's running, ending the one before.
+     */
+    protected function stage(string $type, string $name, ?float $at = null): void
+    {
+        $last = array_key_last($this->stack);
+
+        if ($last === null || $this->stack[$last]['type'] !== $type) {
+            return;
+        }
+
+        $execution = &$this->stack[$last];
+        $offset = round((($at ?? microtime(true)) - $execution['start']) * 1_000, 2);
+        $previous = array_key_last($execution['stages']);
+
+        if ($previous !== null) {
+            $execution['stages'][$previous][2] = $offset;
+        }
+
+        $execution['stages'][] = [$name, $offset, null];
     }
 
     /**
@@ -298,11 +420,19 @@ class Traces extends Recorder
         $last = array_key_last($this->stack);
 
         if ($last === null) {
+            if (count($this->early) < 300) {
+                $this->early[] = [$kind, microtime(true) - ($duration ?? 0) / 1_000, $duration, strlen($label) > 2_000 ? substr($label, 0, 2_000).'...' : $label, $detail, $link];
+            }
+
             return;
         }
 
         $execution = &$this->stack[$last];
         $execution['counts'][$kind] = ($execution['counts'][$kind] ?? 0) + 1;
+
+        if ($duration !== null) {
+            $execution['ms'][$kind] = ($execution['ms'][$kind] ?? 0) + $duration;
+        }
 
         if (count($execution['events']) >= $this->maxEvents) {
             return;
@@ -485,8 +615,37 @@ class Traces extends Recorder
             'started_at' => (int) $execution['start'],
             'exceptions' => array_values(array_unique($execution['exceptions'])),
             'counts' => [...$execution['counts'], 'memory' => memory_get_peak_usage(true)],
+            'meta' => [...$execution['meta'], 'ms' => array_map(fn (float $ms) => round($ms, 2), $execution['ms']), 'stages' => $this->closeStages($execution, $duration), 'error' => $this->firstError($execution)],
+            'job_uuid' => $execution['meta']['job_uuid'] ?? null,
             'events' => $execution['events'],
         ]);
+    }
+
+    /**
+     * @param  Execution  $execution
+     * @return list<array{0: string, 1: float, 2: float}>
+     */
+    protected function closeStages(array $execution, float $duration): array
+    {
+        $end = round((microtime(true) - $execution['start']) * 1_000, 2);
+
+        return array_map(fn (array $stage) => [$stage[0], $stage[1], $stage[2] ?? max($stage[1], $end)], $execution['stages']);
+    }
+
+    /**
+     * The first exception's message, to show next to a failed run.
+     *
+     * @param  Execution  $execution
+     */
+    protected function firstError(array $execution): ?string
+    {
+        foreach ($execution['events'] as $event) {
+            if ($event[0] === 'exception') {
+                return Str::limit((string) $event[4], 300);
+            }
+        }
+
+        return null;
     }
 
     protected function userId(): ?string

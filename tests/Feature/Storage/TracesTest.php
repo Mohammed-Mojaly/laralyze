@@ -5,7 +5,10 @@ use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Events\JobReleasedAfterException;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +20,7 @@ use MohammedMojaly\Laralyze\Recorders;
 use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use MohammedMojaly\Laralyze\Tests\Fixtures\SendInvoice;
 use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Input\StringInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
 beforeEach(function () {
@@ -184,8 +188,13 @@ it('puts a failed job\'s exception in its timeline, though Laravel reports it af
     $job = Mockery::mock(Job::class);
     $job->shouldReceive('resolveName')->andReturn('App\Jobs\RestockShelves');
     $job->shouldReceive('payload')->andReturn([]);
+    $job->shouldReceive('getQueue')->andReturn('default');
+    $job->shouldReceive('attempts')->andReturn(1);
+    $job->shouldReceive('uuid')->andReturn('5b6a2d1e-0000-4000-8000-000000000001');
     $failure = new RuntimeException('Warehouse API timed out');
 
+    // A worker loops, reserves the job, then runs it.
+    event(new Looping('redis', 'default'));
     event(new JobProcessing('redis', $job));
     DB::select('select 1');
     event(new JobFailed('redis', $job, $failure));
@@ -201,4 +210,104 @@ it('puts a failed job\'s exception in its timeline, though Laravel reports it af
     $source = json_decode((string) app(DatabaseStorage::class)->values('exception_details')->first()->value, true)['source'];
 
     expect($source)->toBe(['type' => 'job', 'name' => 'App\Jobs\RestockShelves']);
+});
+
+it('splits a request into stages and adds up time per kind', function () {
+    traceWith(['sample_rate' => 1]);
+
+    Route::get('/books', function () {
+        DB::select('select 1');
+        DB::select('select 2');
+
+        return 'ok';
+    });
+
+    $this->get('/books');
+    Laralyze::flush();
+
+    $execution = app(DatabaseStorage::class)->execution(kept()->sole()->uuid);
+
+    expect(array_column($execution->meta['stages'], 0))->toBe(['middleware', 'handle', 'terminating'])
+        ->and($execution->meta['ms']['query'])->toBeGreaterThan(0)
+        ->and(collect($execution->meta['stages'])->every(fn (array $stage) => $stage[2] >= $stage[1]))->toBeTrue();
+
+    $this->get('/laralyze/executions/'.$execution->uuid)->assertSee('handle')->assertSee('2 events');
+});
+
+it('keeps the command line, with secrets hidden', function () {
+    traceWith(['sample_rate' => 1]);
+
+    $input = new StringInput('books:import --limit=5 --api-key=abc123 --password secret');
+    $output = new BufferedOutput;
+
+    event(new CommandStarting('books:import', $input, $output));
+    event(new CommandFinished('books:import', $input, $output, 1));
+    Laralyze::flush();
+
+    $execution = kept()->sole();
+
+    expect($execution->meta['line'])->toContain('--limit=5')
+        ->not->toContain('abc123')
+        ->not->toContain('secret')
+        ->and($execution->failed)->toBeTrue()
+        ->and(array_column($execution->meta['stages'], 0))->toBe(['handle']);
+});
+
+it('links the attempts of a job, with its connection, queue and the worker reserving it', function () {
+    traceWith(['sample_rate' => 1]);
+
+    $job = fn (int $attempt) => tap(Mockery::mock(Job::class), function ($job) use ($attempt) {
+        $job->shouldReceive('resolveName')->andReturn('App\Jobs\RestockShelves');
+        $job->shouldReceive('payload')->andReturn(['createdAt' => time() - 30]);
+        $job->shouldReceive('getQueue')->andReturn('restock');
+        $job->shouldReceive('attempts')->andReturn($attempt);
+        $job->shouldReceive('uuid')->andReturn('5b6a2d1e-0000-4000-8000-000000000002');
+    });
+
+    event(new Looping('database', 'restock'));
+    DB::select('select 1 as reserve');
+    event(new JobProcessing('database', $first = $job(1)));
+    event(new JobReleasedAfterException('database', $first));
+    report(new RuntimeException('Warehouse API timed out'));
+
+    event(new Looping('database', 'restock'));
+    event(new JobProcessing('database', $second = $job(2)));
+    event(new JobProcessed('database', $second));
+    Laralyze::flush();
+
+    $attempts = app(DatabaseStorage::class)->attempts('5b6a2d1e-0000-4000-8000-000000000002');
+
+    expect($attempts->pluck('status')->all())->toBe(['released', 'processed'])
+        ->and($attempts[0]->meta)->toMatchArray(['connection' => 'database', 'queue' => 'restock', 'attempt' => 1, 'error' => 'Warehouse API timed out'])
+        ->and(app(DatabaseStorage::class)->execution($attempts[0]->uuid)->events[0][3])->toBe('select 1 as reserve');
+
+    $this->get('/laralyze/executions/'.$attempts[1]->uuid)->assertSee('Attempt 2 of 2')->assertSee('restock');
+    $this->get('/laralyze/executions/'.$attempts[0]->uuid)->assertSee('Stack trace and code')->assertSee('Warehouse API timed out');
+
+    Livewire::withoutLazyLoading()->test('laralyze.executions', ['type' => 'job', 'name' => 'App\Jobs\RestockShelves'])
+        ->assertSee('restock')
+        ->set('status', 'failed')
+        ->assertSee('Warehouse API timed out')
+        ->assertDontSee('processed')
+        ->set('status', 'ok')
+        ->assertSee('processed');
+});
+
+it('pages through runs and filters them by speed', function () {
+    traceWith(['sample_rate' => 1]);
+    Route::get('/fine', fn () => 'ok');
+
+    foreach (range(1, 4) as $i) {
+        $this->get('/fine');
+    }
+
+    Laralyze::record('request', 'GET /fine', 0.001)->avg()->max()->histogram();
+    Laralyze::flush();
+
+    Livewire::withoutLazyLoading()->test('laralyze.executions', ['type' => 'request', 'name' => 'GET /fine', 'limit' => 3])
+        ->assertSee('Page 1')
+        ->call('nextPage')
+        ->assertSee('Page 2')
+        ->set('speed', 'p95')
+        ->assertSet('page', 1);
 });

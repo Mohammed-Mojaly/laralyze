@@ -1,8 +1,8 @@
 @php
     $traced = [
         'requests' => ['type' => 'request', 'name' => $name, 'title' => 'Requests'],
-        'jobs' => ['type' => 'job', 'name' => $name, 'title' => 'Runs'],
-        'commands' => ['type' => 'command', 'name' => $name, 'title' => 'Runs'],
+        'jobs' => ['type' => 'job', 'name' => $name, 'title' => 'Attempts', 'order' => 'recent'],
+        'commands' => ['type' => 'command', 'name' => $name, 'title' => 'Runs', 'order' => 'recent'],
         'users' => ['type' => 'request', 'user' => $name, 'title' => 'Requests'],
         'exceptions' => ['exception' => $name, 'title' => 'Occurrences', 'order' => 'recent'],
     ][$page->key] ?? null;

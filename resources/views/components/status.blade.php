@@ -2,7 +2,7 @@
 @props(['execution'])
 @php
     $status = (string) $execution->status;
-    $label = $execution->type === 'command' ? 'exit '.$status : $status;
+    $label = $status;
     $tone = match (true) {
         $execution->failed => 'lz-badge-bad',
         $execution->type === 'request' && (int) $status >= 400 => 'lz-badge-warn',
