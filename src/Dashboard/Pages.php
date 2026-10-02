@@ -112,7 +112,7 @@ class Pages
             'exceptions' => $page('Exceptions', 'Application', Recorders\Exceptions::class, 'exceptions'),
             'queries' => $page('Queries', 'Application', Recorders\Queries::class, 'queries'),
             'cache' => $page('Cache', 'Application', Recorders\Cache::class, 'cache'),
-            'http' => $page('HTTP Client', 'Application', Recorders\OutgoingRequests::class, 'http'),
+            'outgoing-requests' => $page('Outgoing Requests', 'Application', Recorders\OutgoingRequests::class, 'outgoing-requests'),
             'mail' => $page('Mail', 'Application', Recorders\Mail::class, 'mail'),
             'notifications' => $page('Notifications', 'Application', Recorders\Notifications::class, 'notifications'),
             'visits' => $page('Visits', 'Monitoring', Recorders\Visits::class, 'visits'),

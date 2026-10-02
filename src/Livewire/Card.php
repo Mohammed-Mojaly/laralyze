@@ -95,15 +95,15 @@ abstract class Card extends Component
     }
 
     /**
-     * One set of totals across every key of a type.
+     * One set of totals across every key of a type, or for one key.
      *
      * @param  list<string>  $aggregates
      */
-    protected function total(string $type, array $aggregates): stdClass
+    protected function total(string $type, array $aggregates, ?string $key = null): stdClass
     {
         return (object) $this->remember(
-            ['total', $type, $aggregates],
-            fn (DatabaseStorage $storage, int $window) => (array) $storage->total($type, $aggregates, $window),
+            ['total', $type, $aggregates, $key],
+            fn (DatabaseStorage $storage, int $window) => (array) $storage->total($type, $aggregates, $window, $key),
         );
     }
 
@@ -177,6 +177,16 @@ abstract class Card extends Component
         }
 
         return null;
+    }
+
+    /**
+     * The page of one row, e.g. a route or a query, for the same period.
+     */
+    public function groupUrl(string $page, string $key): string
+    {
+        $query = $this->range() === Range::Hour ? [] : ['period' => $this->range()->value];
+
+        return route('laralyze.group', ['page' => $page, 'group' => hash('xxh128', $key), ...$query]);
     }
 
     /**

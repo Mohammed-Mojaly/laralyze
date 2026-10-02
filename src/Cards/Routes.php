@@ -6,6 +6,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Lazy;
 use MohammedMojaly\Laralyze\Livewire\Card;
+use MohammedMojaly\Laralyze\Livewire\Concerns\ListsRows;
 use MohammedMojaly\Laralyze\Recorders\Requests;
 use stdClass;
 
@@ -15,9 +16,8 @@ use stdClass;
 #[Lazy]
 class Routes extends Card
 {
-    /**
-     * count, avg or p95.
-     */
+    use ListsRows;
+
     public string $sort = 'count';
 
     public int $limit = 100;
@@ -34,7 +34,7 @@ class Routes extends Card
      */
     protected function routes(): Collection
     {
-        $routes = $this->aggregate('request', ['count', 'avg', 'p95'], orderBy: $this->sort === 'avg' ? 'avg' : 'count', limit: $this->limit);
+        $routes = $this->aggregate('request', ['count', 'avg', 'p95'], orderBy: 'count', limit: $this->limit);
 
         $statuses = collect(Requests::STATUS_CLASSES)->mapWithKeys(fn (string $class) => [
             $class => $this->aggregate("request_{$class}", ['count'], limit: 1_000)->pluck('count', 'key'),
@@ -48,6 +48,11 @@ class Routes extends Card
             }
         });
 
-        return $this->sort === 'p95' ? $routes->sortByDesc('p95')->values() : $routes;
+        return $this->arrange($routes);
+    }
+
+    protected function sortable(): array
+    {
+        return ['count', 'key', ...Requests::STATUS_CLASSES, 'avg', 'p95'];
     }
 }

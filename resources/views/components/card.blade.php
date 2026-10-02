@@ -1,4 +1,4 @@
-@props(['card' => null, 'title' => null, 'cols' => null, 'rows' => null])
+@props(['card' => null, 'title' => null, 'count' => null, 'cols' => null, 'rows' => null])
 @php
     $cols = $cols ?? $card?->cols ?? 'full';
     $rows = $rows ?? $card?->rows ?? 1;
@@ -10,7 +10,7 @@
 >
     @if ($title || isset($actions))
         <header class="lz-card-head">
-            <h2>{{ $title }}</h2>
+            <h2>{{ $title }}@if ($count !== null) <span class="lz-count">{{ \MohammedMojaly\Laralyze\Support\Format::number($count) }}</span>@endif</h2>
 
             <div class="lz-card-actions">
                 {{ $actions ?? '' }}

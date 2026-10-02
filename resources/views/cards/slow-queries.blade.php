@@ -1,4 +1,5 @@
 @use('MohammedMojaly\Laralyze\Support\Format')
+@use('MohammedMojaly\Laralyze\Support\Sql')
 <x-laralyze::card :card="$this" title="Slow queries">
     @if ($queries->isEmpty())
         <x-laralyze::empty
@@ -6,7 +7,7 @@
             hint="A query counts as slow once it takes longer than its threshold in config/laralyze.php."
         />
     @else
-        <x-laralyze::table>
+        <x-laralyze::table class="lz-table-links">
             <x-slot:head>
                 <th scope="col">Query</th>
                 <th scope="col" class="lz-num">Count</th>
@@ -17,7 +18,7 @@
             @foreach ($queries as $query)
                 <tr wire:key="{{ md5($query->key) }}">
                     <td class="lz-wrap">
-                        <code class="lz-sql" title="{{ $query->sql }}">{{ $query->sql }}</code>
+                        <a class="lz-row-link" href="{{ $this->groupUrl('queries', $query->sql) }}"><code class="lz-sql" title="{{ $query->sql }}">{{ Sql::highlight($query->sql) }}</code></a>
                         @if ($query->location)
                             <span class="lz-sub lz-mono">{{ $query->location }}</span>
                         @endif

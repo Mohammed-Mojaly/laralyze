@@ -5,6 +5,7 @@ namespace MohammedMojaly\Laralyze\Cards;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Lazy;
 use MohammedMojaly\Laralyze\Livewire\Card;
+use MohammedMojaly\Laralyze\Livewire\Concerns\ListsRows;
 use MohammedMojaly\Laralyze\Recorders\Requests;
 use stdClass;
 
@@ -14,6 +15,10 @@ use stdClass;
 #[Lazy]
 class OutgoingRequests extends Card
 {
+    use ListsRows;
+
+    public string $sort = 'count';
+
     public int $limit = 100;
 
     public function render(): View
@@ -34,6 +39,7 @@ class OutgoingRequests extends Card
             ->map(fn (int|string $key) => (string) $key)
             ->map(function (string $key) use ($timings, $counts) {
                 $request = new stdClass;
+                $request->key = $key;
                 [$request->method, $request->url] = array_pad(explode(' ', $key, 2), 2, '');
                 $request->avg = $timings[$key]->avg ?? null;
                 $request->p95 = $timings[$key]->p95 ?? null;
@@ -42,18 +48,22 @@ class OutgoingRequests extends Card
                     $request->{$class} = $byKey[$key] ?? 0.0;
                 }
 
+                $request->ok = $request->{'2xx'} + $request->{'3xx'};
                 $request->count = ($timings[$key]->count ?? 0) + $request->failed;
 
                 return $request;
-            })
-            ->sortByDesc('count')
-            ->values();
+            });
 
         return view('laralyze::cards.outgoing-requests', [
             'statuses' => $statuses,
             'total' => array_sum($statuses),
             'series' => $series,
-            'requests' => $requests,
+            'requests' => $this->arrange($requests->values()),
         ]);
+    }
+
+    protected function sortable(): array
+    {
+        return ['count', 'key', 'ok', '4xx', '5xx', 'failed', 'avg', 'p95'];
     }
 }

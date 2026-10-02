@@ -1,23 +1,27 @@
 @use('MohammedMojaly\Laralyze\Support\Format')
-<x-laralyze::card :card="$this" title="Commands">
+<x-laralyze::card :card="$this" title="Commands" :count="$commands->count()">
+    <x-slot:actions>
+        <x-laralyze::search placeholder="Search commands" />
+    </x-slot:actions>
+
     @if ($commands->isEmpty())
         <x-laralyze::empty
-            :title="'No commands ran in the '.$this->range()->label().'.'"
-            hint="Artisan commands appear here after they finish."
+            :title="$search === '' ? 'No commands ran in the '.$this->range()->label().'.' : 'No commands match “'.$search.'”.'"
+            :hint="$search === '' ? 'Artisan commands appear here after they finish.' : null"
         />
     @else
-        <x-laralyze::table>
+        <x-laralyze::table class="lz-table-links">
             <x-slot:head>
-                <th scope="col">Command</th>
-                <th scope="col" class="lz-num">Runs</th>
-                <th scope="col" class="lz-num">Failed</th>
-                <th scope="col" class="lz-num">Avg</th>
-                <th scope="col" class="lz-num">Slowest</th>
+                <x-laralyze::sort-header :card="$this" column="key" :num="false">Command</x-laralyze::sort-header>
+                <x-laralyze::sort-header :card="$this" column="count">Runs</x-laralyze::sort-header>
+                <x-laralyze::sort-header :card="$this" column="failed">Failed</x-laralyze::sort-header>
+                <x-laralyze::sort-header :card="$this" column="avg">Avg</x-laralyze::sort-header>
+                <x-laralyze::sort-header :card="$this" column="max">Slowest</x-laralyze::sort-header>
             </x-slot:head>
 
             @foreach ($commands as $command)
-                <tr wire:key="{{ $command->key }}">
-                    <td class="lz-mono">{{ $command->key }}</td>
+                <tr wire:key="{{ md5($command->key) }}">
+                    <td class="lz-mono"><a class="lz-row-link" href="{{ $this->groupUrl('commands', $command->key) }}">{{ $command->key }}</a></td>
                     <td class="lz-num lz-strong">{{ Format::number($command->count) }}</td>
                     <td @class(['lz-num', 'lz-bad' => $command->failed > 0])>{{ Format::number($command->failed) }}</td>
                     <td class="lz-num">{{ Format::duration($command->avg) }}</td>

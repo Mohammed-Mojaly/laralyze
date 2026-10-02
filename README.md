@@ -31,12 +31,12 @@ Then open `/laralyze`. Make sure Laravel's scheduler runs (`* * * * * php artisa
 | Exceptions | By class and line, handled vs unhandled, latest message |
 | Queries | Time spent per query (lists folded), reads vs writes, connections, slow queries with the line that ran them |
 | Cache | Hit ratio, hits/misses/writes/deletes/failures per key group |
-| HTTP Client | Calls to other services, errors and connections that never got a response |
+| Outgoing Requests | Calls to other services, errors and connections that never got a response |
 | Mail, Notifications | Sent and failed, per mailable, notification and channel |
 | Visits | Visitors right now, page views, unique visitors, devices, systems, browsers, top pages, bots |
 | Users, Logs, Servers | Most active users, log levels, CPU/memory/disk |
 
-Each page shows the last 15 minutes, hour, 24 hours, 7, 14 or 30 days. Every recorder can be turned off; a page disappears with its recorder.
+Each page shows the last 15 minutes, hour, 24 hours, 7, 14 or 30 days. Lists can be searched and sorted by any column, and every route, job, command, query and outgoing URL opens a page of its own: calls and outcomes over time, duration (avg and p95), totals, and the SQL formatted and highlighted. Every recorder can be turned off; a page disappears with its recorder.
 
 ## Privacy
 

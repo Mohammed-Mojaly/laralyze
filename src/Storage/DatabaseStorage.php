@@ -225,7 +225,7 @@ class DatabaseStorage
 
             $rows->each(function (stdClass $row) use ($percentiles, $bins) {
                 foreach ($percentiles as $name => $percentile) {
-                    $row->{$name} = Histogram::percentile($bins[$row->key_hash] ?? [], $percentile);
+                    $row->{$name} = $this->capped(Histogram::percentile($bins[$row->key_hash] ?? [], $percentile), $row);
                 }
             });
         }
@@ -238,19 +238,20 @@ class DatabaseStorage
     }
 
     /**
-     * One set of totals across every key of a type.
+     * One set of totals across every key of a type, or for one key.
      *
      * @param  list<string>  $aggregates
      */
-    public function total(string $type, array $aggregates, int $window): stdClass
+    public function total(string $type, array $aggregates, int $window, ?string $key = null): stdClass
     {
         [$plain, $percentiles] = $this->parseAggregates($aggregates);
         $grammar = $this->connection()->getQueryGrammar();
+        $scope = fn (Builder $query) => $key === null ? $query : $query->where('key_hash', hash('xxh128', $key));
 
         $total = new stdClass;
 
         if ($plain !== []) {
-            $query = $this->window($type, $window)->whereIn('aggregate', $this->storedAggregatesFor($plain));
+            $query = $scope($this->window($type, $window))->whereIn('aggregate', $this->storedAggregatesFor($plain));
 
             foreach ($plain as $aggregate) {
                 $query->selectRaw($this->aggregateSql($aggregate).' as '.$grammar->wrap($aggregate));
@@ -260,15 +261,31 @@ class DatabaseStorage
         }
 
         if ($percentiles !== []) {
-            $bins = $this->bins($this->window($type, $window))->pluck('value', 'aggregate');
+            $bins = $this->bins($scope($this->window($type, $window)))->pluck('value', 'aggregate');
             $counts = $this->binCounts($bins->all());
 
             foreach ($percentiles as $name => $percentile) {
-                $total->{$name} = Histogram::percentile($counts, $percentile);
+                $total->{$name} = $this->capped(Histogram::percentile($counts, $percentile), $total);
             }
         }
 
         return $total;
+    }
+
+    /**
+     * The key behind a hash, from any of the given types, e.g. to open the
+     * page of one route. Null once its data is gone.
+     *
+     * @param  list<string>  $types
+     */
+    public function keyFor(array $types, string $hash): ?string
+    {
+        $key = $this->connection()->table(self::AGGREGATES)
+            ->whereIn('type', $types)
+            ->where('key_hash', $hash)
+            ->value('key');
+
+        return $key === null ? null : (string) $key;
     }
 
     /**
@@ -299,10 +316,14 @@ class DatabaseStorage
                 ->map(fn ($value) => $value === null ? null : (float) $value);
         } else {
             $percentile = $percentiles[array_key_first($percentiles)];
+            $maxima = (clone $query)->where('aggregate', 'max')->selectRaw($this->aggregateSql('max').' as value')->pluck('value', 'slot');
 
             $values = $this->bins($query->selectRaw('aggregate')->groupBy('aggregate'))
                 ->groupBy('slot')
-                ->map(fn (Collection $bins) => Histogram::percentile($this->binCounts($bins->pluck('value', 'aggregate')->all()), $percentile));
+                ->map(fn (Collection $bins, int|string $slot) => $this->capped(
+                    Histogram::percentile($this->binCounts($bins->pluck('value', 'aggregate')->all()), $percentile),
+                    (object) ['max' => $maxima[$slot] ?? null],
+                ));
         }
 
         return collect(range($first, $now - ($now % $step), $step))
@@ -389,6 +410,17 @@ class DatabaseStorage
         }
 
         return $counts;
+    }
+
+    /**
+     * A percentile is read off its histogram bin, which can overshoot the
+     * slowest value actually seen.
+     */
+    protected function capped(?float $percentile, stdClass $row): ?float
+    {
+        $max = $row->max ?? null;
+
+        return $percentile === null || $max === null ? $percentile : min($percentile, (float) $max);
     }
 
     /**

@@ -112,3 +112,13 @@ it('shares query results between viewers for a few seconds', function () {
 
     card('request-totals')->assertDontSee('No requests in the last hour.');
 });
+
+it('flags scheduled tasks whose next run has long passed', function () {
+    Laralyze::record('scheduled', 'reports:send', 120)->avg()->max();
+    Laralyze::set('scheduled_task', 'reports:send', (string) json_encode(['expression' => '* * * * *', 'status' => 'processed', 'duration' => 120, 'ran_at' => time() - 600, 'next_at' => time() - 540]));
+    Laralyze::record('scheduled', 'backups:run', 900)->avg()->max();
+    Laralyze::set('scheduled_task', 'backups:run', (string) json_encode(['expression' => '0 * * * *', 'status' => 'processed', 'duration' => 900, 'ran_at' => time() - 60, 'next_at' => time() + 3_000]));
+    Laralyze::flush();
+
+    card('scheduled-tasks')->assertSeeInOrder(['backups:run', 'reports:send', 'overdue']);
+});

@@ -35,7 +35,14 @@
                         @endif
                         <x-laralyze::ago :at="$task->ran_at" />
                     </td>
-                    <td><x-laralyze::ago :at="$task->next_at" /></td>
+                    <td>
+                        {{-- A next run in the past means the scheduler stopped running. --}}
+                        @if ($task->next_at && $task->next_at < time() - 60)
+                            <span class="lz-warn" title="The scheduler hasn't run this task since it was due. Is the cron entry in place?">overdue, due <x-laralyze::ago :at="$task->next_at" /></span>
+                        @else
+                            <x-laralyze::ago :at="$task->next_at" />
+                        @endif
+                    </td>
                 </tr>
             @endforeach
         </x-laralyze::table>

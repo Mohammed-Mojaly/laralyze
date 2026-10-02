@@ -5,7 +5,7 @@ namespace MohammedMojaly\Laralyze\Support;
 class Format
 {
     /**
-     * 950, 1.2K, 3.4M.
+     * 950, 1.2K, 3.4M. Sampled counts are estimates, so only small ones keep a decimal.
      */
     public static function number(int|float|null $value): string
     {
@@ -18,7 +18,8 @@ class Format
         return match (true) {
             abs($value) >= 1_000_000 => self::trim($value / 1_000_000).'M',
             abs($value) >= 10_000 => self::trim($value / 1_000).'K',
-            default => number_format($value, $value == floor($value) ? 0 : 1),
+            abs($value) >= 10 || $value == floor($value) => number_format(round($value)),
+            default => number_format($value, 1),
         };
     }
 

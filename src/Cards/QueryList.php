@@ -5,6 +5,7 @@ namespace MohammedMojaly\Laralyze\Cards;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Lazy;
 use MohammedMojaly\Laralyze\Livewire\Card;
+use MohammedMojaly\Laralyze\Livewire\Concerns\ListsRows;
 
 /**
  * Queries grouped by their SQL, the most expensive first.
@@ -12,19 +13,21 @@ use MohammedMojaly\Laralyze\Livewire\Card;
 #[Lazy]
 class QueryList extends Card
 {
-    /**
-     * sum (total time), count or avg.
-     */
+    use ListsRows;
+
     public string $sort = 'sum';
 
     public int $limit = 100;
 
     public function render(): View
     {
-        $sort = in_array($this->sort, ['sum', 'count', 'avg'], true) ? $this->sort : 'sum';
+        $queries = $this->aggregate('query', ['count', 'sum', 'avg', 'p95', 'max'], orderBy: 'sum', limit: $this->limit);
 
-        return view('laralyze::cards.query-list', [
-            'queries' => $this->aggregate('query', ['count', 'sum', 'avg', 'p95', 'max'], orderBy: $sort, limit: $this->limit),
-        ]);
+        return view('laralyze::cards.query-list', ['queries' => $this->arrange($queries)]);
+    }
+
+    protected function sortable(): array
+    {
+        return ['sum', 'key', 'count', 'avg', 'p95', 'max'];
     }
 }
