@@ -28,7 +28,7 @@ Then open `/laralyze`. Make sure Laravel's scheduler runs (`* * * * * php artisa
 | Requests | Throughput by status class, avg/p95/p99, every route, slow requests. Livewire updates by component |
 | Jobs | Queued, processed, released, failed per queue; wait times; every job class; slow jobs |
 | Commands, Scheduled Tasks | Runs, failures, durations; last and next run of each task |
-| Exceptions | By class and line, handled vs unhandled, latest message |
+| Exceptions | By class and line, handled vs unhandled, users affected; a page per exception with the latest stack trace, the code around your lines, where it happened, and Copy as Markdown |
 | Queries | Time spent per query (lists folded), reads vs writes, connections, slow queries with the line that ran them |
 | Cache | Hit ratio, hits/misses/writes/deletes/failures per key group |
 | Outgoing Requests | Calls to other services, errors and connections that never got a response |
@@ -41,7 +41,7 @@ Each page shows the last 15 minutes, hour, 24 hours, 7, 14 or 30 days. Lists can
 
 ## Privacy
 
-Laralyze stores counts and timings, not payloads. Query bindings, request bodies and cache values are never recorded; SQL is stored with its values replaced by `?`. For each exception, the latest message is kept; for database errors only the kind of error and the SQL with placeholders, since the driver's text repeats the values. Visits never store IP addresses or user agents, and count pages by route; guests are told apart by a hash that changes daily. Keys you choose (cache keys, custom metrics) are stored as given, after grouping; drop anything sensitive with `Laralyze::filter()`.
+Laralyze stores counts and timings, not payloads. Query bindings, request bodies and cache values are never recorded; SQL is stored with its values replaced by `?`. For each exception, the latest message and stack trace are kept (file, line and function names only, no arguments), with a few lines of your own code around each app frame; for database errors only the kind of error and the SQL with placeholders, since the driver's text repeats the values. Visits never store IP addresses or user agents, and count pages by route; guests are told apart by a hash that changes daily. Keys you choose (cache keys, custom metrics) are stored as given, after grouping; drop anything sensitive with `Laralyze::filter()`.
 
 ## Authorization
 

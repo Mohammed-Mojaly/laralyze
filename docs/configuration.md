@@ -32,7 +32,7 @@ Everything lives in `config/laralyze.php`, published by `php artisan laralyze:in
 |---|---|---|---|
 | `Requests` | `LARALYZE_REQUESTS_ENABLED` | Every request by route, status class, duration, slow requests | `threshold` via `LARALYZE_SLOW_REQUESTS_THRESHOLD`. Livewire updates are grouped by component and method. Developer tools (`_boost`, `_debugbar`, `telescope`, `horizon`, `pulse`…) are ignored by default. |
 | `Queries` | `LARALYZE_QUERIES_ENABLED` | Every query by SQL, read/write, connection, slow queries with the line that ran them | `threshold` via `LARALYZE_SLOW_QUERIES_THRESHOLD`. Lists like `IN (1, 2, 3)` and literals are folded. `location => false` skips finding the line. |
-| `Exceptions` | `LARALYZE_EXCEPTIONS_ENABLED` | Reported exceptions by class and line, handled or unhandled, latest message | Handled means reported with `report()` or `rescue()`. `ignore` matches the class name. |
+| `Exceptions` | `LARALYZE_EXCEPTIONS_ENABLED` | Reported exceptions by class and line, handled or unhandled, users affected, and the latest occurrence: stack trace, code around app frames, source, server and versions | Handled means reported with `report()` or `rescue()`. `ignore` matches the class name. |
 | `Jobs` | `LARALYZE_JOBS_ENABLED` | Queued, processed, released and failed per queue; wait time; duration and failures per job | `threshold` via `LARALYZE_SLOW_JOBS_THRESHOLD`. |
 | `ScheduledTasks` | `LARALYZE_SCHEDULED_TASKS_ENABLED` | Runs, failures and skips per task; last run, its status and the next run | |
 | `Commands` | `LARALYZE_COMMANDS_ENABLED` | Runs, duration and failures per Artisan command | Workers and scheduler plumbing are ignored by default. |

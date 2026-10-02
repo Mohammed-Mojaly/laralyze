@@ -29,3 +29,30 @@
         } catch {}
     });
 })();
+
+// "Copy as Markdown": copies the text of the element the button names.
+(() => {
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-laralyze-copy]');
+        const source = button && document.getElementById(button.dataset.laralyzeCopy);
+
+        if (!source) {
+            return;
+        }
+
+        const label = button.querySelector('[data-label]') ?? button;
+        const done = () => {
+            label.textContent = 'Copied';
+            setTimeout(() => (label.textContent = button.dataset.label ?? 'Copy'), 1500);
+        };
+
+        // The clipboard API needs HTTPS; fall back for plain-HTTP dashboards.
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(source.value ?? source.textContent).then(done);
+        } else {
+            source.select();
+            document.execCommand('copy');
+            done();
+        }
+    });
+})();

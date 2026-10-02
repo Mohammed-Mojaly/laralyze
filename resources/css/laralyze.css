@@ -89,7 +89,7 @@ body {
     margin: 0;
 }
 
-body.rq {
+body.lz-root {
     min-height: 100vh;
     background: var(--lz-bg);
     color: var(--lz-ink);
@@ -100,27 +100,27 @@ body.rq {
     text-rendering: optimizeLegibility;
 }
 
-.rq h1,
-.rq h2,
-.rq p,
-.rq dl,
-.rq dd,
-.rq figure {
+.lz-root h1,
+.lz-root h2,
+.lz-root p,
+.lz-root dl,
+.lz-root dd,
+.lz-root figure {
     margin: 0;
 }
 
-.rq a {
+.lz-root a {
     color: inherit;
     text-decoration: none;
 }
 
-.rq button {
+.lz-root button {
     font: inherit;
     color: inherit;
     cursor: pointer;
 }
 
-.rq :focus-visible {
+.lz-root :focus-visible {
     outline: 2px solid var(--lz-ink);
     outline-offset: 2px;
     border-radius: 4px;
@@ -1483,4 +1483,203 @@ body.rq {
     color: var(--lz-ink-3);
     font-size: 13px;
     overflow-wrap: anywhere;
+}
+
+/* Badges and small buttons */
+.lz-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--lz-surface-2);
+    box-shadow: inset 0 0 0 1px var(--lz-line);
+    color: var(--lz-ink-2);
+    font-family: var(--lz-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    vertical-align: 1px;
+    white-space: nowrap;
+}
+
+.lz-badge-bad {
+    background: var(--lz-bad);
+    box-shadow: none;
+    color: var(--lz-surface);
+}
+
+.lz-row-link .lz-badge {
+    margin-right: 6px;
+}
+
+.lz-nowrap {
+    white-space: nowrap;
+}
+
+.lz-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--lz-line);
+    border-radius: 6px;
+    background: var(--lz-surface);
+    color: var(--lz-ink-2);
+    font-size: 12px;
+}
+
+.lz-button:hover {
+    color: var(--lz-ink);
+}
+
+.lz-button .lz-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.lz-offscreen {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+/* One exception: its header and stack trace */
+.lz-exception-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.lz-exception-tags,
+.lz-exception-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.lz-exception-class {
+    margin-top: 14px;
+    font-size: 20px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.lz-exception-message {
+    margin-top: 6px;
+    color: var(--lz-ink-2);
+    overflow-wrap: anywhere;
+}
+
+.lz-frames,
+.lz-frames ol {
+    margin: 18px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lz-frames ol {
+    margin: 0;
+}
+
+.lz-frames > li + li {
+    margin-top: 6px;
+}
+
+.lz-frame,
+.lz-frame-group {
+    border: 1px solid var(--lz-line);
+    border-radius: 6px;
+    background: var(--lz-surface);
+}
+
+.lz-frame-group {
+    border-style: dashed;
+}
+
+.lz-frames summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.lz-frames summary::-webkit-details-marker {
+    display: none;
+}
+
+.lz-frame-group > summary {
+    color: var(--lz-ink-3);
+    font-family: var(--lz-mono);
+    font-size: 12px;
+}
+
+.lz-frame-group > summary .lz-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.lz-frame-line {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 16px;
+    font-family: var(--lz-mono);
+    font-size: 12px;
+}
+
+.lz-frame-group li.lz-frame-line {
+    padding: 6px 12px;
+    border-top: 1px solid var(--lz-line);
+    color: var(--lz-ink-3);
+}
+
+.lz-frame .lz-frame-call {
+    color: var(--lz-sql-kw);
+}
+
+.lz-frame-call,
+.lz-frame-file {
+    overflow-wrap: anywhere;
+}
+
+.lz-frame-file {
+    color: var(--lz-ink-2);
+}
+
+.lz-frame-code {
+    margin: 0;
+    padding: 6px 0;
+    overflow-x: auto;
+    border-top: 1px solid var(--lz-line);
+    background: var(--lz-surface-2);
+    font-family: var(--lz-mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+}
+
+.lz-code-line {
+    display: block;
+    padding: 0 12px;
+    white-space: pre;
+}
+
+.lz-code-line.is-current {
+    background: color-mix(in srgb, var(--lz-bad) 18%, transparent);
+    box-shadow: inset 3px 0 0 var(--lz-bad);
+}
+
+.lz-code-number {
+    display: inline-block;
+    min-width: 4ch;
+    margin-right: 14px;
+    color: var(--lz-ink-3);
+    text-align: right;
+    user-select: none;
 }

@@ -38,6 +38,7 @@ class LaralyzeServiceProvider extends ServiceProvider
         'commands' => Cards\CommandList::class,
         'scheduled-tasks' => Cards\ScheduledTaskList::class,
         'exceptions' => Cards\ExceptionList::class,
+        'exception' => Cards\ExceptionDetail::class,
         'query-totals' => Cards\QueryTotals::class,
         'queries' => Cards\QueryList::class,
         'slow-queries' => Cards\SlowQueries::class,

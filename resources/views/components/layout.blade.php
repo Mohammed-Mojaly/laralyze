@@ -15,7 +15,7 @@
     {{ $assets->scripts() }}
     @livewireScriptConfig(['nonce' => $assets->nonce()])
 </head>
-<body class="rq">
+<body class="lz-root">
     {{ $slot }}
 </body>
 </html>

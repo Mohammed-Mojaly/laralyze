@@ -42,7 +42,7 @@ final class Location
         return str_starts_with($path, $base) ? substr($path, strlen($base)) : $path;
     }
 
-    protected static function isApp(string $path): bool
+    public static function isApp(string $path): bool
     {
         $path = str_replace('\\', '/', $path);
         $base = rtrim(str_replace('\\', '/', base_path()), '/');

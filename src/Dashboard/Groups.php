@@ -6,7 +6,7 @@ use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 /**
  * Pages whose rows open a page of their own: one route, job, command,
- * query, outgoing URL or user.
+ * query, outgoing URL, user or exception.
  */
 final class Groups
 {
@@ -20,6 +20,7 @@ final class Groups
         'queries' => ['query'],
         'outgoing-requests' => ['http', 'http_failed'],
         'users' => ['user_request', 'user_job', 'user_exception'],
+        'exceptions' => ['exception'],
     ];
 
     public static function has(string $page): bool
@@ -28,16 +29,14 @@ final class Groups
     }
 
     /**
-     * What the page is called: the key itself, or a user's name.
+     * What the page is called: the key itself, a user's name or an exception's message.
      */
     public static function title(string $page, string $key, DatabaseStorage $storage): string
     {
-        if ($page !== 'users') {
-            return $key;
-        }
-
-        $about = json_decode((string) $storage->values('user', [$key])->first()?->value, true);
-
-        return (string) ($about['name'] ?? $key);
+        return match ($page) {
+            'users' => (string) (json_decode((string) $storage->values('user', [$key])->first()?->value, true)['name'] ?? $key),
+            'exceptions' => (string) ($storage->values('exception_message', [$key])->first()->value ?? json_decode($key, true)[0] ?? $key),
+            default => $key,
+        };
     }
 }
