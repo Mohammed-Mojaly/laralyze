@@ -1,6 +1,6 @@
 # Laralyze
 
-Self-hosted production monitoring for Laravel. A dashboard inside your app shows requests, jobs, queries, exceptions, cache, outgoing HTTP, mail, notifications, logs, users, servers and visits, with near-zero overhead.
+Self-hosted production monitoring for Laravel. A dashboard inside your app shows requests, jobs, queries, exceptions, cache, outgoing HTTP, mail, notifications, logs, users, servers and visits; timelines of single requests and jobs; N+1 and duplicate queries; and alerts by mail, Slack or Discord. Near-zero overhead, your data stays in your database.
 
 > Laralyze is in early development (heading for v0.1.0-beta). See the roadmap in the project docs.
 
@@ -18,7 +18,7 @@ composer require mohammed-mojaly/laralyze
 php artisan laralyze:install
 ```
 
-Then open `/laralyze`. Make sure Laravel's scheduler runs (`* * * * * php artisan schedule:run`): Laralyze uses it for cleanup and server stats.
+Then open `/laralyze`. Make sure Laravel's scheduler runs (`* * * * * php artisan schedule:run`): Laralyze uses it for cleanup, server stats and alerts.
 
 ## What you get
 
