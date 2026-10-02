@@ -14,7 +14,8 @@
     ];
     $started = now()->setTimestamp($execution->started_at);
     $groupUrl = fn (string $pageKey, string $key) => route('laralyze.group', ['page' => $pageKey, 'group' => hash('xxh128', $key)]);
-    $repeats = array_count_values(array_map(fn (array $event) => $event[0] === 'query' ? (string) $event[3] : '', $events));
+    // Only reads can be an N+1, the same as the detector.
+    $repeats = array_count_values(array_map(fn (array $event) => $event[0] === 'query' && stripos((string) $event[3], 'select') === 0 ? (string) $event[3] : '', $events));
     $exceptions = array_values(array_filter($events, fn (array $event) => $event[0] === 'exception'));
     $logs = array_values(array_filter($events, fn (array $event) => $event[0] === 'log'));
     $bar = fn (float $at, ?float $ms) => 'left: '.round(min(100, $at / $total * 100), 2).'%; width: '.round(max(0.4, min(100 - $at / $total * 100, ($ms ?? 0) / $total * 100)), 2).'%';
