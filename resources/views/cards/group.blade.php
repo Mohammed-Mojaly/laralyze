@@ -2,10 +2,10 @@
 @use('MohammedMojaly\Laralyze\Support\Format')
 @use('MohammedMojaly\Laralyze\Support\Sql')
 <div class="lz-span-full lz-grid" @if ($this->poll > 0) wire:poll.visible.{{ $this->poll }}s @endif>
-    <x-laralyze::card title="Calls" cols="6">
+    <x-laralyze::card :title="$page === 'users' ? 'Requests' : 'Calls'" cols="6">
         @if ($calls > 0)
             <div class="lz-figures">
-                <x-laralyze::figure :value="Format::number($calls)" :label="$calls == 1 ? 'call' : 'calls'" />
+                <x-laralyze::figure :value="Format::number($calls)" :label="$page === 'users' ? ($calls == 1 ? 'request' : 'requests') : ($calls == 1 ? 'call' : 'calls')" />
                 @if (count($counts) > 1)
                     <x-laralyze::legend :items="$counts" :total="$calls" />
                 @endif
@@ -39,7 +39,10 @@
 
     <x-laralyze::card :card="$this" title="Info" :cols="$page === 'queries' ? 5 : 'full'">
         <dl class="lz-info">
-            <div><dt>Calls</dt><dd>{{ Format::number($calls) }}</dd></div>
+            @foreach ($details as $label => [$value, $class])
+                <div><dt>{{ $label }}</dt><dd @class([$class])>{{ $value }}</dd></div>
+            @endforeach
+            <div><dt>{{ $page === 'users' ? 'Requests' : 'Calls' }}</dt><dd>{{ Format::number($calls) }}</dd></div>
             @isset($counts['failed'])
                 <div><dt>Failed</dt><dd @class(['lz-bad' => $counts['failed'] > 0])>{{ Format::number($counts['failed']) }}</dd></div>
             @endisset

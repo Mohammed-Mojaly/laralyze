@@ -1364,9 +1364,14 @@ body.rq {
 .lz-table td .lz-warn { color: var(--lz-warn); }
 .lz-info .lz-bad { color: var(--lz-bad); }
 
-.lz-s-calls { --lz-series: var(--lz-data); }
+.lz-s-calls,
+.lz-s-users,
+.lz-s-authenticated { --lz-series: var(--lz-data); }
+.lz-s-guest { --lz-series: var(--lz-data-soft); }
 .lz-s-max { --lz-series: var(--lz-data-soft); }
-.lz-tip .lz-s-calls { --lz-series: var(--lz-tip-ink); }
+.lz-tip .lz-s-calls,
+.lz-tip .lz-s-users,
+.lz-tip .lz-s-authenticated { --lz-series: var(--lz-tip-ink); }
 
 @media (max-width: 1080px) {
     .lz-span-1, .lz-span-2, .lz-span-3, .lz-span-4, .lz-span-5,

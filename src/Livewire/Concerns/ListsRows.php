@@ -24,6 +24,16 @@ trait ListsRows
     abstract protected function sortable(): array;
 
     /**
+     * Columns that hold names rather than numbers.
+     *
+     * @return list<string>
+     */
+    protected function textColumns(): array
+    {
+        return ['key'];
+    }
+
+    /**
      * Sort by a column, or flip the order when it's already the one.
      */
     public function sortBy(string $column): void
@@ -35,7 +45,7 @@ trait ListsRows
         $this->direction = match (true) {
             $this->sort === $column => $this->direction === 'desc' ? 'asc' : 'desc',
             // Names read best A to Z, numbers biggest first.
-            $column === 'key' => 'asc',
+            in_array($column, $this->textColumns(), true) => 'asc',
             default => 'desc',
         };
 
@@ -57,14 +67,15 @@ trait ListsRows
     {
         $term = trim($this->search);
         $column = $this->sortColumn();
+        $text = in_array($column, $this->textColumns(), true);
 
         return $rows
             ->when($term !== '', fn (Collection $rows) => $rows->filter(
                 fn (stdClass $row) => Str::contains((string) ($row->{$searchIn} ?? ''), $term, ignoreCase: true),
             ))
             ->sortBy(
-                fn (stdClass $row) => $row->{$column} ?? ($column === 'key' ? '' : -1),
-                $column === 'key' ? SORT_NATURAL | SORT_FLAG_CASE : SORT_REGULAR,
+                fn (stdClass $row) => $row->{$column} ?? ($text ? '' : -1),
+                $text ? SORT_NATURAL | SORT_FLAG_CASE : SORT_REGULAR,
                 $this->direction !== 'asc',
             )
             ->values();

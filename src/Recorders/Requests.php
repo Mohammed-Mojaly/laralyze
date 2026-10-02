@@ -85,14 +85,4 @@ class Requests extends Recorder
 
         return 'livewire:'.$name.(is_string($method) ? '@'.$method : '');
     }
-
-    protected function statusClass(int $status): string
-    {
-        return match (true) {
-            $status >= 500 => '5xx',
-            $status >= 400 => '4xx',
-            $status >= 300 => '3xx',
-            default => '2xx',
-        };
-    }
 }

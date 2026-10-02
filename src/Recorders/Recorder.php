@@ -104,6 +104,19 @@ abstract class Recorder
         return (float) ($threshold['default'] ?? 1_000);
     }
 
+    /**
+     * 2xx, 3xx, 4xx or 5xx. Informational codes count as 2xx.
+     */
+    protected function statusClass(int $status): string
+    {
+        return match (true) {
+            $status >= 500 => '5xx',
+            $status >= 400 => '4xx',
+            $status >= 300 => '3xx',
+            default => '2xx',
+        };
+    }
+
     protected function shouldIgnore(string $key): bool
     {
         foreach ($this->config['ignore'] ?? [] as $pattern) {

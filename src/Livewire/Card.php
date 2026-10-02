@@ -121,6 +121,30 @@ abstract class Card extends Component
     }
 
     /**
+     * How many different keys had data in each slot, e.g. signed-in users.
+     *
+     * @return Collection<int, float|null>
+     */
+    protected function graphKeys(string $type): Collection
+    {
+        return collect($this->remember(
+            ['graphKeys', $type],
+            fn (DatabaseStorage $storage, int $window) => $storage->graphKeys($type, $window)->all(),
+        ));
+    }
+
+    /**
+     * How many different keys had data over the period.
+     */
+    protected function countKeys(string $type): int
+    {
+        return $this->remember(
+            ['countKeys', $type],
+            fn (DatabaseStorage $storage, int $window) => $storage->countKeys($type, $window),
+        );
+    }
+
+    /**
      * The latest values set with Laralyze::set().
      *
      * @param  list<string>|null  $keys

@@ -95,6 +95,39 @@ it('opens commands and outgoing URLs too', function () {
     groupCard('outgoing-requests', 'GET api.example.com/users/*')->assertSeeInOrder(['failed', '1']);
 });
 
+it('gives every signed-in user a page of their own, titled with their name', function () {
+    Laralyze::record('user_request', '7', 120)->avg()->max();
+    Laralyze::record('user_request', '7', 80)->avg()->max();
+    Laralyze::record('user_request_2xx', '7')->count();
+    Laralyze::record('user_request_5xx', '7')->count();
+    Laralyze::record('user_exception', '7')->count();
+    Laralyze::set('user', '7', (string) json_encode(['name' => 'Sara Ahmed', 'extra' => 'sara@example.com']));
+    Laralyze::flush();
+
+    listCard('users')->assertSee(groupPath('users', '7'));
+
+    $this->get(groupPath('users', '7'))->assertOk()->assertSee('Sara Ahmed')->assertSee('Users');
+
+    groupCard('users', '7')
+        ->assertSeeInOrder(['2', 'requests'])
+        ->assertSeeInOrder(['2xx', '1', '5xx', '1'])
+        ->assertSeeInOrder(['ID', '7', 'Email', 'sara@example.com', 'Last seen', 'ago', 'Exceptions', '1', 'Requests', '2', 'Average', '100 ms', 'Slowest', '120 ms']);
+});
+
+it('counts signed-in users and splits requests into theirs and guests\'', function () {
+    foreach (['7', '7', '9'] as $user) {
+        Laralyze::record('user_request', $user, 10)->avg()->max();
+    }
+    foreach (range(1, 5) as $i) {
+        Laralyze::record('request', 'GET /books', 10)->avg()->max()->histogram();
+    }
+    Laralyze::flush();
+
+    listCard('user-totals')
+        ->assertSeeInOrder(['Signed-in users', '2', 'users'])
+        ->assertSeeInOrder(['Requests', '5', 'authenticated', '3', '60%', 'guest', '2', '40%']);
+});
+
 it('answers 404 for unknown rows, pages without row pages, and disabled recorders', function () {
     Laralyze::record('request', 'GET /books', 10)->avg()->max()->histogram();
     Laralyze::record('cache_hit', 'user:*')->count();

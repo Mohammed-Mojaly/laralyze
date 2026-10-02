@@ -9,7 +9,7 @@ use MohammedMojaly\Laralyze\Dashboard\Pages;
 use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 /**
- * The page of one route, job, command, query or outgoing URL.
+ * The page of one route, job, command, query, outgoing URL or user.
  */
 class GroupController
 {
@@ -23,6 +23,10 @@ class GroupController
 
         $key = $storage->keyFor(Groups::TYPES[$page], $group) ?? abort(404);
 
-        return $views->make('laralyze::pages.group', ['page' => $current, 'name' => $key]);
+        return $views->make('laralyze::pages.group', [
+            'page' => $current,
+            'name' => $key,
+            'title' => Groups::title($page, $key, $storage),
+        ]);
     }
 }

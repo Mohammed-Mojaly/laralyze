@@ -7,21 +7,23 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Queue\Events\JobQueued;
 use Illuminate\Support\Facades\Date;
 use MohammedMojaly\Laralyze\Laralyze;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
- * Which signed-in users make the most requests, hit the most slow ones,
- * and queue the most jobs.
+ * What signed-in users do: their requests by status and how long they
+ * took, slow requests, jobs they queued and exceptions they ran into.
  *
  * Only users the app already loaded are counted, so this never adds a
  * query. Change how users are shown with Laralyze::user().
  */
 class Users extends Recorder
 {
-    protected array $listen = [JobQueued::class];
+    protected array $listen = [JobQueued::class, MessageLogged::class];
 
     /**
      * Users already described during this execution.
@@ -52,19 +54,29 @@ class Users extends Recorder
         }
 
         $id = $this->describe($user);
-        $this->laralyze->record('user_request', $id)->count();
+        $duration = (float) $startedAt->diffInMilliseconds(Date::now());
 
-        if ($startedAt->diffInMilliseconds(Date::now()) >= $this->threshold($id)) {
+        $this->laralyze->record('user_request', $id, $duration)->avg()->max();
+        $this->laralyze->record('user_request_'.$this->statusClass($response->getStatusCode()), $id)->count();
+
+        if ($duration >= $this->threshold($id)) {
             $this->laralyze->record('user_slow_request', $id)->count();
         }
     }
 
-    public function record(JobQueued $event): void
+    /**
+     * Jobs the user queued, and exceptions reported while they were signed in.
+     */
+    public function record(JobQueued|MessageLogged $event): void
     {
+        if ($event instanceof MessageLogged && ! ($event->context['exception'] ?? null) instanceof Throwable) {
+            return;
+        }
+
         $user = $this->user();
 
         if ($user !== null) {
-            $this->laralyze->record('user_job', $this->describe($user))->count();
+            $this->laralyze->record($event instanceof JobQueued ? 'user_job' : 'user_exception', $this->describe($user))->count();
         }
     }
 

@@ -51,6 +51,7 @@ class LaralyzeServiceProvider extends ServiceProvider
         'audience' => Cards\Audience::class,
         'top-pages' => Cards\TopPages::class,
         'bots' => Cards\Bots::class,
+        'user-totals' => Cards\UserTotals::class,
         'users' => Cards\UserList::class,
         'servers' => Cards\ServerList::class,
         'group' => Cards\Group::class,

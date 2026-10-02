@@ -298,6 +298,32 @@ it('ranks signed-in users and shows them by name', function () {
     showCard('users')->assertSee('Sara')->assertSee('sara@example.com');
 });
 
+it('follows each user\'s statuses, exceptions and timings, and when they were last seen', function () {
+    Route::get('/orders', fn () => 'ok');
+    Route::get('/missing', fn () => abort(404));
+    Route::get('/broken', function () {
+        report(new RuntimeException('Card declined'));
+
+        return 'ok';
+    });
+
+    $this->actingAs(new GenericUser(['id' => 7, 'name' => 'Sara', 'email' => 'sara@example.com']));
+    $this->get('/orders');
+    $this->get('/missing');
+    $this->get('/broken');
+
+    $timings = rowsOf('user_request', ['count', 'avg', 'max'])['7'];
+
+    expect(countOf('user_request_2xx', '7'))->toBe(2.0)
+        ->and(countOf('user_request_4xx', '7'))->toBe(1.0)
+        ->and(countOf('user_exception', '7'))->toBe(1.0)
+        ->and((float) $timings->count)->toBe(3.0)
+        ->and((float) $timings->max)->toBeGreaterThanOrEqual((float) $timings->avg)
+        ->and(app(DatabaseStorage::class)->values('user', ['7'])->first()->timestamp)->toBeGreaterThan(time() - 60);
+
+    showCard('users')->assertSeeInOrder(['Sara', 'sara@example.com', '2', '1', '0', '3'])->assertSee('ago');
+});
+
 it('lets the app decide how users are shown', function () {
     Laralyze::user(fn ($user) => ['name' => 'Team '.$user->team, 'extra' => 'Plan: pro']);
     Route::get('/orders', fn () => 'ok');

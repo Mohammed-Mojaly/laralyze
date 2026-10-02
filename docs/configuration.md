@@ -40,7 +40,7 @@ Everything lives in `config/laralyze.php`, published by `php artisan laralyze:in
 | `Mail` | `LARALYZE_MAIL_ENABLED` | Mail sent per mailable, duration, failures | A message that started sending but never finished counts as failed. |
 | `Notifications` | `LARALYZE_NOTIFICATIONS_ENABLED` | Per notification and channel: sent, failed, duration | |
 | `Logs` | `LARALYZE_LOGS_ENABLED` | Messages per level | `ignore` matches the level, e.g. `'/^debug$/'`. |
-| `Users` | `LARALYZE_USERS_ENABLED` | Requests, slow requests and queued jobs per signed-in user | Only users the app already loaded are counted, so it never adds a query. See `Laralyze::user()`. |
+| `Users` | `LARALYZE_USERS_ENABLED` | Signed-in users over time, their share of requests, and per user: requests by status, timings, slow requests, queued jobs, exceptions and last seen | Only users the app already loaded are counted, so it never adds a query. See `Laralyze::user()`. |
 | `Servers` | `LARALYZE_SERVERS_ENABLED` | CPU, memory and disks, every minute | Runs from your scheduler. `server_name` (`LARALYZE_SERVER_NAME`), `directories` (`LARALYZE_SERVER_DIRECTORIES`, comma separated). |
 | `Visits` | `LARALYZE_VISITS_ENABLED` | Page views, unique visitors, visitors right now, devices, systems, browsers, top pages, bots | See below. |
 

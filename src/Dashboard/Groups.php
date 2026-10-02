@@ -2,9 +2,11 @@
 
 namespace MohammedMojaly\Laralyze\Dashboard;
 
+use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
+
 /**
  * Pages whose rows open a page of their own: one route, job, command,
- * query or outgoing URL.
+ * query, outgoing URL or user.
  */
 final class Groups
 {
@@ -17,10 +19,25 @@ final class Groups
         'commands' => ['command'],
         'queries' => ['query'],
         'outgoing-requests' => ['http', 'http_failed'],
+        'users' => ['user_request', 'user_job', 'user_exception'],
     ];
 
     public static function has(string $page): bool
     {
         return isset(self::TYPES[$page]);
+    }
+
+    /**
+     * What the page is called: the key itself, or a user's name.
+     */
+    public static function title(string $page, string $key, DatabaseStorage $storage): string
+    {
+        if ($page !== 'users') {
+            return $key;
+        }
+
+        $about = json_decode((string) $storage->values('user', [$key])->first()?->value, true);
+
+        return (string) ($about['name'] ?? $key);
     }
 }

@@ -61,14 +61,4 @@ class OutgoingRequests extends Recorder
 
         return $request->method().' '.$this->group($uri->getHost().($uri->getPath() === '' ? '/' : $uri->getPath()));
     }
-
-    protected function statusClass(int $status): string
-    {
-        return match (true) {
-            $status >= 500 => '5xx',
-            $status >= 400 => '4xx',
-            $status >= 300 => '3xx',
-            default => '2xx',
-        };
-    }
 }

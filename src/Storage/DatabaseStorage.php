@@ -297,11 +297,7 @@ class DatabaseStorage
     public function graph(string $type, string $aggregate, int $window, ?string $key = null): Collection
     {
         [$plain, $percentiles] = $this->parseAggregates([$aggregate]);
-
-        $period = Period::forWindow($window);
-        $step = (int) (ceil($window / 60 / $period) * $period);
-        $now = $this->now();
-        $first = $now - $window - (($now - $window) % $step);
+        [$step, $first, $last] = $this->timeline($window);
         $slot = $this->slotSql($step);
 
         $query = $this->window($type, $window, $first)
@@ -326,8 +322,52 @@ class DatabaseStorage
                 ));
         }
 
-        return collect(range($first, $now - ($now % $step), $step))
+        return collect(range($first, $last, $step))
             ->mapWithKeys(fn (int $slot) => [$slot => $values[$slot] ?? null]);
+    }
+
+    /**
+     * How many different keys had data in each slot, e.g. signed-in users
+     * over time. Same slots as graph().
+     *
+     * @return Collection<int, float|null>
+     */
+    public function graphKeys(string $type, int $window): Collection
+    {
+        [$step, $first, $last] = $this->timeline($window);
+        $slot = $this->slotSql($step);
+
+        $values = $this->window($type, $window, $first)
+            ->where('aggregate', 'count')
+            ->selectRaw($slot.' as slot')
+            ->selectRaw('count(distinct key_hash) as value')
+            ->groupByRaw($slot)
+            ->pluck('value', 'slot');
+
+        return collect(range($first, $last, $step))
+            ->mapWithKeys(fn (int $slot) => [$slot => isset($values[$slot]) ? (float) $values[$slot] : null]);
+    }
+
+    /**
+     * How many different keys had data over the window.
+     */
+    public function countKeys(string $type, int $window): int
+    {
+        return $this->window($type, $window)->where('aggregate', 'count')->distinct()->count('key_hash');
+    }
+
+    /**
+     * About 60 slots over the window, never finer than the stored buckets.
+     *
+     * @return array{0: int, 1: int, 2: int} [step, first slot, last slot]
+     */
+    protected function timeline(int $window): array
+    {
+        $period = Period::forWindow($window);
+        $step = (int) (ceil($window / 60 / $period) * $period);
+        $now = $this->now();
+
+        return [$step, $now - $window - (($now - $window) % $step), $now - ($now % $step)];
     }
 
     /**
