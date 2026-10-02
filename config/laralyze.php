@@ -229,6 +229,37 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Alerts
+    |--------------------------------------------------------------------------
+    |
+    | Laralyze checks every minute from your scheduler and tells you when
+    | something goes wrong. Leave every channel empty to turn alerts off.
+    | Each alert is sent at most once per "every" minutes.
+    |
+    */
+
+    'alerts' => [
+        // Comma separated addresses.
+        'mail' => env('LARALYZE_ALERTS_MAIL'),
+        'slack' => env('LARALYZE_ALERTS_SLACK_WEBHOOK'),
+        'discord' => env('LARALYZE_ALERTS_DISCORD_WEBHOOK'),
+
+        'every' => (int) env('LARALYZE_ALERTS_EVERY', 60),
+
+        'rules' => [
+            // A new exception, or one you resolved happening again.
+            'exceptions' => true,
+
+            // Percent of requests answered with a 5xx over the last 5 minutes.
+            'error_rate' => 5,
+
+            // Jobs that failed over the last 5 minutes.
+            'failed_jobs' => 10,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Dashboard
     |--------------------------------------------------------------------------
     |

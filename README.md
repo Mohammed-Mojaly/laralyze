@@ -28,7 +28,7 @@ Then open `/laralyze`. Make sure Laravel's scheduler runs (`* * * * * php artisa
 | Requests | Throughput by status class, avg/p95/p99, every route, slow requests. Livewire updates by component |
 | Jobs | Queued, processed, released, failed per queue; wait times; every job class; slow jobs |
 | Commands, Scheduled Tasks | Runs, failures, durations; last and next run of each task |
-| Exceptions | By class and line, handled vs unhandled, users affected; a page per exception with the latest stack trace, the code around your lines, where it happened, and Copy as Markdown |
+| Exceptions | By class and line, handled vs unhandled, users affected, open/resolved/ignored (resolved ones reopen when they happen again); a page per exception with the latest stack trace, the code around your lines, where it happened, and Copy as Markdown |
 | Queries | Time spent per query (lists folded), reads vs writes, connections, slow queries with the line that ran them |
 | Cache | Hit ratio, hits/misses/writes/deletes/failures per key group |
 | Outgoing Requests | Calls to other services, errors and connections that never got a response |
@@ -39,6 +39,18 @@ Then open `/laralyze`. Make sure Laravel's scheduler runs (`* * * * * php artisa
 | Timelines | Single requests, jobs and commands with everything inside them in order: queries, cache, outgoing requests, mail, notifications, queued jobs, logs and exceptions. Jobs link to the request that queued them. Slow, failed and throwing ones are always kept, the rest sampled |
 
 Each page shows the last 15 minutes, hour, 24 hours, 7, 14 or 30 days. Lists can be searched and sorted by any column, and every route, job, command, query and outgoing URL opens a page of its own: calls and outcomes over time, duration (avg and p95), totals, and the SQL formatted and highlighted. Routes, jobs, commands, users and exceptions also list their slowest and latest runs, each opening its timeline. Every recorder can be turned off; a page disappears with its recorder.
+
+## Alerts
+
+Set at least one channel and Laralyze checks every minute from your scheduler:
+
+```env
+LARALYZE_ALERTS_MAIL=ops@example.com,cto@example.com
+LARALYZE_ALERTS_SLACK_WEBHOOK=https://hooks.slack.com/services/...
+LARALYZE_ALERTS_DISCORD_WEBHOOK=https://discord.com/api/webhooks/...
+```
+
+You hear about new exceptions, resolved ones that come back, more than 5% of requests failing, and 10 or more failed jobs in 5 minutes. The same alert is sent at most once an hour (`LARALYZE_ALERTS_EVERY`, in minutes). Change the rules in `alerts.rules`.
 
 ## Privacy
 

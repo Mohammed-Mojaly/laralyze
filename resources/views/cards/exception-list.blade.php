@@ -3,6 +3,7 @@
 <x-laralyze::card :card="$this" title="Exceptions" :count="$exceptions->count()">
     <x-slot:actions>
         <x-laralyze::search placeholder="Search exceptions" />
+        <x-laralyze::segmented :options="['open' => 'Open '.$statusCounts['open'], 'resolved' => 'Resolved '.$statusCounts['resolved'], 'ignored' => 'Ignored '.$statusCounts['ignored']]" :value="$status" model="status" label="Status" />
         <div class="lz-segmented" role="group" aria-label="Show">
             @foreach (['all' => 'View all', 'handled' => 'Handled', 'unhandled' => 'Unhandled'] as $option => $text)
                 <button type="button" wire:click="$set('show', '{{ $option }}')" @class(['is-active' => $show === $option]) aria-pressed="{{ $show === $option ? 'true' : 'false' }}">
@@ -26,7 +27,7 @@
         <x-laralyze::bars :chart="new Chart($series, $this->range())" />
 
         @if ($exceptions->isEmpty())
-            <x-laralyze::empty :title="$search === '' ? 'No '.$show.' exceptions.' : 'No exceptions match “'.$search.'”.'" />
+            <x-laralyze::empty :title="$search === '' ? 'No '.($show === 'all' ? '' : $show.' ').$status.' exceptions.' : 'No exceptions match “'.$search.'”.'" />
         @else
             <x-laralyze::table class="lz-table-links">
                 <x-slot:head>
@@ -47,6 +48,9 @@
                                     <span class="lz-badge">Handled</span>
                                 @endif
                                 <x-laralyze::class-name :name="$exception->class" />
+                                @if ($exception->status === 'reopened')
+                                    <span class="lz-badge lz-badge-warn">Reopened</span>
+                                @endif
                             </a>
                             @if ($exception->message)
                                 <span class="lz-sub">{{ $exception->message }}</span>

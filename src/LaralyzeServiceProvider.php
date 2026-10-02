@@ -161,6 +161,12 @@ class LaralyzeServiceProvider extends ServiceProvider
             $schedule->call(fn () => $this->app->make(Laralyze::class)->trim())
                 ->hourly()
                 ->name('laralyze:trim');
+
+            if ($this->app->make(Alerts\Alerts::class)->enabled()) {
+                $schedule->call(fn () => $this->app->make(Alerts\Alerts::class)->run())
+                    ->everyMinute()
+                    ->name('laralyze:alerts');
+            }
         });
     }
 

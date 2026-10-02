@@ -505,6 +505,19 @@ class DatabaseStorage
     }
 
     /**
+     * Write one value straight away, e.g. a choice made on the dashboard.
+     */
+    public function put(string $type, string $key, string $value): void
+    {
+        $this->store([], [['timestamp' => $this->now(), 'type' => $type, 'key' => $key, 'value' => $value]]);
+    }
+
+    public function forget(string $type, string $key): void
+    {
+        $this->connection()->table(self::VALUES)->where('type', $type)->where('key_hash', hash('xxh128', $key))->delete();
+    }
+
+    /**
      * How many keys of a type were set within the last few seconds, e.g.
      * visitors seen in the last five minutes.
      */

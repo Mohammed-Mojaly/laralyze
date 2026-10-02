@@ -10,6 +10,9 @@ Everything lives in `config/laralyze.php`, published by `php artisan laralyze:in
 | `storage.connection` | `LARALYZE_DB_CONNECTION` | default connection | Keeps Laralyze's two tables on another database connection. |
 | `retention` | `LARALYZE_RETENTION_DAYS` | `30` | Days of data to keep. Minute-level detail is kept for a day. |
 | `buffer` | `LARALYZE_BUFFER` | `5000` | Distinct metrics one request, job or command holds before writing. A web request that fills it drops the rest, and the dashboard warns. |
+| `alerts.mail` / `.slack` / `.discord` | `LARALYZE_ALERTS_MAIL`, `LARALYZE_ALERTS_SLACK_WEBHOOK`, `LARALYZE_ALERTS_DISCORD_WEBHOOK` | none | Where alerts go. Mail takes comma-separated addresses. Alerts are off until one is set. |
+| `alerts.every` | `LARALYZE_ALERTS_EVERY` | `60` | Minutes before the same alert is sent again. |
+| `alerts.rules` | | exceptions, 5% errors, 10 failed jobs | `exceptions` (new or reopened), `error_rate` (percent of 5xx over 5 minutes, at least 20 requests), `failed_jobs` (count over 5 minutes). `null` or `false` turns one off. |
 | `path` | `LARALYZE_PATH` | `laralyze` | Where the dashboard lives. |
 | `domain` | `LARALYZE_DOMAIN` | none | Serve the dashboard on its own domain. |
 | `middleware` | | `['web', Authorize::class]` | Middleware for the dashboard and its card updates. |

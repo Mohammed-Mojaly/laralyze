@@ -5,6 +5,7 @@ namespace MohammedMojaly\Laralyze\Cards;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Locked;
+use MohammedMojaly\Laralyze\Dashboard\Issues;
 use MohammedMojaly\Laralyze\Livewire\Card;
 use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use stdClass;
@@ -26,6 +27,21 @@ class ExceptionDetail extends Card
      * Polling would fold open stack frames back up.
      */
     public int $poll = 0;
+
+    public function resolve(Issues $issues): void
+    {
+        $issues->resolve($this->name);
+    }
+
+    public function ignore(Issues $issues): void
+    {
+        $issues->ignore($this->name);
+    }
+
+    public function reopen(Issues $issues): void
+    {
+        $issues->reopen($this->name);
+    }
 
     public function render(): View
     {
@@ -70,6 +86,7 @@ class ExceptionDetail extends Card
             'users' => $this->users(),
             'groups' => $this->groups($exception->frames),
             'markdown' => $this->markdown($exception, $counts, $seen->max),
+            'status' => app(Issues::class)->statuses([$this->name => $seen->max])[$this->name],
         ]);
     }
 

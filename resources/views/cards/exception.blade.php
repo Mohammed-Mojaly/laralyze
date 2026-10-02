@@ -42,9 +42,16 @@
                 @if ($exception->code !== null)
                     <span class="lz-badge">{{ $exception->code }}</span>
                 @endif
+                <span @class(['lz-badge', 'lz-badge-warn' => $status === 'reopened'])>{{ $status }}</span>
             </div>
 
             <div class="lz-exception-tools">
+                @if (in_array($status, ['open', 'reopened'], true))
+                    <button type="button" class="lz-button" wire:click="resolve">Resolve</button>
+                    <button type="button" class="lz-button" wire:click="ignore">Ignore</button>
+                @else
+                    <button type="button" class="lz-button" wire:click="reopen">Reopen</button>
+                @endif
                 <textarea id="lz-markdown-{{ $this->getId() }}" class="lz-offscreen" readonly tabindex="-1" aria-hidden="true">{{ $markdown }}</textarea>
                 <button type="button" class="lz-button" data-laralyze-copy="lz-markdown-{{ $this->getId() }}" data-label="Copy as Markdown"><x-laralyze::icon name="copy" /><span data-label>Copy as Markdown</span></button>
                 @if ($exception->php)

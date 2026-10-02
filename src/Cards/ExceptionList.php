@@ -5,6 +5,7 @@ namespace MohammedMojaly\Laralyze\Cards;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Lazy;
+use MohammedMojaly\Laralyze\Dashboard\Issues;
 use MohammedMojaly\Laralyze\Livewire\Card;
 use MohammedMojaly\Laralyze\Livewire\Concerns\ListsRows;
 use stdClass;
@@ -25,19 +26,34 @@ class ExceptionList extends Card
      */
     public string $show = 'all';
 
+    /**
+     * open (with reopened), resolved or ignored.
+     */
+    public string $status = 'open';
+
     public int $limit = 100;
 
     public function render(): View
     {
         $exceptions = $this->exceptions();
+        $inStatus = $exceptions->filter(fn (stdClass $exception) => match ($this->status) {
+            'resolved' => $exception->status === Issues::RESOLVED,
+            'ignored' => $exception->status === Issues::IGNORED,
+            default => in_array($exception->status, [Issues::OPEN, Issues::REOPENED], true),
+        });
 
         return view('laralyze::cards.exception-list', [
-            'exceptions' => $this->arrange($exceptions->filter(fn (stdClass $exception) => match ($this->show) {
+            'exceptions' => $this->arrange($inStatus->filter(fn (stdClass $exception) => match ($this->show) {
                 'handled' => $exception->handled > 0,
                 'unhandled' => $exception->unhandled > 0,
                 default => true,
             }), 'search'),
-            'unhandledCount' => $exceptions->where('unhandled', '>', 0)->count(),
+            'unhandledCount' => $inStatus->where('unhandled', '>', 0)->count(),
+            'statusCounts' => [
+                'open' => $exceptions->whereIn('status', [Issues::OPEN, Issues::REOPENED])->count(),
+                'resolved' => $exceptions->where('status', Issues::RESOLVED)->count(),
+                'ignored' => $exceptions->where('status', Issues::IGNORED)->count(),
+            ],
             'totals' => [
                 'handled' => (float) ($this->total('exception_handled', ['count'])->count ?? 0),
                 'unhandled' => (float) ($this->total('exception_unhandled', ['count'])->count ?? 0),
@@ -58,8 +74,9 @@ class ExceptionList extends Card
         $exceptions = $this->aggregate('exception', ['count', 'max'], orderBy: 'count', limit: $this->limit);
         $messages = $this->values('exception_message', array_values($exceptions->pluck('key')->map(fn ($key) => (string) $key)->all()))->pluck('value', 'key');
         $users = $this->usersPerException();
+        $statuses = app(Issues::class)->statuses($exceptions->mapWithKeys(fn (stdClass $exception) => [(string) $exception->key => $exception->max])->all());
 
-        return $exceptions->each(function (stdClass $exception) use ($unhandled, $messages, $users) {
+        return $exceptions->each(function (stdClass $exception) use ($unhandled, $messages, $users, $statuses) {
             [$exception->class, $exception->location] = array_pad($this->parts((string) $exception->key), 2, '');
             $exception->unhandled = $unhandled[$exception->key] ?? 0.0;
             $exception->handled = max(0, $exception->count - $exception->unhandled);
@@ -67,6 +84,7 @@ class ExceptionList extends Card
             $exception->message = $messages[$exception->key] ?? null;
             $exception->users = $users[hash('xxh128', (string) $exception->key)] ?? 0;
             $exception->search = "{$exception->class} {$exception->message} {$exception->location}";
+            $exception->status = $statuses[(string) $exception->key] ?? Issues::OPEN;
         });
     }
 
