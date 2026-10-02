@@ -49,8 +49,6 @@
         --lz-live: #4cc285;
         --lz-tip-bg: #e8ebee;
         --lz-tip-ink: #14171b;
-    --lz-sql-kw: #74a9e6;
-    --lz-sql-value: #8ccf96;
         --lz-sql-kw: #74a9e6;
         --lz-sql-value: #8ccf96;
 
@@ -1460,4 +1458,29 @@ body.rq {
         min-width: 0;
         padding-inline: 4px;
     }
+}
+
+/* Health warnings above the cards */
+.lz-alert {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    border: 1px solid var(--lz-line);
+    border-left: 3px solid var(--lz-alert, var(--lz-warn));
+    border-radius: var(--lz-radius);
+    background: var(--lz-surface);
+}
+
+.lz-alert-bad { --lz-alert: var(--lz-bad); }
+.lz-alert-warn { --lz-alert: var(--lz-warn); }
+
+.lz-alert-title {
+    font-weight: 600;
+    color: var(--lz-alert);
+}
+
+.lz-alert-hint {
+    margin-top: 2px;
+    color: var(--lz-ink-3);
+    font-size: 13px;
+    overflow-wrap: anywhere;
 }

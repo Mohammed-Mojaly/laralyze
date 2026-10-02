@@ -1,0 +1,111 @@
+<?php
+
+namespace MohammedMojaly\Laralyze\Dashboard;
+
+use Illuminate\Contracts\Config\Repository;
+use MohammedMojaly\Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
+use MohammedMojaly\Laralyze\Support\Format;
+use Throwable;
+
+/**
+ * Things that keep Laralyze from recording properly, shown at the top of
+ * the dashboard and in `php artisan about`.
+ */
+final class Health
+{
+    /**
+     * @var list<array{level: 'bad'|'warn', title: string, hint: string}>|null
+     */
+    private ?array $problems = null;
+
+    private bool $blocking = false;
+
+    public function __construct(private DatabaseStorage $storage, private Laralyze $laralyze, private Repository $config) {}
+
+    /**
+     * @return list<array{level: 'bad'|'warn', title: string, hint: string}>
+     */
+    public function problems(): array
+    {
+        return $this->problems ??= $this->check();
+    }
+
+    /**
+     * True when the dashboard has nothing to read from.
+     */
+    public function blocking(): bool
+    {
+        $this->problems();
+
+        return $this->blocking;
+    }
+
+    /**
+     * @return list<array{level: 'bad'|'warn', title: string, hint: string}>
+     */
+    private function check(): array
+    {
+        $connection = $this->config->get('laralyze.storage.connection') ?? $this->config->get('database.default');
+
+        try {
+            $schema = $this->storage->connection()->getSchemaBuilder();
+
+            if (! $schema->hasTable(DatabaseStorage::AGGREGATES) || ! $schema->hasTable(DatabaseStorage::VALUES)) {
+                $this->blocking = true;
+
+                return [$this->bad("Laralyze's tables are missing.", 'Run `php artisan migrate`.')];
+            }
+        } catch (Throwable $e) {
+            $this->blocking = true;
+
+            return [$this->bad("Laralyze can't reach its database [{$connection}].", $e->getMessage())];
+        }
+
+        $problems = [];
+        $now = time();
+
+        $failure = $this->laralyze->lastFailure();
+
+        if ($failure !== null && $failure['at'] > $now - 3_600) {
+            $problems[] = $this->bad(
+                'Laralyze couldn\'t save data '.now()->setTimestamp($failure['at'])->diffForHumans().'.',
+                $failure['message'].' Recording pauses for a minute after a failure, then tries again.',
+            );
+        }
+
+        if (($this->storage->lastTrimmedAt() ?? 0) < $now - 2 * 3_600 && ($this->storage->oldestBucket() ?? $now) < $now - 2 * 3_600) {
+            $problems[] = $this->warn(
+                'The scheduler doesn\'t seem to run.',
+                'Laralyze removes old data every hour from the scheduler. Add `* * * * * php artisan schedule:run` to cron, or run `php artisan schedule:work`.',
+            );
+        }
+
+        $dropped = (float) ($this->storage->total('laralyze_dropped', ['count'], 86_400)->count ?? 0);
+
+        if ($dropped > 0) {
+            $problems[] = $this->warn(
+                Format::number($dropped).' '.($dropped == 1 ? 'metric was' : 'metrics were').' dropped in the last 24 hours.',
+                'A request recorded more than '.Format::number((float) $this->config->get('laralyze.buffer', 5_000)).' distinct metrics. Raise LARALYZE_BUFFER.',
+            );
+        }
+
+        return $problems;
+    }
+
+    /**
+     * @return array{level: 'bad', title: string, hint: string}
+     */
+    private function bad(string $title, string $hint): array
+    {
+        return ['level' => 'bad', 'title' => $title, 'hint' => $hint];
+    }
+
+    /**
+     * @return array{level: 'warn', title: string, hint: string}
+     */
+    private function warn(string $title, string $hint): array
+    {
+        return ['level' => 'warn', 'title' => $title, 'hint' => $hint];
+    }
+}

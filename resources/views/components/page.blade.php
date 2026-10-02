@@ -1,6 +1,7 @@
 {{-- A dashboard page. A group page passes its own title, and links back to its list. --}}
 @props(['title' => null, 'mono' => false])
 @inject('pages', 'MohammedMojaly\Laralyze\Dashboard\Pages')
+@inject('health', 'MohammedMojaly\Laralyze\Dashboard\Health')
 @php
     $current = $pages->find((string) (request()->route('page') ?? \MohammedMojaly\Laralyze\Dashboard\Pages::HOME));
     $range = \MohammedMojaly\Laralyze\Dashboard\Range::fromQuery(request()->query('period'));
@@ -27,9 +28,18 @@
                 </div>
             </header>
 
-            <div {{ $attributes->class('lz-grid') }}>
-                {{ $slot }}
-            </div>
+            @foreach ($health->problems() as $problem)
+                <div @class(['lz-alert', 'lz-alert-'.$problem['level']]) role="alert">
+                    <p class="lz-alert-title">{{ $problem['title'] }}</p>
+                    <p class="lz-alert-hint">{{ $problem['hint'] }}</p>
+                </div>
+            @endforeach
+
+            @unless ($health->blocking())
+                <div {{ $attributes->class('lz-grid') }}>
+                    {{ $slot }}
+                </div>
+            @endunless
         </main>
     </div>
 </x-laralyze::layout>

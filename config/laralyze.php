@@ -45,6 +45,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Buffer
+    |--------------------------------------------------------------------------
+    |
+    | How many distinct metrics one request, job or command holds in memory
+    | before writing. A web request that fills it drops new ones rather than
+    | writing early; the dashboard warns when that happens.
+    |
+    */
+
+    'buffer' => (int) env('LARALYZE_BUFFER', 5_000),
+
+    /*
+    |--------------------------------------------------------------------------
     | Recorders
     |--------------------------------------------------------------------------
     |

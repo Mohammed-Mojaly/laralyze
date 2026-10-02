@@ -5,6 +5,7 @@ namespace MohammedMojaly\Laralyze\Tests;
 use Illuminate\Contracts\Config\Repository;
 use Livewire\LivewireServiceProvider;
 use MohammedMojaly\Laralyze\LaralyzeServiceProvider;
+use MohammedMojaly\Laralyze\Support\Outage;
 use MohammedMojaly\Laralyze\Tests\Concerns\UsesStorage;
 use Orchestra\Testbench\TestCase as Orchestra;
 
@@ -63,6 +64,9 @@ abstract class TestCase extends Orchestra
     protected function tearDown(): void
     {
         static::$bootConfig = [];
+
+        // A failed write in one test must not pause the next.
+        Outage::end();
 
         // Tests switch to production to check the gate; migrations roll back
         // on teardown and would ask for confirmation there.

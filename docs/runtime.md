@@ -5,7 +5,7 @@
 - During a request, Laralyze only adds numbers to an in-memory buffer. Queries and cache calls are summed per SQL string or key; fingerprinting and grouping wait.
 - Everything is written once, **after the response has been sent**, on Laralyze's own connection, and never inside a transaction your app has open.
 - Jobs, commands and scheduled tasks are written when each one finishes.
-- If Laralyze's storage fails, your app never sees the error.
+- If Laralyze's storage fails, your app never sees the error. Laralyze stops writing for a minute, so a database that is down doesn't make every request wait for its connection timeout, then tries again. The pause is shared through APCu when it's installed.
 
 Measured on a reference app (PHP 8.4, SQLite), before the response:
 
@@ -17,6 +17,15 @@ Measured on a reference app (PHP 8.4, SQLite), before the response:
 | 200 cache calls | ~0.5 ms |
 
 Each query or cache call goes through Laravel's event dispatcher, about 1–2 µs, like any tool that listens to them; a request with 1,000 queries gets about 4–5% slower. If that matters for a hot path, turn the recorder off or wrap the code in `Laralyze::ignore(fn () => ...)`.
+
+## When something is wrong
+
+The dashboard shows a warning above the cards, and `php artisan about` shows it under *Health*, when:
+
+- Laralyze's tables are missing, or its database can't be reached;
+- a write failed in the last hour, with the reason;
+- the scheduler hasn't run Laralyze's hourly cleanup for over two hours;
+- a web request recorded more distinct metrics than the buffer holds (`LARALYZE_BUFFER`, 5,000 by default) and some were dropped.
 
 ## The scheduler
 

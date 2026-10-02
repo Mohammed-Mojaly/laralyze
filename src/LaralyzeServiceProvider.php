@@ -201,6 +201,10 @@ class LaralyzeServiceProvider extends ServiceProvider
             'Version' => InstalledVersions::isInstalled('mohammed-mojaly/laralyze')
                 ? InstalledVersions::getPrettyVersion('mohammed-mojaly/laralyze')
                 : 'unknown',
+            'Health' => AboutCommand::format(
+                array_column($this->app->make(Dashboard\Health::class)->problems(), 'title'),
+                console: fn (array $problems) => $problems === [] ? '<fg=green;options=bold>OK</>' : '<fg=yellow;options=bold>'.implode(' ', $problems).'</>',
+            ),
         ]);
     }
 }

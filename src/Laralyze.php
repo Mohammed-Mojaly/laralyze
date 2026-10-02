@@ -7,13 +7,18 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Lottery;
+use Illuminate\Support\Str;
 use MohammedMojaly\Laralyze\Metrics\Buffer;
 use MohammedMojaly\Laralyze\Metrics\PendingMetric;
+use MohammedMojaly\Laralyze\Metrics\Period;
 use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
+use MohammedMojaly\Laralyze\Support\Outage;
 use Throwable;
 
 class Laralyze
 {
+    public const FAILURE_CACHE_KEY = 'laralyze:last_failure';
+
     /**
      * How many ignore() calls are currently running.
      */
@@ -30,6 +35,11 @@ class Laralyze
     protected bool $enabled;
 
     protected bool $paused = false;
+
+    /**
+     * Values a web request couldn't fit in the buffer.
+     */
+    protected int $dropped = 0;
 
     /**
      * Callbacks that turn what recorders collected into metrics, run
@@ -133,6 +143,8 @@ class Laralyze
         if ($this->app->runningInConsole()) {
             $this->flush();
             $this->buffer->add($type, $key, $aggregate, $value, $timestamp);
+        } else {
+            $this->dropped++;
         }
     }
 
@@ -213,20 +225,87 @@ class Laralyze
             return;
         }
 
-        $this->rescue(fn () => $this->ignore(function () {
-            $storage = $this->app->make(DatabaseStorage::class);
+        if (Outage::active()) {
+            $this->buffer->clear();
 
-            // Never write into a transaction the app still has open.
-            if ($storage->inTransaction()) {
-                return;
-            }
+            return;
+        }
 
-            [$rows, $values] = $this->buffer->drain();
+        try {
+            $this->ignore(function () {
+                $storage = $this->app->make(DatabaseStorage::class);
 
-            $storage->store($this->filtered($rows), $this->filtered($values));
+                // Never write into a transaction the app still has open.
+                if ($storage->inTransaction()) {
+                    return;
+                }
 
-            $this->trimWhenOverdue($storage);
-        }));
+                [$rows, $values] = $this->buffer->drain();
+
+                $storage->store([...$this->filtered($rows), ...$this->droppedRows()], $this->filtered($values));
+
+                $this->trimWhenOverdue($storage);
+            });
+        } catch (Throwable $e) {
+            $this->buffer->clear();
+            $this->failed($e);
+        }
+    }
+
+    /**
+     * Pause writing for a while, and leave a note for the dashboard.
+     */
+    protected function failed(Throwable $e): void
+    {
+        Outage::start();
+
+        $this->rescue(fn () => $this->ignore(fn () => $this->app->make('cache')->store()->put(
+            self::FAILURE_CACHE_KEY,
+            ['at' => time(), 'message' => Str::limit($e->getMessage(), 500)],
+            86_400,
+        )));
+
+        $this->report($e);
+    }
+
+    /**
+     * When the last write failed, and why. Null when none failed in the last day.
+     *
+     * @return array{at: int, message: string}|null
+     */
+    public function lastFailure(): ?array
+    {
+        $failure = $this->rescue(fn () => $this->app->make('cache')->store()->get(self::FAILURE_CACHE_KEY));
+
+        return is_array($failure) && isset($failure['at'], $failure['message'])
+            ? ['at' => (int) $failure['at'], 'message' => (string) $failure['message']]
+            : null;
+    }
+
+    /**
+     * Rows that count what was dropped, so the dashboard can say so.
+     *
+     * @return list<array{bucket: int, period: int, type: string, aggregate: string, key: string, value: float}>
+     */
+    protected function droppedRows(): array
+    {
+        if ($this->dropped === 0) {
+            return [];
+        }
+
+        $now = time();
+        $rows = array_map(fn (int $period) => [
+            'bucket' => Period::bucket($now, $period),
+            'period' => $period,
+            'type' => 'laralyze_dropped',
+            'aggregate' => 'count',
+            'key' => 'buffer',
+            'value' => (float) $this->dropped,
+        ], Period::ALL);
+
+        $this->dropped = 0;
+
+        return $rows;
     }
 
     /**

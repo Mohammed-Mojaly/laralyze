@@ -9,6 +9,7 @@ Everything lives in `config/laralyze.php`, published by `php artisan laralyze:in
 | `enabled` | `LARALYZE_ENABLED` | `true` | Turns Laralyze off completely: no listeners, no routes, no work. |
 | `storage.connection` | `LARALYZE_DB_CONNECTION` | default connection | Keeps Laralyze's two tables on another database connection. |
 | `retention` | `LARALYZE_RETENTION_DAYS` | `30` | Days of data to keep. Minute-level detail is kept for a day. |
+| `buffer` | `LARALYZE_BUFFER` | `5000` | Distinct metrics one request, job or command holds before writing. A web request that fills it drops the rest, and the dashboard warns. |
 | `path` | `LARALYZE_PATH` | `laralyze` | Where the dashboard lives. |
 | `domain` | `LARALYZE_DOMAIN` | none | Serve the dashboard on its own domain. |
 | `middleware` | | `['web', Authorize::class]` | Middleware for the dashboard and its card updates. |

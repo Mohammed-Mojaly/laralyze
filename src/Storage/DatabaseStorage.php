@@ -122,13 +122,17 @@ class DatabaseStorage
      */
     protected function prepareValues(array $values): array
     {
-        return array_map(fn (array $value) => [
+        $prepared = array_map(fn (array $value) => [
             'timestamp' => $value['timestamp'],
             'type' => $value['type'],
             'key' => $value['key'],
             'key_hash' => hash('xxh128', $value['key']),
             'value' => $value['value'],
         ], $values);
+
+        usort($prepared, fn (array $a, array $b) => [$a['type'], $a['key_hash']] <=> [$b['type'], $b['key_hash']]);
+
+        return $prepared;
     }
 
     /**
@@ -187,6 +191,16 @@ class DatabaseStorage
         $value = $this->values('laralyze', ['trimmed_at'])->first()?->value;
 
         return $value === null ? null : (int) $value;
+    }
+
+    /**
+     * When the oldest data still kept starts.
+     */
+    public function oldestBucket(): ?int
+    {
+        $bucket = $this->connection()->table(self::AGGREGATES)->where('period', Period::HOUR)->min('bucket');
+
+        return $bucket === null ? null : (int) $bucket;
     }
 
     /**
