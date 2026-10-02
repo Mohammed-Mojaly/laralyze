@@ -57,6 +57,7 @@ class LaralyzeServiceProvider extends ServiceProvider
         'servers' => Cards\ServerList::class,
         'group' => Cards\Group::class,
         'executions' => Cards\ExecutionList::class,
+        'findings' => Cards\Findings::class,
     ];
 
     public function register(): void

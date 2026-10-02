@@ -10,6 +10,7 @@
         'notification' => 'Notifications', 'job' => 'Jobs queued', 'log' => 'Logs', 'exception' => 'Exceptions',
     ];
     $started = now()->setTimestamp($execution->started_at);
+    $repeats = array_count_values(array_map(fn (array $event) => $event[0] === 'query' ? (string) $event[3] : '', $events));
     $groupUrl = fn (string $pageKey, string $key) => route('laralyze.group', ['page' => $pageKey, 'group' => hash('xxh128', $key)]);
 @endphp
 <x-laralyze::page :title="$execution->name" :page="$page?->key" mono>
@@ -61,6 +62,9 @@
                         <span class="lz-event-label">
                             @switch($kind)
                                 @case('query')
+                                    @if (($repeats[$label] ?? 0) >= \MohammedMojaly\Laralyze\Recorders\Traces::REPEATS)
+                                        <a class="lz-badge lz-badge-bad" href="{{ route('laralyze.page', ['page' => 'findings']) }}" title="This query ran {{ $repeats[$label] }} times here">×{{ $repeats[$label] }}</a>
+                                    @endif
                                     <code>{{ Sql::highlight(\Illuminate\Support\Str::limit($label, 400)) }}</code>
                                     @break
                                 @case('exception')

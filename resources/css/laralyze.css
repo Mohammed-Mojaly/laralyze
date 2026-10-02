@@ -1830,3 +1830,40 @@ body.lz-root {
         display: none;
     }
 }
+
+/* Findings */
+.lz-findings {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lz-finding + .lz-finding {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--lz-line);
+}
+
+.lz-finding-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin-bottom: 8px;
+}
+
+.lz-finding-stats {
+    margin-left: auto;
+    color: var(--lz-ink-3);
+    font-size: 12.5px;
+}
+
+.lz-finding-stats strong {
+    color: var(--lz-ink);
+}
+
+.lz-finding-hint {
+    margin: 8px 0;
+    color: var(--lz-ink-2);
+    font-size: 13px;
+}

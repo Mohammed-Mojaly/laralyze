@@ -1,0 +1,163 @@
+<?php
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
+use Livewire\Livewire;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
+use MohammedMojaly\Laralyze\Recorders;
+use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
+
+class FindingsAuthor extends Model
+{
+    protected $table = 'authors';
+
+    public $timestamps = false;
+}
+
+class FindingsBook extends Model
+{
+    protected $table = 'books';
+
+    public $timestamps = false;
+
+    /**
+     * @return BelongsTo<FindingsAuthor, $this>
+     */
+    public function author(): BelongsTo
+    {
+        return $this->belongsTo(FindingsAuthor::class, 'author_id');
+    }
+}
+
+beforeEach(function () {
+    app()->detectEnvironment(fn () => 'local');
+
+    $this->rebootWith(['laralyze.recorders' => [Recorders\Traces::class => ['sample_rate' => 1]]]);
+    app()->detectEnvironment(fn () => 'local');
+
+    Schema::dropIfExists('books');
+    Schema::dropIfExists('authors');
+    Schema::create('authors', function ($table) {
+        $table->id();
+        $table->string('name');
+    });
+    Schema::create('books', function ($table) {
+        $table->id();
+        $table->foreignId('author_id');
+        $table->string('title');
+    });
+
+    foreach (range(1, 6) as $i) {
+        $author = DB::table('authors')->insertGetId(['name' => "Author {$i}"]);
+        DB::table('books')->insert(['author_id' => $author, 'title' => "Book {$i}"]);
+    }
+});
+
+afterEach(function () {
+    Schema::dropIfExists('books');
+    Schema::dropIfExists('authors');
+});
+
+/**
+ * @return array<string, stdClass>
+ */
+function findings(string $type): array
+{
+    return app(DatabaseStorage::class)->aggregate($type, ['count', 'max'], 3_600)->keyBy('key')->all();
+}
+
+it('finds an N+1, where it happens, and how to fix it', function () {
+    Route::get('/books', function () {
+        foreach (FindingsBook::all() as $book) {
+            $book->author->name; // one query per book
+        }
+
+        return 'ok';
+    });
+
+    $this->get('/books')->assertOk();
+    $this->get('/books')->assertOk();
+    Laralyze::flush();
+
+    $found = findings('n_plus_one');
+    [$sql, $location] = json_decode((string) array_key_first($found), true);
+
+    expect($found)->toHaveCount(1)
+        ->and($sql)->toMatch('/from [`"\[]?authors[`"\]]? where [`"\[]?authors[`"\]]?\.[`"\[]?id[`"\]]? = \?/')
+        ->and($location)->toContain('FindingsTest.php:')
+        ->and((float) reset($found)->count)->toBe(2.0)
+        ->and((float) reset($found)->max)->toBe(6.0)
+        ->and(findings('duplicate_query'))->toBe([]);
+
+    Livewire::withoutLazyLoading()->test('laralyze.findings')
+        ->assertSee('N+1')
+        ->assertSee("->with('author')")
+        ->assertSee('See an example');
+
+    $uuid = (string) app(DatabaseStorage::class)->values('finding_example')->first()->value;
+
+    $this->get('/laralyze/executions/'.$uuid)->assertSee('×6');
+});
+
+it('finds the same query run again with the same values', function () {
+    Route::get('/settings', function () {
+        foreach (range(1, 3) as $i) {
+            DB::table('authors')->where('name', 'Author 1')->first();
+        }
+
+        return 'ok';
+    });
+
+    $this->get('/settings');
+    Laralyze::flush();
+
+    $found = findings('duplicate_query');
+
+    expect($found)->toHaveCount(1)
+        ->and((float) reset($found)->max)->toBe(3.0)
+        ->and(findings('n_plus_one'))->toBe([]);
+
+    Livewire::withoutLazyLoading()->test('laralyze.findings')->assertSee('Duplicate')->assertSee('once()');
+});
+
+it('leaves writes and eager loading alone', function () {
+    Route::get('/import', function () {
+        foreach (range(10, 16) as $i) {
+            DB::table('authors')->insert(['name' => "Author {$i}"]);
+        }
+
+        foreach (FindingsBook::with('author')->get() as $book) {
+            $book->author->name;
+        }
+
+        return 'ok';
+    });
+
+    $this->get('/import');
+    Laralyze::flush();
+
+    expect(findings('n_plus_one'))->toBe([])->and(findings('duplicate_query'))->toBe([]);
+
+    Livewire::withoutLazyLoading()->test('laralyze.findings')->assertSee('Nothing found');
+});
+
+it('still calls it an N+1 when rows share a parent', function () {
+    DB::table('books')->update(['author_id' => DB::table('authors')->min('id')]);
+    DB::table('books')->where('id', '>', DB::table('books')->min('id') + 2)->update(['author_id' => DB::table('authors')->max('id')]);
+
+    Route::get('/books', function () {
+        foreach (FindingsBook::all() as $book) {
+            $book->author->name;
+        }
+
+        return 'ok';
+    });
+
+    $this->get('/books');
+    Laralyze::flush();
+
+    expect(findings('n_plus_one'))->toHaveCount(1)->and(findings('duplicate_query'))->toBe([]);
+});

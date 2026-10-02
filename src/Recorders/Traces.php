@@ -27,6 +27,7 @@ use Illuminate\Queue\Queue;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Str;
 use MohammedMojaly\Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\Support\Location;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -38,7 +39,7 @@ use Throwable;
  *
  * Slow and failed ones are always kept; the rest are sampled.
  *
- * @phpstan-type Execution array{uuid: string, trace: string, type: string, name: string, sampled: bool, start: float, events: list<array<int, mixed>>, counts: array<string, int>, exceptions: list<string>}
+ * @phpstan-type Execution array{uuid: string, trace: string, type: string, name: string, sampled: bool, start: float, events: list<array<int, mixed>>, counts: array<string, int>, exceptions: list<string>, queries: array<string, int>, first: array<string, array<mixed>>, same: array<string, int>, extra: array<string, int>, where: array<string, string|null>}
  */
 class Traces extends Recorder
 {
@@ -90,6 +91,12 @@ class Traces extends Recorder
 
     protected Requests $requests;
 
+    /**
+     * The same read this many times in one execution, with more than one
+     * set of values, is an N+1.
+     */
+    public const REPEATS = 5;
+
     protected int $maxEvents;
 
     /**
@@ -119,7 +126,7 @@ class Traces extends Recorder
     {
         // By far the most frequent, so checked first on its own.
         if ($event instanceof QueryExecuted) {
-            $this->add('query', $event->sql, (float) $event->time, $event->connectionName);
+            $this->query($event);
 
             return;
         }
@@ -250,6 +257,11 @@ class Traces extends Recorder
             'events' => [],
             'counts' => [],
             'exceptions' => [],
+            'queries' => [],
+            'first' => [],
+            'same' => [],
+            'extra' => [],
+            'where' => [],
         ];
     }
 
@@ -299,6 +311,93 @@ class Traces extends Recorder
         $at = (microtime(true) - $execution['start']) * 1_000 - ($duration ?? 0);
 
         $execution['events'][] = [$kind, $at > 0 ? round($at, 2) : 0.0, $duration, strlen($label) > 2_000 ? substr($label, 0, 2_000).'...' : $label, $detail, $link];
+    }
+
+    /**
+     * Add the query, and count reads that repeat: the same SQL with other
+     * values is an N+1, with the same values a duplicate.
+     */
+    protected function query(QueryExecuted $event): void
+    {
+        $this->add('query', $event->sql, (float) $event->time, $event->connectionName);
+
+        $last = array_key_last($this->stack);
+        $sql = $event->sql;
+
+        if ($last === null || ! (str_starts_with($sql, 'select') || str_starts_with($sql, 'SELECT'))) {
+            return;
+        }
+
+        $execution = &$this->stack[$last];
+        $count = $execution['queries'][$sql] = ($execution['queries'][$sql] ?? 0) + 1;
+
+        // Values are only compared once a query repeats, so most cost nothing.
+        if ($count === 1) {
+            $execution['first'][$sql] = $event->bindings;
+
+            return;
+        }
+
+        if ($count === 2) {
+            $this->repeated($execution, $sql, $execution['first'][$sql] ?? []);
+            unset($execution['first'][$sql]);
+        }
+
+        $this->repeated($execution, $sql, $event->bindings);
+
+        if ($count === self::REPEATS) {
+            $execution['where'][$sql] ??= Location::here();
+        }
+    }
+
+    /**
+     * @param  Execution  $execution
+     * @param  array<mixed>  $bindings
+     */
+    protected function repeated(array &$execution, string $sql, array $bindings): void
+    {
+        $key = $sql."\0".json_encode($bindings, JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+        if (! isset($execution['same'][$key]) && count($execution['same']) >= 1_000) {
+            return;
+        }
+
+        $seen = $execution['same'][$key] = ($execution['same'][$key] ?? 0) + 1;
+
+        if ($seen >= 2) {
+            $execution['extra'][$sql] = ($execution['extra'][$sql] ?? 0) + 1;
+            $execution['where'][$sql] ??= Location::here();
+        }
+    }
+
+    /**
+     * Problems in how it queried: [type, sql, location, times].
+     *
+     * @param  Execution  $execution
+     * @return list<array{0: string, 1: string, 2: string, 3: int}>
+     */
+    protected function findings(array $execution): array
+    {
+        $found = [];
+
+        foreach ($execution['queries'] as $sql => $count) {
+            $extra = $execution['extra'][$sql] ?? 0;
+            $where = (string) ($execution['where'][$sql] ?? '');
+
+            // Only the framework ran it: nothing in the app to fix.
+            if ($where === '') {
+                continue;
+            }
+
+            // Rows often share a parent, so some values repeat in an N+1 too.
+            if ($count >= self::REPEATS && $count - $extra >= 2) {
+                $found[] = ['n_plus_one', (string) $sql, $where, $count];
+            } elseif ($extra > 0) {
+                $found[] = ['duplicate_query', (string) $sql, $where, $extra + 1];
+            }
+        }
+
+        return $found;
     }
 
     protected function outgoing(ResponseReceived $event): void
@@ -356,7 +455,20 @@ class Traces extends Recorder
      */
     protected function finish(array $execution, string $name, string $status, bool $failed, float $duration, ?string $user): void
     {
-        if (! $failed && ! $execution['sampled'] && $execution['exceptions'] === [] && $duration < $this->threshold($name)) {
+        $keep = $failed || $execution['sampled'] || $execution['exceptions'] !== [] || $duration >= $this->threshold($name);
+
+        foreach ($this->findings($execution) as [$type, $sql, $where, $times]) {
+            $key = (string) json_encode([$sql, $where]);
+
+            // Count is how many executions had it, max the most times in one.
+            $this->laralyze->record($type, $key, $times)->count()->max();
+
+            if ($keep) {
+                $this->laralyze->set('finding_example', $key, $execution['uuid']);
+            }
+        }
+
+        if (! $keep) {
             return;
         }
 

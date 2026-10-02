@@ -110,6 +110,7 @@ class Pages
             'commands' => $page('Commands', 'Activity', Recorders\Commands::class, 'commands'),
             'scheduled' => $page('Scheduled Tasks', 'Activity', Recorders\ScheduledTasks::class, 'scheduled'),
             'exceptions' => $page('Exceptions', 'Application', Recorders\Exceptions::class, 'exceptions'),
+            'findings' => $page('Findings', 'Application', Recorders\Traces::class, 'findings'),
             'queries' => $page('Queries', 'Application', Recorders\Queries::class, 'queries'),
             'cache' => $page('Cache', 'Application', Recorders\Cache::class, 'cache'),
             'outgoing-requests' => $page('Outgoing Requests', 'Application', Recorders\OutgoingRequests::class, 'outgoing-requests'),
