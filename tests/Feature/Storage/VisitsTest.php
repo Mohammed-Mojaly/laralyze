@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
+use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36';
@@ -102,4 +103,21 @@ it('counts pages by route, so tokens in URLs are never stored', function () {
 
     expect(visitCount('visit', '/reset-password/{token}'))->toBe(1.0)
         ->and(json_encode(DB::table('laralyze_aggregates')->pluck('key')))->not->toContain('s3cr3t');
+});
+
+it('shows brand icons next to systems, browsers, devices and bots', function () {
+    app()->detectEnvironment(fn () => 'local');
+
+    Laralyze::record('visitor_os', 'Windows')->count();
+    Laralyze::record('visitor_browser', 'Samsung Internet')->count();
+    Laralyze::record('visitor_device', 'Mobile')->count();
+    Laralyze::record('visit_bot', 'Googlebot')->count();
+    Laralyze::flush();
+
+    Livewire::withoutLazyLoading()->test('laralyze.audience')
+        ->assertSee('<svg class="lz-mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="color: #0078D4">', false)
+        ->assertSee('lz-mark-line', false)
+        ->assertSee('Samsung Internet');
+
+    Livewire::withoutLazyLoading()->test('laralyze.bots')->assertSee('style="color: #4285F4"', false);
 });

@@ -15,7 +15,7 @@
                     <ul class="lz-bars-list">
                         @foreach ($counts as $name => $count)
                             <li>
-                                <span>{{ $name }}</span>
+                                <span class="lz-with-mark">{!! \MohammedMojaly\Laralyze\Support\Brands::svg((string) $name, $group === 'Devices' ? 'Desktop' : 'globe') !!}{{ $name }}</span>
                                 <span class="lz-num">{{ Format::percent($count, $total) }}</span>
                                 <x-laralyze::meter :percent="$total ? $count / $total * 100 : 0" tone="data" />
                             </li>

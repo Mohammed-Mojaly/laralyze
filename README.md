@@ -104,6 +104,8 @@ Run the storage tests against another database with `LARALYZE_TEST_DB=mysql|mari
 
 Created and maintained by [Mohammed Mojaly](https://github.com/Mohammed-Mojaly).
 
+Brand icons for systems, browsers and bots come from [Simple Icons](https://simpleicons.org) (CC0). The trademarks belong to their owners.
+
 ## License
 
 MIT. See [LICENSE.md](LICENSE.md).

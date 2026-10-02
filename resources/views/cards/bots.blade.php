@@ -14,7 +14,7 @@
 
             @foreach ($bots as $bot)
                 <tr wire:key="{{ $bot->key }}">
-                    <td>{{ $bot->key }}</td>
+                    <td><span class="lz-with-mark">{!! \MohammedMojaly\Laralyze\Support\Brands::svg((string) $bot->key, 'bot') !!}{{ $bot->key }}</span></td>
                     <td class="lz-num lz-strong">{{ Format::number($bot->count) }}</td>
                 </tr>
             @endforeach

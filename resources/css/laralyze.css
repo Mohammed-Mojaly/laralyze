@@ -1940,3 +1940,21 @@ body.lz-root {
 .lz-in-stage .lz-event-kind {
     padding-left: 12px;
 }
+
+/* Brand marks next to systems, browsers, devices and bots */
+.lz-with-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.lz-mark {
+    flex: none;
+    width: 16px;
+    height: 16px;
+}
+
+.lz-mark-line {
+    color: var(--lz-ink-2);
+}
