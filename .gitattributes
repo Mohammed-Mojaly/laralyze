@@ -1,6 +1,7 @@
 * text=auto eol=lf
 
 /.github            export-ignore
+/art                export-ignore
 /benchmarks         export-ignore
 /tests              export-ignore
 /.gitattributes     export-ignore
