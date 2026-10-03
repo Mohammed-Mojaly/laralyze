@@ -2,7 +2,9 @@
  * Laralyze dashboard.
  *
  * Colour is reserved for meaning: the interface itself is graphite on grey,
- * and only data that needs attention (4xx, 5xx, live) is coloured.
+ * and only data that needs attention (4xx, 5xx, live) is coloured. The one
+ * brand colour, cobalt, marks where you are: the logo, the page and the period.
+ * The sidebar stays dark in both themes, like an instrument panel.
  */
 
 :root {
@@ -23,6 +25,23 @@
     --lz-tip-ink: #f2f4f6;
     --lz-sql-kw: #1f5fa8;
     --lz-sql-value: #2f7a3e;
+    --lz-accent: #2f5bd3;
+    --lz-accent-ink: #ffffff;
+    --lz-dot: #d3d8dd;
+
+    /* The sidebar is dark in both themes. */
+    --lz-side-bg: #111418;
+    --lz-side-line: #23282e;
+    --lz-side-hover: #1a1e23;
+    --lz-side-active: rgba(138, 166, 247, 0.14);
+    --lz-side-ink: #eef0f2;
+    --lz-side-ink-2: #a3abb4;
+    --lz-side-ink-3: #6f7883;
+    --lz-side-accent: #8aa6f7;
+    --lz-side-bad: #ff8f7d;
+    --lz-side-bad-bg: rgba(240, 98, 76, 0.18);
+    --lz-side-warn: #e9b45a;
+    --lz-side-warn-bg: rgba(224, 160, 50, 0.16);
 
     --lz-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --lz-mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, monospace;
@@ -51,6 +70,12 @@
         --lz-tip-ink: #14171b;
         --lz-sql-kw: #74a9e6;
         --lz-sql-value: #8ccf96;
+        --lz-accent: #7d9cf5;
+        --lz-accent-ink: #0d0f12;
+        --lz-dot: #1c2126;
+        --lz-side-bg: #08090b;
+        --lz-side-line: #1b1f24;
+        --lz-side-hover: #14171b;
 
         color-scheme: dark;
     }
@@ -72,6 +97,12 @@
     --lz-live: #4cc285;
     --lz-tip-bg: #e8ebee;
     --lz-tip-ink: #14171b;
+    --lz-accent: #7d9cf5;
+    --lz-accent-ink: #0d0f12;
+    --lz-dot: #1c2126;
+    --lz-side-bg: #08090b;
+    --lz-side-line: #1b1f24;
+    --lz-side-hover: #14171b;
 
     color-scheme: dark;
 }
@@ -91,7 +122,7 @@ body {
 
 body.lz-root {
     min-height: 100vh;
-    background: var(--lz-bg);
+    background: var(--lz-bg) radial-gradient(var(--lz-dot) 1px, transparent 1.2px) 0 0 / 16px 16px;
     color: var(--lz-ink);
     font-family: var(--lz-font);
     font-size: 14px;
@@ -121,7 +152,7 @@ body.lz-root {
 }
 
 .lz-root :focus-visible {
-    outline: 2px solid var(--lz-ink);
+    outline: 2px solid var(--lz-accent);
     outline-offset: 2px;
     border-radius: 4px;
 }
@@ -146,7 +177,10 @@ body.lz-root {
     height: 100vh;
     overflow-y: auto;
     padding: 20px 14px;
-    border-right: 1px solid var(--lz-line);
+    border-right: 1px solid var(--lz-side-line);
+    background: var(--lz-side-bg);
+    color: var(--lz-side-ink);
+    color-scheme: dark;
 }
 
 .lz-brand {
@@ -165,17 +199,15 @@ body.lz-root {
 }
 
 .lz-brand rect {
-    fill: var(--lz-ink);
+    fill: var(--lz-side-ink);
 }
 
-.lz-brand path {
-    fill: none;
-    stroke: var(--lz-bg);
-    stroke-width: 2.2;
+.lz-brand .lz-brand-span {
+    fill: var(--lz-side-accent);
 }
 
-.lz-brand circle {
-    fill: var(--lz-bg);
+.lz-brand .lz-brand-span-2 {
+    fill: var(--lz-side-ink-3);
 }
 
 .lz-nav-section + .lz-nav-section {
@@ -184,7 +216,7 @@ body.lz-root {
 
 .lz-nav-label {
     padding: 0 10px 6px;
-    color: var(--lz-ink-3);
+    color: var(--lz-side-ink-3);
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.08em;
@@ -198,20 +230,37 @@ body.lz-root {
     gap: 10px;
     padding: 7px 10px;
     border-radius: 6px;
-    color: var(--lz-ink-2);
+    color: var(--lz-side-ink-2);
     font-weight: 500;
 }
 
 .lz-nav-link:hover {
-    background: var(--lz-surface-2);
-    color: var(--lz-ink);
+    background: var(--lz-side-hover);
+    color: var(--lz-side-ink);
 }
 
 .lz-nav-link.is-active {
-    background: var(--lz-surface);
-    color: var(--lz-ink);
+    background: var(--lz-side-active);
+    color: var(--lz-side-ink);
     font-weight: 600;
-    box-shadow: inset 0 0 0 1px var(--lz-line);
+}
+
+.lz-nav-count {
+    margin-left: auto;
+    padding: 0 7px;
+    border-radius: 99px;
+    background: var(--lz-side-bad-bg);
+    color: var(--lz-side-bad);
+    font-family: var(--lz-mono);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    font-variant-numeric: tabular-nums;
+}
+
+.lz-nav-count-warn {
+    background: var(--lz-side-warn-bg);
+    color: var(--lz-side-warn);
 }
 
 .lz-nav-link.is-active::before {
@@ -222,7 +271,7 @@ body.lz-root {
     bottom: 8px;
     width: 3px;
     border-radius: 0 3px 3px 0;
-    background: var(--lz-ink);
+    background: var(--lz-side-accent);
 }
 
 .lz-main {
@@ -296,8 +345,8 @@ body.lz-root {
 }
 
 .lz-periods a.is-active {
-    background: var(--lz-ink);
-    color: var(--lz-bg);
+    background: var(--lz-accent);
+    color: var(--lz-accent-ink);
     font-weight: 600;
 }
 
@@ -1394,8 +1443,8 @@ body.lz-root {
         padding: 10px 16px;
         overflow: visible;
         border-right: 0;
-        border-bottom: 1px solid var(--lz-line);
-        background: var(--lz-bg);
+        border-bottom: 1px solid var(--lz-side-line);
+        background: var(--lz-side-bg);
     }
 
     .lz-brand {

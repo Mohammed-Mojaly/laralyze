@@ -13,7 +13,7 @@ class Pages
 {
     public const HOME = 'dashboard';
 
-    protected const SECTIONS = ['Activity', 'Application', 'Monitoring'];
+    protected const SECTIONS = ['Activity', 'Issues', 'Services', 'People', 'System'];
 
     /**
      * @var array<string, Page>|null
@@ -109,17 +109,17 @@ class Pages
             'jobs' => $page('Jobs', 'Activity', Recorders\Jobs::class, 'jobs'),
             'commands' => $page('Commands', 'Activity', Recorders\Commands::class, 'commands'),
             'scheduled' => $page('Scheduled Tasks', 'Activity', Recorders\ScheduledTasks::class, 'scheduled'),
-            'exceptions' => $page('Exceptions', 'Application', Recorders\Exceptions::class, 'exceptions'),
-            'findings' => $page('Findings', 'Application', Recorders\Traces::class, 'findings'),
-            'queries' => $page('Queries', 'Application', Recorders\Queries::class, 'queries'),
-            'cache' => $page('Cache', 'Application', Recorders\Cache::class, 'cache'),
-            'outgoing-requests' => $page('Outgoing Requests', 'Application', Recorders\OutgoingRequests::class, 'outgoing-requests'),
-            'mail' => $page('Mail', 'Application', Recorders\Mail::class, 'mail'),
-            'notifications' => $page('Notifications', 'Application', Recorders\Notifications::class, 'notifications'),
-            'visits' => $page('Visits', 'Monitoring', Recorders\Visits::class, 'visits'),
-            'users' => $page('Users', 'Monitoring', Recorders\Users::class, 'users'),
-            'logs' => $page('Logs', 'Monitoring', Recorders\Logs::class, 'logs'),
-            'servers' => $page('Servers', 'Monitoring', Recorders\Servers::class, 'servers'),
+            'exceptions' => $page('Exceptions', 'Issues', Recorders\Exceptions::class, 'exceptions'),
+            'findings' => $page('Findings', 'Issues', Recorders\Traces::class, 'findings'),
+            'queries' => $page('Queries', 'Services', Recorders\Queries::class, 'queries'),
+            'cache' => $page('Cache', 'Services', Recorders\Cache::class, 'cache'),
+            'outgoing-requests' => $page('Outgoing Requests', 'Services', Recorders\OutgoingRequests::class, 'outgoing-requests'),
+            'mail' => $page('Mail', 'Services', Recorders\Mail::class, 'mail'),
+            'notifications' => $page('Notifications', 'Services', Recorders\Notifications::class, 'notifications'),
+            'users' => $page('Users', 'People', Recorders\Users::class, 'users'),
+            'visits' => $page('Visits', 'People', Recorders\Visits::class, 'visits'),
+            'logs' => $page('Logs', 'System', Recorders\Logs::class, 'logs'),
+            'servers' => $page('Servers', 'System', Recorders\Servers::class, 'servers'),
         ];
     }
 

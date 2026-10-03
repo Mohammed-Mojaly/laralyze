@@ -95,6 +95,8 @@ Everything is merged in memory and written once, after the response is sent.
 ],
 ```
 
+Built-in pages sit under Activity, Issues, Services, People and System. Use one of those as `section`, or a new name to add a section after them.
+
 ```blade
 {{-- resources/views/laralyze/checkout.blade.php --}}
 <x-laralyze::page>
@@ -150,10 +152,10 @@ Laralyze::user(fn (User $user) => [
 
 ## Colours and theme
 
-The dashboard follows the visitor's light or dark preference, with a toggle in the top bar. Colours are CSS custom properties (`--lz-ink`, `--lz-bad`, `--lz-warn`…). Override them in the published layout:
+The dashboard follows the visitor's light or dark preference, with a toggle in the top bar. The sidebar stays dark in both. Colours are CSS custom properties (`--lz-accent`, `--lz-ink`, `--lz-bad`, `--lz-warn`, `--lz-side-bg`…). Override them in the published layout, e.g. to use your own brand colour:
 
 ```blade
 <style>
-    :root { --lz-bad: #d0342c; }
+    :root { --lz-accent: #0f766e; --lz-side-accent: #5eead4; }
 </style>
 ```
