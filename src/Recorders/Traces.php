@@ -43,7 +43,7 @@ use Throwable;
  *
  * Slow and failed ones are always kept; the rest are sampled.
  *
- * @phpstan-type Execution array{uuid: string, trace: string, type: string, name: string, sampled: bool, start: float, events: list<array<int, mixed>>, counts: array<string, int>, exceptions: list<string>, queries: array<string, int>, first: array<string, array<mixed>>, same: array<string, int>, extra: array<string, int>, where: array<string, string|null>, begun: float, ms: array<string, float>, stages: list<array{0: string, 1: float, 2: float|null}>, meta: array<string, mixed>}
+ * @phpstan-type Execution array{uuid: string, trace: string, type: string, name: string, sampled: bool, start: float, events: list<array<int, mixed>>, counts: array<string, int>, exceptions: list<string>, queries: array<string, int>, binds: array<string, list<array<mixed>>>, kept: int, where: array<string, string|null>, begun: float, ms: array<string, float>, stages: list<array{0: string, 1: float, 2: float|null}>, meta: array<string, mixed>}
  */
 class Traces extends Recorder
 {
@@ -103,7 +103,14 @@ class Traces extends Recorder
      */
     public const REPEATS = 5;
 
+    /**
+     * Query values kept per execution to find repeats, so a long job can't grow memory.
+     */
+    protected const KEEP_BINDINGS = 2_000;
+
     protected int $maxEvents;
+
+    protected ?string $server = null;
 
     /**
      * Events before anything started, with their time: the app booting
@@ -339,9 +346,8 @@ class Traces extends Recorder
             'counts' => [],
             'exceptions' => [],
             'queries' => [],
-            'first' => [],
-            'same' => [],
-            'extra' => [],
+            'binds' => [],
+            'kept' => 0,
             'where' => [],
         ];
     }
@@ -429,19 +435,21 @@ class Traces extends Recorder
         }
 
         $execution = &$this->stack[$last];
-        $execution['counts'][$kind] = ($execution['counts'][$kind] ?? 0) + 1;
 
-        if ($duration !== null) {
-            $execution['ms'][$kind] = ($execution['ms'][$kind] ?? 0) + $duration;
-        }
-
+        // Past the cap only the totals go on; the rest are added up at the end.
         if (count($execution['events']) >= $this->maxEvents) {
+            $execution['counts'][$kind] = ($execution['counts'][$kind] ?? 0) + 1;
+
+            if ($duration !== null) {
+                $execution['ms'][$kind] = ($execution['ms'][$kind] ?? 0) + $duration;
+            }
+
             return;
         }
 
         $at = (microtime(true) - $execution['start']) * 1_000 - ($duration ?? 0);
 
-        $execution['events'][] = [$kind, $at > 0 ? round($at, 2) : 0.0, $duration, strlen($label) > 2_000 ? substr($label, 0, 2_000).'...' : $label, $detail, $link];
+        $execution['events'][] = [$kind, $at > 0 ? $at : 0.0, $duration, strlen($label) > 2_000 ? substr($label, 0, 2_000).'...' : $label, $detail, $link];
     }
 
     /**
@@ -462,43 +470,29 @@ class Traces extends Recorder
         $execution = &$this->stack[$last];
         $count = $execution['queries'][$sql] = ($execution['queries'][$sql] ?? 0) + 1;
 
-        // Values are only compared once a query repeats, so most cost nothing.
-        if ($count === 1) {
-            $execution['first'][$sql] = $event->bindings;
-
-            return;
-        }
-
-        if ($count === 2) {
-            $this->repeated($execution, $sql, $execution['first'][$sql] ?? []);
-            unset($execution['first'][$sql]);
-        }
-
-        $this->repeated($execution, $sql, $event->bindings);
-
-        if ($count === self::REPEATS) {
+        // The call stack only exists now, so a read that repeats notes where it
+        // came from: at once when its values repeat too, else when it looks like an N+1.
+        if ($count === self::REPEATS || ($count > 1 && $count < self::REPEATS && in_array($event->bindings, $execution['binds'][$sql] ?? [], true))) {
             $execution['where'][$sql] ??= Location::here();
+        }
+
+        // Values are compared after the response is sent; here they are only kept.
+        if ($execution['kept'] < self::KEEP_BINDINGS) {
+            $execution['kept']++;
+            $execution['binds'][$sql][] = $event->bindings;
         }
     }
 
     /**
-     * @param  Execution  $execution
-     * @param  array<mixed>  $bindings
+     * How many times a read ran again with values it already had.
+     *
+     * @param  list<array<mixed>>  $bindings
      */
-    protected function repeated(array &$execution, string $sql, array $bindings): void
+    protected function duplicates(array $bindings): int
     {
-        $key = $sql."\0".json_encode($bindings, JSON_PARTIAL_OUTPUT_ON_ERROR);
+        $keys = array_map(fn (array $values) => json_encode($values, JSON_PARTIAL_OUTPUT_ON_ERROR), $bindings);
 
-        if (! isset($execution['same'][$key]) && count($execution['same']) >= 1_000) {
-            return;
-        }
-
-        $seen = $execution['same'][$key] = ($execution['same'][$key] ?? 0) + 1;
-
-        if ($seen >= 2) {
-            $execution['extra'][$sql] = ($execution['extra'][$sql] ?? 0) + 1;
-            $execution['where'][$sql] ??= Location::here();
-        }
+        return count($keys) - count(array_unique($keys));
     }
 
     /**
@@ -512,13 +506,14 @@ class Traces extends Recorder
         $found = [];
 
         foreach ($execution['queries'] as $sql => $count) {
-            $extra = $execution['extra'][$sql] ?? 0;
             $where = (string) ($execution['where'][$sql] ?? '');
 
             // Only the framework ran it: nothing in the app to fix.
             if ($where === '') {
                 continue;
             }
+
+            $extra = $this->duplicates($execution['binds'][$sql] ?? []);
 
             // Rows often share a parent, so some values repeat in an N+1 too.
             if ($count >= self::REPEATS && $count - $extra >= 2) {
@@ -563,8 +558,7 @@ class Traces extends Recorder
 
         // The exception of a job that just failed, reported after the fact.
         if ($this->failing !== null && $this->stack === []) {
-            $this->failing[0]['events'][] = ['exception', round((microtime(true) - $this->failing[0]['start']) * 1_000, 2), null, $exception::class, $message, $hash];
-            $this->failing[0]['counts']['exception'] = ($this->failing[0]['counts']['exception'] ?? 0) + 1;
+            $this->failing[0]['events'][] = ['exception', (microtime(true) - $this->failing[0]['start']) * 1_000, null, $exception::class, $message, $hash];
             $this->failing[0]['exceptions'][] = $hash;
 
             return;
@@ -603,6 +597,8 @@ class Traces extends Recorder
             return;
         }
 
+        [$counts, $ms] = $this->totals($execution);
+
         $this->laralyze->addExecution([
             'uuid' => $execution['uuid'],
             'trace' => $execution['trace'],
@@ -615,11 +611,32 @@ class Traces extends Recorder
             'server' => $this->server(),
             'started_at' => (int) $execution['start'],
             'exceptions' => array_values(array_unique($execution['exceptions'])),
-            'counts' => [...$execution['counts'], 'memory' => memory_get_peak_usage(true)],
-            'meta' => [...$execution['meta'], 'ms' => array_map(fn (float $ms) => round($ms, 2), $execution['ms']), 'stages' => $this->closeStages($execution, $duration), 'error' => $this->firstError($execution)],
+            'counts' => [...$counts, 'memory' => memory_get_peak_usage(true)],
+            'meta' => [...$execution['meta'], 'ms' => $ms, 'stages' => $this->closeStages($execution, $duration), 'error' => $this->firstError($execution)],
             'job_uuid' => $execution['meta']['job_uuid'] ?? null,
-            'events' => $execution['events'],
+            'events' => array_map(fn (array $event) => [$event[0], round($event[1], 2), ...array_slice($event, 2)], $execution['events']),
         ]);
+    }
+
+    /**
+     * How many of each kind and the time they took: the events, plus any past the cap.
+     *
+     * @param  Execution  $execution
+     * @return array{0: array<string, int>, 1: array<string, float>}
+     */
+    protected function totals(array $execution): array
+    {
+        [$counts, $ms] = [$execution['counts'], $execution['ms']];
+
+        foreach ($execution['events'] as [$kind, , $duration]) {
+            $counts[$kind] = ($counts[$kind] ?? 0) + 1;
+
+            if ($duration !== null) {
+                $ms[$kind] = ($ms[$kind] ?? 0) + $duration;
+            }
+        }
+
+        return [$counts, array_map(fn (float $ms) => round($ms, 2), $ms)];
     }
 
     /**
@@ -662,8 +679,7 @@ class Traces extends Recorder
 
     protected function server(): string
     {
-        $name = $this->app->make('config')->get('laralyze.recorders.'.Servers::class.'.server_name');
-
-        return (string) ($name ?: gethostname() ?: 'server');
+        // gethostname() can take tens of µs, and the name never changes.
+        return $this->server ??= (string) ($this->app->make('config')->get('laralyze.recorders.'.Servers::class.'.server_name') ?: gethostname() ?: 'server');
     }
 }
