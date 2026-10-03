@@ -38,6 +38,16 @@ class DatabaseStorage
         return $this->db->connection($this->config->get('laralyze.storage.connection'));
     }
 
+    /**
+     * Whether `migrate` has created Laralyze's tables.
+     */
+    public function installed(): bool
+    {
+        $schema = $this->connection()->getSchemaBuilder();
+
+        return $schema->hasTable(self::AGGREGATES) && $schema->hasTable(self::VALUES) && $schema->hasTable(self::EXECUTIONS);
+    }
+
     public function inTransaction(): bool
     {
         return $this->connection()->transactionLevel() > 0;

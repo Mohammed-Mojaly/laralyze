@@ -293,6 +293,11 @@ class Laralyze
     {
         Outage::start();
 
+        // Before `migrate` creates the tables there is nothing to fix; the dashboard says so itself.
+        if ($this->notInstalled()) {
+            return;
+        }
+
         $this->rescue(fn () => $this->ignore(fn () => $this->app->make('cache')->store()->put(
             self::FAILURE_CACHE_KEY,
             ['at' => time(), 'message' => Str::limit($e->getMessage(), 500)],
@@ -300,6 +305,15 @@ class Laralyze
         )));
 
         $this->report($e);
+    }
+
+    protected function notInstalled(): bool
+    {
+        try {
+            return $this->ignore(fn () => ! $this->app->make(DatabaseStorage::class)->installed());
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     /**

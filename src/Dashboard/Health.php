@@ -49,9 +49,7 @@ final class Health
         $connection = $this->config->get('laralyze.storage.connection') ?? $this->config->get('database.default');
 
         try {
-            $schema = $this->storage->connection()->getSchemaBuilder();
-
-            if (! $schema->hasTable(DatabaseStorage::AGGREGATES) || ! $schema->hasTable(DatabaseStorage::VALUES) || ! $schema->hasTable(DatabaseStorage::EXECUTIONS)) {
+            if (! $this->storage->installed()) {
                 $this->blocking = true;
 
                 return [$this->bad("Laralyze's tables are missing.", 'Run `php artisan migrate`.')];

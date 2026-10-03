@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use MohammedMojaly\Laralyze\Dashboard\Health;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Metrics\Period;
@@ -66,6 +67,25 @@ it('tells the dashboard why the last write failed', function () {
         ->assertOk()
         ->assertSee("Laralyze couldn't save data")
         ->assertSee('[nowhere]');
+});
+
+it('does not count writes before migrate as failures', function () {
+    $reported = [];
+    Laralyze::handleExceptionsUsing(function (Throwable $e) use (&$reported) {
+        $reported[] = $e;
+    });
+
+    Schema::rename('laralyze_aggregates', 'laralyze_aggregates_away');
+
+    try {
+        Laralyze::record('checkout', 'pro')->count();
+        Laralyze::flush();
+    } finally {
+        Schema::rename('laralyze_aggregates_away', 'laralyze_aggregates');
+    }
+
+    expect(Laralyze::lastFailure())->toBeNull()
+        ->and($reported)->toBe([]);
 });
 
 it('counts what a full web request buffer dropped, and warns about it', function () {
