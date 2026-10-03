@@ -3,6 +3,7 @@
 namespace MohammedMojaly\Laralyze;
 
 use Closure;
+use Composer\InstalledVersions;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
@@ -75,6 +76,14 @@ class Laralyze
     public function isEnabled(): bool
     {
         return $this->enabled;
+    }
+
+    /**
+     * The installed version, e.g. "v0.1.0".
+     */
+    public static function version(): ?string
+    {
+        return InstalledVersions::isInstalled('mohammed-mojaly/laralyze') ? InstalledVersions::getPrettyVersion('mohammed-mojaly/laralyze') : null;
     }
 
     public function isRecording(): bool

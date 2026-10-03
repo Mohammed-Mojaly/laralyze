@@ -3,7 +3,7 @@
  *
  * Colour is reserved for meaning: the interface itself is graphite on grey,
  * and only data that needs attention (4xx, 5xx, live) is coloured. The one
- * brand colour, cobalt, marks where you are: the logo, the page and the period.
+ * brand colour, petrol, marks where you are: the logo, the page and the period.
  * The sidebar stays dark in both themes, like an instrument panel.
  */
 
@@ -25,19 +25,19 @@
     --lz-tip-ink: #f2f4f6;
     --lz-sql-kw: #1f5fa8;
     --lz-sql-value: #2f7a3e;
-    --lz-accent: #2f5bd3;
+    --lz-accent: #0e7c86;
     --lz-accent-ink: #ffffff;
-    --lz-dot: #d3d8dd;
+    --lz-dot: #e2e5e8;
 
     /* The sidebar is dark in both themes. */
     --lz-side-bg: #111418;
     --lz-side-line: #23282e;
     --lz-side-hover: #1a1e23;
-    --lz-side-active: rgba(138, 166, 247, 0.14);
+    --lz-side-active: rgba(94, 200, 207, 0.13);
     --lz-side-ink: #eef0f2;
     --lz-side-ink-2: #a3abb4;
     --lz-side-ink-3: #6f7883;
-    --lz-side-accent: #8aa6f7;
+    --lz-side-accent: #5ec8cf;
     --lz-side-bad: #ff8f7d;
     --lz-side-bad-bg: rgba(240, 98, 76, 0.18);
     --lz-side-warn: #e9b45a;
@@ -70,9 +70,9 @@
         --lz-tip-ink: #14171b;
         --lz-sql-kw: #74a9e6;
         --lz-sql-value: #8ccf96;
-        --lz-accent: #7d9cf5;
-        --lz-accent-ink: #0d0f12;
-        --lz-dot: #1c2126;
+        --lz-accent: #4fc1c9;
+        --lz-accent-ink: #071214;
+        --lz-dot: #15181c;
         --lz-side-bg: #08090b;
         --lz-side-line: #1b1f24;
         --lz-side-hover: #14171b;
@@ -97,9 +97,9 @@
     --lz-live: #4cc285;
     --lz-tip-bg: #e8ebee;
     --lz-tip-ink: #14171b;
-    --lz-accent: #7d9cf5;
-    --lz-accent-ink: #0d0f12;
-    --lz-dot: #1c2126;
+    --lz-accent: #4fc1c9;
+    --lz-accent-ink: #071214;
+    --lz-dot: #15181c;
     --lz-side-bg: #08090b;
     --lz-side-line: #1b1f24;
     --lz-side-hover: #14171b;
@@ -122,7 +122,7 @@ body {
 
 body.lz-root {
     min-height: 100vh;
-    background: var(--lz-bg) radial-gradient(var(--lz-dot) 1px, transparent 1.2px) 0 0 / 16px 16px;
+    background: var(--lz-bg) radial-gradient(var(--lz-dot) 1px, transparent 1.2px) 0 0 / 18px 18px;
     color: var(--lz-ink);
     font-family: var(--lz-font);
     font-size: 14px;
@@ -176,7 +176,9 @@ body.lz-root {
     top: 0;
     height: 100vh;
     overflow-y: auto;
-    padding: 20px 14px;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 14px 14px;
     border-right: 1px solid var(--lz-side-line);
     background: var(--lz-side-bg);
     color: var(--lz-side-ink);
@@ -208,6 +210,51 @@ body.lz-root {
 
 .lz-brand .lz-brand-span-2 {
     fill: var(--lz-side-ink-3);
+}
+
+.lz-nav {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+}
+
+.lz-nav-section:nth-last-child(2) {
+    padding-bottom: 18px;
+}
+
+.lz-nav-foot {
+    display: grid;
+    gap: 6px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--lz-side-line);
+}
+
+.lz-nav-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 10px;
+    color: var(--lz-side-ink-2);
+    font-size: 12px;
+}
+
+.lz-nav-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--lz-live);
+}
+
+.lz-nav-status-warn .lz-nav-dot {
+    background: var(--lz-side-warn);
+}
+
+.lz-nav-version {
+    margin-left: auto;
+    color: var(--lz-side-ink-3);
+    font-family: var(--lz-mono);
+    font-size: 11px;
 }
 
 .lz-nav-section + .lz-nav-section {
@@ -1457,14 +1504,21 @@ body.lz-root {
 
     .lz-nav {
         display: flex;
+        flex: 1;
+        flex-direction: row;
         gap: 4px;
         min-width: 0;
         overflow-x: auto;
         scrollbar-width: none;
     }
 
-    .lz-nav-section {
+    .lz-nav-section,
+    .lz-nav-foot {
         display: contents;
+    }
+
+    .lz-nav-status {
+        display: none;
     }
 
     .lz-nav-label {

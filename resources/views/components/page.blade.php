@@ -8,7 +8,7 @@
 @endphp
 <x-laralyze::layout :title="$title ? \Illuminate\Support\Str::limit($title, 60) : $current?->label">
     <div class="lz-app">
-        <x-laralyze::sidebar :sections="$pages->sections()" :current="$current" :range="$range" :badges="$health->blocking() ? [] : app(\MohammedMojaly\Laralyze\Dashboard\Badges::class)->for($range)" />
+        <x-laralyze::sidebar :sections="$pages->sections()" :current="$current" :range="$range" :badges="$health->blocking() ? [] : app(\MohammedMojaly\Laralyze\Dashboard\Badges::class)->for($range)" :problems="count($health->problems())" />
 
         <main class="lz-main" id="content">
             <header class="lz-topbar">

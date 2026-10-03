@@ -95,7 +95,7 @@ Everything is merged in memory and written once, after the response is sent.
 ],
 ```
 
-Built-in pages sit under Activity, Issues, Services, People and System. Use one of those as `section`, or a new name to add a section after them.
+Built-in pages sit under Issues, Activity, Inside and Audience, with System (Servers) at the foot of the sidebar. Use one of those as `section`, or a new name to add a section before System.
 
 ```blade
 {{-- resources/views/laralyze/checkout.blade.php --}}
@@ -156,6 +156,6 @@ The dashboard follows the visitor's light or dark preference, with a toggle in t
 
 ```blade
 <style>
-    :root { --lz-accent: #0f766e; --lz-side-accent: #5eead4; }
+    :root { --lz-accent: #c2410c; --lz-side-accent: #fb9a6c; }
 </style>
 ```

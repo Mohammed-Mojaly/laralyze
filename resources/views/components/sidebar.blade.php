@@ -1,4 +1,10 @@
-@props(['sections', 'current', 'range', 'badges' => []])
+{{-- Pages by what you're after: what broke, what ran, what happened inside it, who uses it. System pages sit at the foot. --}}
+@props(['sections', 'current', 'range', 'badges' => [], 'problems' => 0])
+@php
+    $footer = $sections['System'] ?? [];
+    unset($sections['System']);
+    $version = \MohammedMojaly\Laralyze\Laralyze::version();
+@endphp
 <aside class="lz-sidebar">
     <a class="lz-brand" href="{{ route('laralyze.dashboard', $range === \MohammedMojaly\Laralyze\Dashboard\Range::Hour ? [] : ['period' => $range->value]) }}">
         {{-- An L made of trace spans. --}}
@@ -19,19 +25,23 @@
                 @endif
 
                 @foreach ($sectionPages as $page)
-                    <a
-                        href="{{ $page->url($range) }}"
-                        @class(['lz-nav-link', 'is-active' => $current?->key === $page->key])
-                        @if ($current?->key === $page->key) aria-current="page" @endif
-                    >
-                        <x-laralyze::icon :name="$page->icon" />
-                        <span>{{ $page->label }}</span>
-                        @if ($badges[$page->key] ?? 0)
-                            <span @class(['lz-nav-count', 'lz-nav-count-warn' => $page->key !== 'exceptions']) title="{{ $page->key === 'exceptions' ? 'Open exceptions' : 'N+1 and duplicate queries' }} in the {{ $range->label() }}">{{ \MohammedMojaly\Laralyze\Support\Format::number($badges[$page->key]) }}</span>
-                        @endif
-                    </a>
+                    @include('laralyze::components.sidebar-link')
                 @endforeach
             </div>
         @endforeach
+
+        <div class="lz-nav-foot">
+            @foreach ($footer as $page)
+                @include('laralyze::components.sidebar-link')
+            @endforeach
+
+            <p @class(['lz-nav-status', 'lz-nav-status-warn' => $problems > 0])>
+                <span class="lz-nav-dot" aria-hidden="true"></span>
+                <span>{{ $problems > 0 ? 'Needs attention' : 'Recording' }}</span>
+                @if ($version)
+                    <span class="lz-nav-version">{{ $version }}</span>
+                @endif
+            </p>
+        </div>
     </nav>
 </aside>

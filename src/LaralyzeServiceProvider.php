@@ -2,7 +2,6 @@
 
 namespace MohammedMojaly\Laralyze;
 
-use Composer\InstalledVersions;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskSkipped;
@@ -207,9 +206,7 @@ class LaralyzeServiceProvider extends ServiceProvider
                 $this->app->make(Laralyze::class)->isEnabled(),
                 console: fn (bool $enabled) => $enabled ? '<fg=green;options=bold>ENABLED</>' : 'OFF',
             ),
-            'Version' => InstalledVersions::isInstalled('mohammed-mojaly/laralyze')
-                ? InstalledVersions::getPrettyVersion('mohammed-mojaly/laralyze')
-                : 'unknown',
+            'Version' => Laralyze::version() ?? 'unknown',
             'Health' => AboutCommand::format(
                 array_column($this->app->make(Dashboard\Health::class)->problems(), 'title'),
                 console: fn (array $problems) => $problems === [] ? '<fg=green;options=bold>OK</>' : '<fg=yellow;options=bold>'.implode(' ', $problems).'</>',

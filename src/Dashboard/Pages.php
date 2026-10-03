@@ -13,7 +13,8 @@ class Pages
 {
     public const HOME = 'dashboard';
 
-    protected const SECTIONS = ['Activity', 'Issues', 'Services', 'People', 'System'];
+    // System sits at the foot of the sidebar.
+    protected const SECTIONS = ['Issues', 'Activity', 'Inside', 'Audience', 'System'];
 
     /**
      * @var array<string, Page>|null
@@ -111,14 +112,14 @@ class Pages
             'scheduled' => $page('Scheduled Tasks', 'Activity', Recorders\ScheduledTasks::class, 'scheduled'),
             'exceptions' => $page('Exceptions', 'Issues', Recorders\Exceptions::class, 'exceptions'),
             'findings' => $page('Findings', 'Issues', Recorders\Traces::class, 'findings'),
-            'queries' => $page('Queries', 'Services', Recorders\Queries::class, 'queries'),
-            'cache' => $page('Cache', 'Services', Recorders\Cache::class, 'cache'),
-            'outgoing-requests' => $page('Outgoing Requests', 'Services', Recorders\OutgoingRequests::class, 'outgoing-requests'),
-            'mail' => $page('Mail', 'Services', Recorders\Mail::class, 'mail'),
-            'notifications' => $page('Notifications', 'Services', Recorders\Notifications::class, 'notifications'),
-            'users' => $page('Users', 'People', Recorders\Users::class, 'users'),
-            'visits' => $page('Visits', 'People', Recorders\Visits::class, 'visits'),
-            'logs' => $page('Logs', 'System', Recorders\Logs::class, 'logs'),
+            'queries' => $page('Queries', 'Inside', Recorders\Queries::class, 'queries'),
+            'cache' => $page('Cache', 'Inside', Recorders\Cache::class, 'cache'),
+            'outgoing-requests' => $page('Outgoing Requests', 'Inside', Recorders\OutgoingRequests::class, 'outgoing-requests'),
+            'mail' => $page('Mail', 'Inside', Recorders\Mail::class, 'mail'),
+            'notifications' => $page('Notifications', 'Inside', Recorders\Notifications::class, 'notifications'),
+            'users' => $page('Users', 'Audience', Recorders\Users::class, 'users'),
+            'visits' => $page('Visits', 'Audience', Recorders\Visits::class, 'visits'),
+            'logs' => $page('Logs', 'Inside', Recorders\Logs::class, 'logs'),
             'servers' => $page('Servers', 'System', Recorders\Servers::class, 'servers'),
         ];
     }

@@ -17,11 +17,11 @@ it('serves every built-in page', function (string $page) {
 it('lists every page in the sidebar, grouped by section', function () {
     $this->get('/laralyze')->assertOk()->assertSeeInOrder([
         'Dashboard',
-        'Activity', 'Requests', 'Jobs', 'Commands', 'Scheduled Tasks',
         'Issues', 'Exceptions', 'Findings',
-        'Services', 'Queries', 'Cache', 'Outgoing Requests', 'Mail', 'Notifications',
-        'People', 'Users', 'Visits',
-        'System', 'Logs', 'Servers',
+        'Activity', 'Requests', 'Jobs', 'Commands', 'Scheduled Tasks',
+        'Inside', 'Queries', 'Cache', 'Outgoing Requests', 'Mail', 'Notifications', 'Logs',
+        'Audience', 'Users', 'Visits',
+        'Servers', 'Recording',
     ]);
 });
 
