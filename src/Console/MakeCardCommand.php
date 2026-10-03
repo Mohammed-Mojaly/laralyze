@@ -61,7 +61,7 @@ class MakeCardCommand extends Command
 
         $this->components->bulletList([
             "Record data: Laralyze::record('{$replacements['{{ type }}']}', \$key, \$value)->count()->max();",
-            "Show it on a page: <livewire:laralyze.{$tag} cols=\"6\" />",
+            "Show it on a page (a published one or your own): <livewire:laralyze.{$tag} cols=\"6\" />",
         ]);
 
         return self::SUCCESS;
