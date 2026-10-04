@@ -24,8 +24,11 @@ function clickhouse(array $responses, array &$history = [], bool $wait = true): 
 }
 
 it('formats parameters as ClickHouse text', function () {
-    expect(Client::param('a\'b\\c'))->toBe('a\'b\\c')
-        ->and(Client::param(['x', "it's", 'back\\slash']))->toBe("['x','it\\'s','back\\\\slash']")
+    // ClickHouse reads parameters TSV-escaped: backslashes and control characters are escaped.
+    expect(Client::param('a\'b\\c'))->toBe('a\'b\\\\c')
+        ->and(Client::param("tab\tline\nret\r"))->toBe('tab\\tline\\nret\\r')
+        ->and(Client::param('\\N'))->toBe('\\\\N')
+        ->and(Client::param(['x', "it's", 'back\\slash', "t\tn\n"]))->toBe("['x','it\\'s','back\\\\slash','t\\tn\\n']")
         ->and(Client::param(true))->toBe('1')
         ->and(Client::param(null))->toBe('\N')
         ->and(Client::param(42))->toBe('42');
@@ -114,4 +117,9 @@ it('connects with a short timeout unless told otherwise', function () {
 
     expect($timeout(Client::fromConfig([])))->toBe(1.0)
         ->and($timeout(Client::fromConfig(['connect_timeout' => 5])))->toBe(5.0);
+});
+
+it('never keeps credentials written into the URL', function () {
+    expect(Client::fromConfig(['url' => 'https://laralyze:s3cret@ch.example.com:8443/'])->url())->toBe('https://ch.example.com:8443')
+        ->and(Client::displayUrl('http://user:pw@10.0.0.5:8123'))->toBe('http://10.0.0.5:8123');
 });

@@ -83,9 +83,11 @@ class Schema
 
     public static function exists(Client $client): bool
     {
+        // Asked on the write path after a failure: as quick as a write.
         $found = $client->select(
             'SELECT count() AS found FROM system.tables WHERE database = {database:String} AND name IN {tables:Array(String)}',
             ['database' => $client->database(), 'tables' => self::TABLES],
+            $client->timeout(),
         );
 
         return (int) ($found[0]['found'] ?? 0) === count(self::TABLES);

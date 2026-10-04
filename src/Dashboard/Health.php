@@ -5,6 +5,7 @@ namespace MohammedMojaly\Laralyze\Dashboard;
 use Illuminate\Contracts\Config\Repository;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\Storage\ClickHouse\Client;
 use MohammedMojaly\Laralyze\Support\Format;
 use Throwable;
 
@@ -49,7 +50,7 @@ final class Health
         $clickhouse = $this->config->get('laralyze.storage.driver', 'database') === 'clickhouse';
         // Where the data lives, never with credentials.
         $where = $clickhouse
-            ? 'ClickHouse at '.rtrim((string) $this->config->get('laralyze.storage.clickhouse.url', 'http://127.0.0.1:8123'), '/')
+            ? 'ClickHouse at '.Client::displayUrl((string) $this->config->get('laralyze.storage.clickhouse.url', 'http://127.0.0.1:8123'))
             : 'its database ['.($this->config->get('laralyze.storage.connection') ?? $this->config->get('database.default')).']';
 
         try {

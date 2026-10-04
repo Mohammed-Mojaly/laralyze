@@ -31,6 +31,7 @@ Everything lives in `config/laralyze.php`, published by `php artisan laralyze:in
         'username' => env('LARALYZE_CLICKHOUSE_USERNAME', 'default'),
         'password' => env('LARALYZE_CLICKHOUSE_PASSWORD', ''),
         'timeout' => (float) env('LARALYZE_CLICKHOUSE_TIMEOUT', 3),
+        'connect_timeout' => (float) env('LARALYZE_CLICKHOUSE_CONNECT_TIMEOUT', 1),
         'wait' => (bool) env('LARALYZE_CLICKHOUSE_WAIT', true),
     ],
 ],
@@ -40,8 +41,9 @@ Everything lives in `config/laralyze.php`, published by `php artisan laralyze:in
 - `database`, `username`, `password`: the credentials go in request headers, never in the URL, so they stay out of access logs.
 - `timeout`: seconds a write may take. When ClickHouse doesn't answer in time, recording pauses for a minute and the dashboard says why.
 - `wait`: wait until ClickHouse has saved each write. On by default, so failed writes are noticed. See [Octane and high traffic](runtime.md#clickhouse-in-production) before turning it off.
-- `connect_timeout` (not in the published file): seconds to connect, 1 by default.
-- `php artisan laralyze:install` creates the tables, and is safe to run again; run it after upgrading Laralyze.
+- `connect_timeout`: seconds to connect, TLS handshake included. 1 by default; raise it only for a distant server.
+- The database must exist: `CREATE DATABASE laralyze`. Then `php artisan laralyze:install` creates the tables, and is safe to run again; run it after upgrading Laralyze.
+- A `config/laralyze.php` published before ClickHouse support has no `driver` or `clickhouse` keys, so the `.env` variables aren't read: copy the `storage` block from the package's config file into yours. `laralyze:install` stops and says so.
 
 ## Options every recorder understands
 

@@ -4,6 +4,7 @@ namespace MohammedMojaly\Laralyze\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Env;
 use MohammedMojaly\Laralyze\Storage\ClickHouse\Schema;
 use MohammedMojaly\Laralyze\Storage\ClickHouseStorage;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -22,6 +23,19 @@ class InstallCommand extends Command
             '--tag' => 'laralyze-config',
             '--force' => $this->option('force'),
         ]));
+
+        // A config published before ClickHouse support has no driver key, and
+        // would quietly keep the data in the database.
+        if (Env::get('LARALYZE_STORAGE') === 'clickhouse' && config('laralyze.storage.driver') === null) {
+            $this->components->error('LARALYZE_STORAGE is clickhouse, but config/laralyze.php was published before ClickHouse support and has no storage.driver key.');
+            $this->components->bulletList([
+                'Copy the <comment>storage</comment> block from <comment>vendor/mohammed-mojaly/laralyze/config/laralyze.php</comment> into it,',
+                'or publish it again with <comment>php artisan laralyze:install --force</comment> (this overwrites your changes),',
+                'then run <comment>php artisan laralyze:install</comment> again.',
+            ]);
+
+            return self::FAILURE;
+        }
 
         if (config('laralyze.storage.driver', 'database') === 'clickhouse') {
             // ClickHouse isn't a Laravel connection: Laralyze creates its tables itself.

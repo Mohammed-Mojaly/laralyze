@@ -95,7 +95,7 @@ See [Ask AI in the configuration docs](docs/configuration.md#ask-ai).
 
 ## ClickHouse
 
-For high traffic, Laralyze can keep its data in [ClickHouse](https://clickhouse.com) instead of your app's database. Set it in `.env`, then run `php artisan laralyze:install` to create the tables:
+For high traffic, Laralyze can keep its data in [ClickHouse](https://clickhouse.com) instead of your app's database. Create a database for it (`CREATE DATABASE laralyze`), set it in `.env`, then run `php artisan laralyze:install` to create the tables:
 
 ```env
 LARALYZE_STORAGE=clickhouse
@@ -109,6 +109,7 @@ LARALYZE_CLICKHOUSE_PASSWORD=secret
 - Writes follow ClickHouse's own advice: asynchronous inserts that the server batches, so thousands of requests don't become thousands of small writes. Metrics merge in the background, and old data goes by whole days, without row-by-row deletes.
 - ClickHouse 24.8 or later, on your own server or ClickHouse Cloud. Run `laralyze:install` again after upgrading Laralyze.
 - Your database stays the default. Switching starts with empty tables: existing data isn't copied.
+- Published `config/laralyze.php` before this release? Copy its new `storage` block from the package first ([how](docs/configuration.md#clickhouse)).
 
 Put ClickHouse next to your app servers. See [ClickHouse in production](docs/runtime.md#clickhouse-in-production) and the [settings](docs/configuration.md#clickhouse).
 

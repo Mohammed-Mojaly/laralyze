@@ -48,5 +48,7 @@ it('leaves max empty for keys that only have counts', function () {
     Laralyze::record('job', 'SendMail')->count();
     Laralyze::flush();
 
-    expect(app(Storage::class)->aggregate('job', ['count', 'max'], 3_600)->first()->max)->toBeNull();
+    $job = app(Storage::class)->aggregate('job', ['count', 'max', 'avg'], 3_600)->first();
+
+    expect($job->max)->toBeNull()->and($job->avg)->toBeNull();
 });

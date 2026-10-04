@@ -2,9 +2,11 @@
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Dashboard\Health;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Metrics\Period;
+use MohammedMojaly\Laralyze\Storage\ClickHouseStorage;
 
 beforeEach(function () {
     app()->detectEnvironment(fn () => 'local');
@@ -17,10 +19,51 @@ function storedRows(string $type): int
 
 function failOneWrite(): void
 {
-    config(['laralyze.storage.connection' => 'nowhere']);
-    Laralyze::record('checkout', 'pro')->count();
-    Laralyze::flush();
-    config(['laralyze.storage.connection' => null]);
+    unreachableStorage(function () {
+        Laralyze::record('checkout', 'pro')->count();
+        Laralyze::flush();
+    });
+}
+
+/**
+ * Run the callback with Laralyze's storage out of reach: a missing database
+ * connection, or a ClickHouse port nothing listens on.
+ */
+function unreachableStorage(callable $callback): void
+{
+    $clickhouse = config('laralyze.storage.clickhouse');
+    $swap = function () {
+        app()->forgetInstance(Storage::class);
+        app()->forgetInstance(ClickHouseStorage::class);
+        app()->forgetInstance(Health::class);
+    };
+
+    usingClickHouse()
+        ? config(['laralyze.storage.clickhouse' => [...$clickhouse, 'url' => 'http://127.0.0.1:9', 'timeout' => 1, 'connect_timeout' => 1]])
+        : config(['laralyze.storage.connection' => 'nowhere']);
+    $swap();
+
+    try {
+        $callback();
+    } finally {
+        config(['laralyze.storage.connection' => null, 'laralyze.storage.clickhouse' => $clickhouse]);
+        $swap();
+    }
+}
+
+/**
+ * Where an unreachable storage is named in messages.
+ */
+function unreachableName(): string
+{
+    return usingClickHouse() ? '127.0.0.1:9' : '[nowhere]';
+}
+
+function renameLaralyzeTable(string $from, string $to): void
+{
+    usingClickHouse()
+        ? app(ClickHouseStorage::class)->client()->statement("RENAME TABLE {$from} TO {$to}")
+        : Schema::rename($from, $to);
 }
 
 function asWebRequest(callable $callback): void
@@ -60,12 +103,12 @@ it('pauses writing for a minute after a failed write, then tries again', functio
 it('tells the dashboard why the last write failed', function () {
     failOneWrite();
 
-    expect(Laralyze::lastFailure()['message'] ?? null)->toContain('[nowhere]');
+    expect(Laralyze::lastFailure()['message'] ?? null)->toContain(unreachableName());
 
     $this->get('/laralyze')
         ->assertOk()
         ->assertSee("Laralyze couldn't save data")
-        ->assertSee('[nowhere]');
+        ->assertSee(unreachableName());
 });
 
 it('does not count writes before migrate as failures', function () {
@@ -74,13 +117,13 @@ it('does not count writes before migrate as failures', function () {
         $reported[] = $e;
     });
 
-    Schema::rename('laralyze_aggregates', 'laralyze_aggregates_away');
+    renameLaralyzeTable('laralyze_aggregates', 'laralyze_aggregates_away');
 
     try {
         Laralyze::record('checkout', 'pro')->count();
         Laralyze::flush();
     } finally {
-        Schema::rename('laralyze_aggregates_away', 'laralyze_aggregates');
+        renameLaralyzeTable('laralyze_aggregates_away', 'laralyze_aggregates');
     }
 
     expect(Laralyze::lastFailure())->toBeNull()
@@ -134,15 +177,12 @@ it('asks to migrate when its tables are missing, instead of failing', function (
         ->assertSee("Laralyze's tables are missing.")
         ->assertSee('php artisan migrate')
         ->assertDontSee('class="lz-grid"', false);
-});
+})->skip(fn () => usingClickHouse(), 'ClickHouseOfflineTest covers ClickHouse.');
 
 it('says so when its database is out of reach', function () {
-    config(['laralyze.storage.connection' => 'nowhere']);
-
-    $this->get('/laralyze')->assertOk()->assertSee("Laralyze can't reach its database [nowhere].");
-
-    // Teardown on a real database goes through this connection again.
-    config(['laralyze.storage.connection' => null]);
+    unreachableStorage(fn () => $this->get('/laralyze')->assertOk()->assertSee(
+        usingClickHouse() ? "Laralyze can't reach ClickHouse at http://127.0.0.1:9." : "Laralyze can't reach its database [nowhere].",
+    ));
 });
 
 it('shows its health in php artisan about', function () {

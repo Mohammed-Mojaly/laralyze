@@ -33,7 +33,7 @@ class Client
      */
     public static function fromConfig(array $config): self
     {
-        $url = rtrim((string) ($config['url'] ?? 'http://127.0.0.1:8123'), '/');
+        $url = self::displayUrl((string) ($config['url'] ?? 'http://127.0.0.1:8123'));
 
         return new self(
             new Guzzle([
@@ -55,6 +55,15 @@ class Client
     }
 
     /**
+     * A URL without the user and password some people write into it: they
+     * belong in username and password, and must never be shown.
+     */
+    public static function displayUrl(string $url): string
+    {
+        return rtrim((string) preg_replace('#^([a-z][a-z0-9+.-]*://)[^/@]*@#i', '$1', trim($url)), '/');
+    }
+
+    /**
      * Where ClickHouse runs, without credentials.
      */
     public function url(): string
@@ -68,12 +77,21 @@ class Client
     }
 
     /**
+     * Seconds a write may take: also the limit for reads on the write path.
+     */
+    public function timeout(): float
+    {
+        return $this->timeout;
+    }
+
+    /**
      * @param  array<string, mixed>  $params
+     * @param  float|null  $timeout  Seconds; dashboard reads may take up to 30 by default.
      * @return list<array<string, mixed>>
      */
-    public function select(string $sql, array $params = []): array
+    public function select(string $sql, array $params = [], ?float $timeout = null): array
     {
-        $response = $this->send($sql.' FORMAT JSON', $params);
+        $response = $this->send($sql.' FORMAT JSON', $params, $timeout);
 
         return json_decode((string) $response->getBody(), true, flags: JSON_THROW_ON_ERROR)['data'] ?? [];
     }
@@ -83,7 +101,7 @@ class Client
      */
     public function statement(string $sql, array $params = []): void
     {
-        $this->send($sql, $params);
+        $this->send($sql, $params, null);
     }
 
     /**
@@ -136,9 +154,19 @@ class Client
         return match (true) {
             $value === null => '\N',
             is_bool($value) => $value ? '1' : '0',
-            is_array($value) => '['.implode(',', array_map(fn ($item) => "'".addcslashes((string) $item, "\\'")."'", $value)).']',
-            default => (string) $value,
+            // Arrays are read as literals: each item quoted, with C-style escapes.
+            is_array($value) => '['.implode(',', array_map(fn ($item) => "'".addcslashes((string) $item, "\\'\t\n\r")."'", $value)).']',
+            default => self::escape((string) $value),
         };
+    }
+
+    /**
+     * ClickHouse reads parameters TSV-escaped: without this, backslashes and
+     * control characters would arrive changed, or fail the query.
+     */
+    protected static function escape(string $text): string
+    {
+        return strtr($text, ['\\' => '\\\\', "\t" => '\\t', "\n" => '\\n', "\r" => '\\r']);
     }
 
     /**
@@ -170,7 +198,7 @@ class Client
     /**
      * @param  array<string, mixed>  $params
      */
-    protected function send(string $sql, array $params): ResponseInterface
+    protected function send(string $sql, array $params, ?float $timeout): ResponseInterface
     {
         $query = ['database' => $this->database];
 
@@ -178,7 +206,7 @@ class Client
             $query['param_'.$name] = self::param($value);
         }
 
-        return $this->settle($this->http->request('POST', '', ['query' => $query, 'body' => $sql, 'timeout' => self::READ_TIMEOUT, 'http_errors' => false]));
+        return $this->settle($this->http->request('POST', '', ['query' => $query, 'body' => $sql, 'timeout' => $timeout ?? self::READ_TIMEOUT, 'http_errors' => false]));
     }
 
     protected function settle(mixed $response): ResponseInterface

@@ -42,6 +42,8 @@ return [
             'password' => env('LARALYZE_CLICKHOUSE_PASSWORD', ''),
             // Seconds a write may take before recording pauses.
             'timeout' => (float) env('LARALYZE_CLICKHOUSE_TIMEOUT', 3),
+            // Seconds to connect, TLS included. Raise it only for a distant server.
+            'connect_timeout' => (float) env('LARALYZE_CLICKHOUSE_CONNECT_TIMEOUT', 1),
             // Wait until ClickHouse has saved each write. Turning it off frees
             // workers sooner (Octane, high traffic) but hides failed writes.
             'wait' => (bool) env('LARALYZE_CLICKHOUSE_WAIT', true),

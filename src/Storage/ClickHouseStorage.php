@@ -150,7 +150,12 @@ class ClickHouseStorage implements Storage
 
     public function lastTrimmedAt(): ?int
     {
-        $value = $this->values('laralyze', ['trimmed_at'])->first()?->value;
+        // Checked now and then after a write: as quick as a write.
+        $value = $this->client->select(
+            'SELECT value FROM laralyze_values FINAL WHERE type = {type:String} AND key_hash = {hash:String} AND deleted = 0',
+            ['type' => 'laralyze', 'hash' => hash('xxh128', 'trimmed_at')],
+            $this->client->timeout(),
+        )[0]['value'] ?? null;
 
         return $value === null ? null : (int) $value;
     }
@@ -403,7 +408,7 @@ class ClickHouseStorage implements Storage
             'count', 'sum' => $present($aggregate, "sumIf(total, aggregate = '{$aggregate}')"),
             'min' => $present('min', "minIf(lowest, aggregate = 'min')"),
             'max' => $present('max', "maxIf(highest, aggregate = 'max')"),
-            'avg' => "if(sumIf(total, aggregate = 'count') = 0, NULL, toFloat64(sumIf(total, aggregate = 'sum')) / toFloat64(sumIf(total, aggregate = 'count')))",
+            'avg' => "if(sumIf(total, aggregate = 'count') = 0 OR countIf(aggregate = 'sum') = 0, NULL, toFloat64(sumIf(total, aggregate = 'sum')) / toFloat64(sumIf(total, aggregate = 'count')))",
             default => throw new InvalidArgumentException("Unknown aggregate [{$aggregate}]."),
         };
     }

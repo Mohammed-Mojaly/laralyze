@@ -84,3 +84,16 @@ it('warns when ClickHouse is older than supported', function () {
 
     $this->artisan('laralyze:install')->assertSuccessful()->expectsOutputToContain('ClickHouse 23.8.2 is older than 24.8');
 });
+
+it('stops when .env asks for ClickHouse but the published config predates it', function () {
+    putenv('LARALYZE_STORAGE=clickhouse');
+    config(['laralyze.storage' => ['connection' => null]]);
+
+    try {
+        $this->artisan('laralyze:install')->assertFailed()->expectsOutputToContain('config/laralyze.php was published before ClickHouse support');
+    } finally {
+        putenv('LARALYZE_STORAGE');
+    }
+
+    expect(publishedMigrations())->toBe([]);
+});
