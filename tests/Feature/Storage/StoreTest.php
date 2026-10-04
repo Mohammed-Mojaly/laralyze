@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Metrics\Period;
 use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
@@ -92,7 +93,7 @@ it('keeps the buffer when the storage connection is inside a transaction', funct
 });
 
 it('never throws when storage fails', function () {
-    app()->instance(DatabaseStorage::class, new class(app('db'), config()) extends DatabaseStorage
+    app()->instance(Storage::class, new class(app('db'), config()) extends DatabaseStorage
     {
         public function store(array $rows, array $values, array $executions = []): void
         {

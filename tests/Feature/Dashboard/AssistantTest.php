@@ -11,9 +11,9 @@ use Livewire\Livewire;
 use MohammedMojaly\Laralyze\Assistant\Assistant;
 use MohammedMojaly\Laralyze\Assistant\Chats;
 use MohammedMojaly\Laralyze\Assistant\Tools\LaralyzeData;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Livewire\AssistantPanel;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 beforeEach(function () {
     // Laralyze's assistant needs laravel/ai 1.0; CI also runs 0.x.
@@ -30,7 +30,7 @@ function shelfIsEmpty(): string
     report(new LogicException('The shelf is empty'));
     Laralyze::flush();
 
-    return (string) app(DatabaseStorage::class)->aggregate('exception', ['count'], 3_600)->first()->key;
+    return (string) app(Storage::class)->aggregate('exception', ['count'], 3_600)->first()->key;
 }
 
 function fixAnswer(): TextResponse
@@ -93,9 +93,9 @@ it('keeps conversations in its own tables, per person, and never records them as
     Livewire::test('laralyze.assistant')->call('ask', 'exception', $key)->call('suggest', 0)->call('reply');
     Laralyze::flush();
 
-    expect(app(DatabaseStorage::class)->values(Chats::TYPE))->toHaveCount(1)
+    expect(app(Storage::class)->values(Chats::TYPE))->toHaveCount(1)
         ->and(Schema::hasTable('agent_conversations') ? app('db')->table('agent_conversations')->count() : 0)->toBe(0)
-        ->and(app(DatabaseStorage::class)->aggregate('ai', ['count'], 3_600))->toBeEmpty();
+        ->and(app(Storage::class)->aggregate('ai', ['count'], 3_600))->toBeEmpty();
 
     // Sara picks up where she left off; someone else starts fresh.
     Livewire::test('laralyze.assistant')->call('ask', 'exception', $key)->assertSet('thinking', false)->assertSee('nothing checks for stock');
@@ -114,7 +114,7 @@ it('starts a new conversation and keeps the old one', function () {
 
     Livewire::test('laralyze.assistant', ['page' => true])
         ->assertSee('What caused this, and how do I fix it?')
-        ->call('show', (string) app(DatabaseStorage::class)->values(Chats::TYPE)->first()->key)
+        ->call('show', (string) app(Storage::class)->values(Chats::TYPE)->first()->key)
         ->assertSee('nothing checks for stock');
 });
 
@@ -171,9 +171,9 @@ it('forgets conversations after a week', function () {
     Livewire::test('laralyze.assistant')->call('ask', 'exception', $key)->call('suggest', 0)->call('reply');
 
     $this->travel(8)->days();
-    app(DatabaseStorage::class)->trim(30);
+    app(Storage::class)->trim(30);
 
-    expect(app(DatabaseStorage::class)->values(Chats::TYPE))->toBeEmpty();
+    expect(app(Storage::class)->values(Chats::TYPE))->toBeEmpty();
 });
 
 it('draws charts in answers from what Laralyze recorded, and rankings from the answer', function () {

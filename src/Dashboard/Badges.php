@@ -3,8 +3,8 @@
 namespace MohammedMojaly\Laralyze\Dashboard;
 
 use Illuminate\Support\Facades\Cache;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Laralyze;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use stdClass;
 
 /**
@@ -12,7 +12,7 @@ use stdClass;
  */
 final class Badges
 {
-    public function __construct(private DatabaseStorage $storage, private Issues $issues, private Laralyze $laralyze) {}
+    public function __construct(private Storage $storage, private Issues $issues, private Laralyze $laralyze) {}
 
     /**
      * @return array<string, int> page key => count

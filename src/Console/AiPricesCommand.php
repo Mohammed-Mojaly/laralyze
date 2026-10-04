@@ -4,8 +4,8 @@ namespace MohammedMojaly\Laralyze\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Laralyze;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use MohammedMojaly\Laralyze\Support\AiPrices;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
@@ -17,7 +17,7 @@ class AiPricesCommand extends Command
 
     protected $description = "Fetch today's AI model prices from OpenRouter for Laralyze's cost estimates";
 
-    public function handle(DatabaseStorage $storage, Laralyze $laralyze): int
+    public function handle(Storage $storage, Laralyze $laralyze): int
     {
         try {
             $lists = array_map(fn (string $url) => Http::timeout(30)->acceptJson()->get($url)->throw()->json(), AiPrices::SOURCES);

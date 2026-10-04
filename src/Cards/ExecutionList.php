@@ -6,8 +6,8 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Locked;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Livewire\Card;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use stdClass;
 
 /**
@@ -98,7 +98,7 @@ class ExecutionList extends Card
 
         $rows = collect($this->remember(
             ['executions', $filters, $order, $this->limit, $page],
-            fn (DatabaseStorage $storage, int $window) => $storage->executions($filters, $window, $order, $this->limit + 1, ($page - 1) * $this->limit)->map(fn (stdClass $row) => (array) $row)->all(),
+            fn (Storage $storage, int $window) => $storage->executions($filters, $window, $order, $this->limit + 1, ($page - 1) * $this->limit)->map(fn (stdClass $row) => (array) $row)->all(),
         ))->map(fn (array $row) => (object) $row);
 
         $executions = $rows->take($this->limit)->values();

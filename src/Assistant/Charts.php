@@ -2,9 +2,9 @@
 
 namespace MohammedMojaly\Laralyze\Assistant;
 
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Dashboard\Range;
 use MohammedMojaly\Laralyze\Recorders\Ai;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use MohammedMojaly\Laralyze\Support\Chart;
 
 /**
@@ -21,7 +21,7 @@ class Charts
 
     public const FORMATS = ['number', 'duration', 'money'];
 
-    public function __construct(protected DatabaseStorage $storage) {}
+    public function __construct(protected Storage $storage) {}
 
     /**
      * What to draw: nothing when the request makes no sense, and one chart

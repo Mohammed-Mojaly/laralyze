@@ -4,16 +4,16 @@ namespace MohammedMojaly\Laralyze\Http\Controllers;
 
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Dashboard\Groups;
 use MohammedMojaly\Laralyze\Dashboard\Pages;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 /**
  * The page of one route, job, command, query, outgoing URL or user.
  */
 class GroupController
 {
-    public function __invoke(Pages $pages, DatabaseStorage $storage, Factory $views, string $page, string $group): View
+    public function __invoke(Pages $pages, Storage $storage, Factory $views, string $page, string $group): View
     {
         $current = $pages->find($page);
 

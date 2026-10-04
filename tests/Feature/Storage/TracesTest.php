@@ -15,9 +15,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Recorders;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use MohammedMojaly\Laralyze\Tests\Fixtures\SendInvoice;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -42,7 +42,7 @@ function traceWith(array $options): void
  */
 function kept(array $filters = []): Collection
 {
-    return app(DatabaseStorage::class)->executions($filters, 3_600, 'recent');
+    return app(Storage::class)->executions($filters, 3_600, 'recent');
 }
 
 it('keeps a request with everything that happened inside it, in order', function () {
@@ -61,7 +61,7 @@ it('keeps a request with everything that happened inside it, in order', function
     $this->get('/books/7')->assertOk();
     Laralyze::flush();
 
-    $execution = app(DatabaseStorage::class)->execution(kept()->sole()->uuid);
+    $execution = app(Storage::class)->execution(kept()->sole()->uuid);
 
     expect($execution->name)->toBe('GET /books/{book}')
         ->and($execution->type)->toBe('request')
@@ -160,7 +160,7 @@ it('lists them on the route, user and exception pages', function () {
     Laralyze::flush();
 
     $uuid = kept()->sole()->uuid;
-    $exception = (string) app(DatabaseStorage::class)->aggregate('exception', ['count'], 3_600)->first()->key;
+    $exception = (string) app(Storage::class)->aggregate('exception', ['count'], 3_600)->first()->key;
     $card = fn (array $props) => Livewire::withoutLazyLoading()->test('laralyze.executions', $props);
 
     $card(['type' => 'request', 'name' => 'GET /books/{book}'])->assertSee($uuid)->call('$set', 'order', 'recent')->assertSee($uuid);
@@ -201,13 +201,13 @@ it('puts a failed job\'s exception in its timeline, though Laravel reports it af
     report($failure);
     Laralyze::flush();
 
-    $execution = app(DatabaseStorage::class)->execution(kept()->sole()->uuid);
+    $execution = app(Storage::class)->execution(kept()->sole()->uuid);
 
     expect($execution->status)->toBe('failed')
         ->and(array_column($execution->events, 0))->toBe(['query', 'exception'])
         ->and($execution->counts['exception'])->toBe(1);
 
-    $source = json_decode((string) app(DatabaseStorage::class)->values('exception_details')->first()->value, true)['source'];
+    $source = json_decode((string) app(Storage::class)->values('exception_details')->first()->value, true)['source'];
 
     expect($source)->toBe(['type' => 'job', 'name' => 'App\Jobs\RestockShelves']);
 });
@@ -225,7 +225,7 @@ it('splits a request into stages and adds up time per kind', function () {
     $this->get('/books');
     Laralyze::flush();
 
-    $execution = app(DatabaseStorage::class)->execution(kept()->sole()->uuid);
+    $execution = app(Storage::class)->execution(kept()->sole()->uuid);
 
     expect(array_column($execution->meta['stages'], 0))->toBe(['middleware', 'handle', 'terminating'])
         ->and($execution->meta['ms']['query'])->toBeGreaterThan(0)
@@ -275,11 +275,11 @@ it('links the attempts of a job, with its connection, queue and the worker reser
     event(new JobProcessed('database', $second));
     Laralyze::flush();
 
-    $attempts = app(DatabaseStorage::class)->attempts('5b6a2d1e-0000-4000-8000-000000000002');
+    $attempts = app(Storage::class)->attempts('5b6a2d1e-0000-4000-8000-000000000002');
 
     expect($attempts->pluck('status')->all())->toBe(['released', 'processed'])
         ->and($attempts[0]->meta)->toMatchArray(['connection' => 'database', 'queue' => 'restock', 'attempt' => 1, 'error' => 'Warehouse API timed out'])
-        ->and(app(DatabaseStorage::class)->execution($attempts[0]->uuid)->events[0][3])->toBe('select 1 as reserve');
+        ->and(app(Storage::class)->execution($attempts[0]->uuid)->events[0][3])->toBe('select 1 as reserve');
 
     $this->get('/laralyze/executions/'.$attempts[1]->uuid)->assertSee('Attempt 2 of 2')->assertSee('restock');
     $this->get('/laralyze/executions/'.$attempts[0]->uuid)->assertSee('Stack trace and code')->assertSee('Warehouse API timed out');

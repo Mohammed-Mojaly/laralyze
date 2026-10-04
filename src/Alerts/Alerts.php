@@ -6,9 +6,9 @@ use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Dashboard\Issues;
 use MohammedMojaly\Laralyze\Laralyze;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use stdClass;
 
 /**
@@ -18,7 +18,7 @@ use stdClass;
 class Alerts
 {
     public function __construct(
-        protected DatabaseStorage $storage,
+        protected Storage $storage,
         protected Issues $issues,
         protected Laralyze $laralyze,
         protected Repository $config,

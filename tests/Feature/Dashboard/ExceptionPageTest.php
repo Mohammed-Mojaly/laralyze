@@ -8,8 +8,8 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Route;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 beforeEach(function () {
     app()->detectEnvironment(fn () => 'local');
@@ -25,12 +25,12 @@ function emptyShelf(): never
  */
 function latestDetails(): array
 {
-    return json_decode((string) app(DatabaseStorage::class)->values('exception_details')->first()?->value, true);
+    return json_decode((string) app(Storage::class)->values('exception_details')->first()?->value, true);
 }
 
 function onlyExceptionKey(): string
 {
-    return (string) app(DatabaseStorage::class)->aggregate('exception', ['count'], 3_600)->first()->key;
+    return (string) app(Storage::class)->aggregate('exception', ['count'], 3_600)->first()->key;
 }
 
 /**
@@ -125,7 +125,7 @@ it('knows the job an exception happened in', function () {
     report(new LogicException('After the job'));
     Laralyze::flush();
 
-    $sources = app(DatabaseStorage::class)->values('exception_details')
+    $sources = app(Storage::class)->values('exception_details')
         ->mapWithKeys(fn ($row) => [json_decode($row->key, true)[0] => json_decode($row->value, true)['source']]);
 
     expect($sources[RuntimeException::class])->toBe(['type' => 'job', 'name' => 'App\Jobs\RestockShelves'])

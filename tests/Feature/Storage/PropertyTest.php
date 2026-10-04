@@ -1,8 +1,8 @@
 <?php
 
 use Illuminate\Support\Carbon;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 it('reads back exactly what a brute-force count of the same events gives', function () {
     $now = Carbon::parse('2026-09-30 12:34:56', 'UTC')->getTimestamp();
@@ -26,7 +26,7 @@ it('reads back exactly what a brute-force count of the same events gives', funct
 
     Laralyze::flush();
 
-    $storage = app(DatabaseStorage::class);
+    $storage = app(Storage::class);
 
     foreach ([900, 3_600, 86_400, 7 * 86_400, 30 * 86_400] as $window) {
         // Windows start at the beginning of the bucket they fall in.

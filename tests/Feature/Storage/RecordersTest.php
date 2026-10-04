@@ -31,9 +31,9 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Recorders;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use MohammedMojaly\Laralyze\Tests\Fixtures\InvoicePaid;
 use MohammedMojaly\Laralyze\Tests\Fixtures\SendInvoice;
 use MohammedMojaly\Laralyze\Tests\Fixtures\WelcomeMail;
@@ -49,7 +49,7 @@ beforeEach(function () {
  */
 function rowsOf(string $type, array $aggregates = ['count']): array
 {
-    return app(DatabaseStorage::class)->aggregate($type, $aggregates, 3_600)->keyBy('key')->all();
+    return app(Storage::class)->aggregate($type, $aggregates, 3_600)->keyBy('key')->all();
 }
 
 function countOf(string $type, string $key): float
@@ -98,7 +98,7 @@ it('counts every query of a long execution exactly', function () {
     Laralyze::flush();
     Schema::drop('long_runs');
 
-    $row = collect(app(DatabaseStorage::class)->aggregate('query', ['count', 'sum', 'max'], 3_600))
+    $row = collect(app(Storage::class)->aggregate('query', ['count', 'sum', 'max'], 3_600))
         ->first(fn ($row) => str_contains($row->key, 'long_runs') && str_contains($row->key, 'where'));
 
     expect((float) $row->count)->toBe(2_503.0)
@@ -151,8 +151,8 @@ it('counts exceptions by class and line, handled and unhandled', function () {
 
     expect($keys->pluck(0)->all())->toContain(RuntimeException::class, LogicException::class)
         ->and($keys->first(fn ($key) => $key[0] === RuntimeException::class)[1])->toContain('RecordersTest.php:')
-        ->and((float) app(DatabaseStorage::class)->total('exception_handled', ['count'], 3_600)->count)->toBe(1.0)
-        ->and((float) app(DatabaseStorage::class)->total('exception_unhandled', ['count'], 3_600)->count)->toBe(1.0);
+        ->and((float) app(Storage::class)->total('exception_handled', ['count'], 3_600)->count)->toBe(1.0)
+        ->and((float) app(Storage::class)->total('exception_unhandled', ['count'], 3_600)->count)->toBe(1.0);
 
     showCard('exceptions')->assertSee('RuntimeException')->assertSee('Handled boom')->assertSee('Unhandled boom');
 });
@@ -190,7 +190,7 @@ it('records scheduled task runs, failures and skips with the next run', function
     event(new ScheduledTaskSkipped($task));
     Laralyze::flush();
 
-    $latest = json_decode((string) app(DatabaseStorage::class)->values('scheduled_task', ['inspire'])->first()?->value, true);
+    $latest = json_decode((string) app(Storage::class)->values('scheduled_task', ['inspire'])->first()?->value, true);
 
     expect(countOf('scheduled', 'inspire'))->toBe(2.0)
         ->and(countOf('scheduled_failed', 'inspire'))->toBe(1.0)
@@ -319,7 +319,7 @@ it('follows each user\'s statuses, exceptions and timings, and when they were la
         ->and(countOf('user_exception', '7'))->toBe(1.0)
         ->and((float) $timings->count)->toBe(3.0)
         ->and((float) $timings->max)->toBeGreaterThanOrEqual((float) $timings->avg)
-        ->and(app(DatabaseStorage::class)->values('user', ['7'])->first()->timestamp)->toBeGreaterThan(time() - 60);
+        ->and(app(Storage::class)->values('user', ['7'])->first()->timestamp)->toBeGreaterThan(time() - 60);
 
     showCard('users')->assertSeeInOrder(['Sara', 'sara@example.com', '2', '1', '0', '3'])->assertSee('ago');
 });
@@ -338,7 +338,7 @@ it('reports this server\'s memory and disks', function () {
     app(Recorders\Servers::class, ['config' => ['server_name' => 'web-1', 'directories' => [sys_get_temp_dir()]]])->snapshot();
     Laralyze::flush();
 
-    $server = json_decode((string) app(DatabaseStorage::class)->values('server', ['web-1'])->first()?->value, true);
+    $server = json_decode((string) app(Storage::class)->values('server', ['web-1'])->first()?->value, true);
 
     expect($server['memory_total'])->toBeGreaterThan(0)
         ->and($server['disks'][0]['total'])->toBeGreaterThan(0);
@@ -402,7 +402,7 @@ it('keeps query values out of stored exception messages', function () {
 
     Laralyze::flush();
 
-    $message = (string) app(DatabaseStorage::class)->values('exception_message')->first()?->value;
+    $message = (string) app(Storage::class)->values('exception_message')->first()?->value;
 
     expect($message)->not->toContain('sara@example.com')
         ->toStartWith('SQLSTATE[23')

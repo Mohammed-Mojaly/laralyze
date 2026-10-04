@@ -15,8 +15,8 @@ use MohammedMojaly\Laralyze\Assistant\Chats;
 use MohammedMojaly\Laralyze\Assistant\Files;
 use MohammedMojaly\Laralyze\Assistant\Providers;
 use MohammedMojaly\Laralyze\Assistant\Subject;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Laralyze;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use MohammedMojaly\Laralyze\Support\AiPrices;
 use Throwable;
 
@@ -106,7 +106,7 @@ class AssistantPanel extends Component
     #[On('laralyze-ask')]
     public function ask(string $kind = 'general', string $key = ''): void
     {
-        $subject = Subject::find($kind, $key, app(DatabaseStorage::class)) ?? Subject::general();
+        $subject = Subject::find($kind, $key, app(Storage::class)) ?? Subject::general();
 
         [$this->kind, $this->key, $this->open, $this->error, $this->thinking] = [$subject->kind, $subject->key, true, null, false];
         // Nothing is asked until you pick a question or write one.
@@ -175,7 +175,7 @@ class AssistantPanel extends Component
         $subject = $this->subject();
         $model = app(Providers::class)->model($provider);
         $history = array_map(fn (array $message) => ['role' => (string) $message['role'], 'content' => (string) $message['content']], $messages);
-        $assistant = new Assistant($subject->context(app(DatabaseStorage::class), app(Files::class)), $history);
+        $assistant = new Assistant($subject->context(app(Storage::class), app(Files::class)), $history);
 
         try {
             // Its own calls are never counted as the app's.
@@ -399,7 +399,7 @@ class AssistantPanel extends Component
 
     protected function subject(): Subject
     {
-        return Subject::find($this->kind, $this->key, app(DatabaseStorage::class)) ?? Subject::general();
+        return Subject::find($this->kind, $this->key, app(Storage::class)) ?? Subject::general();
     }
 
     protected function provider(): ?string

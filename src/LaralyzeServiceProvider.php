@@ -71,6 +71,8 @@ class LaralyzeServiceProvider extends ServiceProvider
 
         $this->app->singleton(Laralyze::class);
         $this->app->singleton(Storage\DatabaseStorage::class);
+        // Old published configs have no driver key: they keep the database.
+        $this->app->singleton(Contracts\Storage::class, fn ($app) => $app->make(Storage\DatabaseStorage::class));
         $this->app->singleton(Dashboard\Assets::class);
         $this->app->singleton(Support\AiPrices::class);
         $this->app->scoped(Dashboard\Pages::class);

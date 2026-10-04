@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Recorders;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 class FindingsAuthor extends Model
 {
@@ -70,7 +70,7 @@ afterEach(function () {
  */
 function findings(string $type): array
 {
-    return app(DatabaseStorage::class)->aggregate($type, ['count', 'max'], 3_600)->keyBy('key')->all();
+    return app(Storage::class)->aggregate($type, ['count', 'max'], 3_600)->keyBy('key')->all();
 }
 
 it('finds an N+1, where it happens, and how to fix it', function () {
@@ -101,7 +101,7 @@ it('finds an N+1, where it happens, and how to fix it', function () {
         ->assertSee("->with('author')")
         ->assertSee('See an example');
 
-    $uuid = (string) app(DatabaseStorage::class)->values('finding_example')->first()->value;
+    $uuid = (string) app(Storage::class)->values('finding_example')->first()->value;
 
     $this->get('/laralyze/executions/'.$uuid)->assertSee('×6');
 });

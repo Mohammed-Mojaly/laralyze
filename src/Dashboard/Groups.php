@@ -2,7 +2,7 @@
 
 namespace MohammedMojaly\Laralyze\Dashboard;
 
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 
 /**
  * Pages whose rows open a page of their own: one route, job, command,
@@ -33,7 +33,7 @@ final class Groups
     /**
      * What the page is called: the key itself, a user's name or an exception's message.
      */
-    public static function title(string $page, string $key, DatabaseStorage $storage): string
+    public static function title(string $page, string $key, Storage $storage): string
     {
         return match ($page) {
             'users' => (string) (json_decode((string) $storage->values('user', [$key])->first()?->value, true)['name'] ?? $key),

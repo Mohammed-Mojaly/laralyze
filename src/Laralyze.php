@@ -9,10 +9,10 @@ use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Lottery;
 use Illuminate\Support\Str;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Metrics\Buffer;
 use MohammedMojaly\Laralyze\Metrics\PendingMetric;
 use MohammedMojaly\Laralyze\Metrics\Period;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use MohammedMojaly\Laralyze\Support\Outage;
 use Throwable;
 
@@ -274,7 +274,7 @@ class Laralyze
 
         try {
             $this->ignore(function () {
-                $storage = $this->app->make(DatabaseStorage::class);
+                $storage = $this->app->make(Storage::class);
 
                 // Never write into a transaction the app still has open.
                 if ($storage->inTransaction()) {
@@ -319,7 +319,7 @@ class Laralyze
     protected function notInstalled(): bool
     {
         try {
-            return $this->ignore(fn () => ! $this->app->make(DatabaseStorage::class)->installed());
+            return $this->ignore(fn () => ! $this->app->make(Storage::class)->installed());
         } catch (Throwable) {
             return false;
         }
@@ -394,7 +394,7 @@ class Laralyze
     public function trim(): void
     {
         $this->rescue(fn () => $this->ignore(
-            fn () => $this->app->make(DatabaseStorage::class)->trim((int) $this->config->get('laralyze.retention', 30), $this->traceDays()),
+            fn () => $this->app->make(Storage::class)->trim((int) $this->config->get('laralyze.retention', 30), $this->traceDays()),
         ));
     }
 
@@ -402,7 +402,7 @@ class Laralyze
      * Apps without a running scheduler still need old data removed, so now
      * and then a flush checks whether the hourly cleanup has gone missing.
      */
-    protected function trimWhenOverdue(DatabaseStorage $storage): void
+    protected function trimWhenOverdue(Storage $storage): void
     {
         [$chances, $outOf] = $this->config->get('laralyze.trim_lottery', [1, 1_000]);
 

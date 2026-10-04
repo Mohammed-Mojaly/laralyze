@@ -1,13 +1,13 @@
 <?php
 
 use Illuminate\Support\Carbon;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 beforeEach(function () {
     $this->now = Carbon::parse('2026-09-30 12:00:00', 'UTC');
     $this->travelTo($this->now);
-    $this->storage = app(DatabaseStorage::class);
+    $this->storage = app(Storage::class);
 });
 
 function requestAt(int $timestamp, string $route, float $duration): void

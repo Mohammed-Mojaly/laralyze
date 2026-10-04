@@ -10,10 +10,10 @@ use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Responses\TextResponse;
 use Livewire\Livewire;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Recorders;
 use MohammedMojaly\Laralyze\Recorders\Ai;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use MohammedMojaly\Laralyze\Support\AiPrices;
 use MohammedMojaly\Laralyze\Tests\Fixtures\BookWriter;
 use MohammedMojaly\Laralyze\Tests\Fixtures\SearchBooks;
@@ -28,7 +28,7 @@ beforeEach(function () {
  */
 function aiRows(string $type, array $aggregates = ['count']): array
 {
-    return app(DatabaseStorage::class)->aggregate($type, $aggregates, 3_600)->keyBy('key')->all();
+    return app(Storage::class)->aggregate($type, $aggregates, 3_600)->keyBy('key')->all();
 }
 
 function answer(int $in, int $out): TextResponse
@@ -85,7 +85,7 @@ it('never stores prompts or responses', function () {
     (new BookWriter)->prompt('My secret manuscript', provider: 'openai', model: 'gpt-4o-mini');
     Laralyze::flush();
 
-    $storage = app(DatabaseStorage::class);
+    $storage = app(Storage::class);
     $stored = json_encode([$storage->connection()->table('laralyze_aggregates')->get(), $storage->connection()->table('laralyze_values')->get()]);
 
     expect($stored)->not->toContain('secret manuscript')->not->toContain('desert planet');
@@ -137,7 +137,7 @@ it('puts AI calls and the tools they used in the timeline, where they started', 
     $this->get('/profile')->assertOk();
     Laralyze::flush();
 
-    $storage = app(DatabaseStorage::class);
+    $storage = app(Storage::class);
     $execution = $storage->execution($storage->executions([], 3_600)->sole()->uuid);
     $events = array_values(array_filter($execution->events, fn (array $event) => in_array($event[0], ['ai', 'tool'], true)));
 

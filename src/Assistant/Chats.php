@@ -3,7 +3,7 @@
 namespace MohammedMojaly\Laralyze\Assistant;
 
 use Illuminate\Support\Str;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 
 /**
  * Conversations with the assistant, kept in Laralyze's own tables for a
@@ -21,7 +21,7 @@ class Chats
 
     public const DAYS = 7;
 
-    public function __construct(protected DatabaseStorage $storage) {}
+    public function __construct(protected Storage $storage) {}
 
     /**
      * A conversation, when it exists and is this person's.

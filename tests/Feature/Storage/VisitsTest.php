@@ -2,8 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Mobile/15E148 Safari/604.1';
@@ -25,7 +25,7 @@ function visitPage(string $path, string $agent = CHROME, string $ip = '10.0.0.1'
 
 function visitCount(string $type, ?string $key = null): float
 {
-    $rows = app(DatabaseStorage::class)->aggregate($type, ['count'], 3_600)->keyBy('key');
+    $rows = app(Storage::class)->aggregate($type, ['count'], 3_600)->keyBy('key');
 
     return (float) ($key === null ? $rows->sum('count') : ($rows[$key]->count ?? 0));
 }
@@ -91,7 +91,7 @@ it('forgets when visitors were last seen after a day', function () {
     visitPage('/pricing');
 
     $this->travel(25)->hours();
-    app(DatabaseStorage::class)->trim(30);
+    app(Storage::class)->trim(30);
 
     expect(DB::table('laralyze_values')->where('type', 'visitor_seen')->count())->toBe(0);
 });

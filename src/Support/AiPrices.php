@@ -3,9 +3,9 @@
 namespace MohammedMojaly\Laralyze\Support;
 
 use Illuminate\Contracts\Config\Repository;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Laralyze;
 use MohammedMojaly\Laralyze\Recorders\Ai;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 /**
  * What AI models cost, in USD per million tokens, for estimating what
@@ -54,7 +54,7 @@ class AiPrices
 
     protected int $loadedAt = 0;
 
-    public function __construct(protected Repository $config, protected DatabaseStorage $storage, protected Laralyze $laralyze) {}
+    public function __construct(protected Repository $config, protected Storage $storage, protected Laralyze $laralyze) {}
 
     /**
      * USD per million tokens, or null when the model is unknown.

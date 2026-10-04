@@ -4,17 +4,17 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Http\Middleware\Authorize;
 use MohammedMojaly\Laralyze\Recorders\Requests;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 /**
  * @return array<string, stdClass>
  */
 function stored(string $type, array $aggregates = ['count']): array
 {
-    return app(DatabaseStorage::class)->aggregate($type, $aggregates, 3_600)->keyBy('key')->all();
+    return app(Storage::class)->aggregate($type, $aggregates, 3_600)->keyBy('key')->all();
 }
 
 /**

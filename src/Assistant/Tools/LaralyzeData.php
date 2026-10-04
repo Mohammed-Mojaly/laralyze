@@ -5,10 +5,10 @@ namespace MohammedMojaly\Laralyze\Assistant\Tools;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Dashboard\Issues;
 use MohammedMojaly\Laralyze\Dashboard\Range;
 use MohammedMojaly\Laralyze\Recorders\Ai;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use MohammedMojaly\Laralyze\Support\Format;
 
 /**
@@ -18,7 +18,7 @@ class LaralyzeData implements Tool
 {
     public const TOPICS = ['overview', 'routes', 'exceptions', 'findings', 'queries', 'jobs', 'outgoing_requests', 'cache', 'ai'];
 
-    public function __construct(protected DatabaseStorage $storage, protected Issues $issues) {}
+    public function __construct(protected Storage $storage, protected Issues $issues) {}
 
     public function description(): string
     {

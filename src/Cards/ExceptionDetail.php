@@ -5,9 +5,9 @@ namespace MohammedMojaly\Laralyze\Cards;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Locked;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Dashboard\Issues;
 use MohammedMojaly\Laralyze\Livewire\Card;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use stdClass;
 
 /**
@@ -48,7 +48,7 @@ class ExceptionDetail extends Card
         [$class, $location] = array_pad($this->parts($this->name), 2, '');
         $details = json_decode((string) ($this->values('exception_details', [$this->name])->first()->value ?? ''), true);
         $details = is_array($details) ? $details : [];
-        $storage = app(DatabaseStorage::class);
+        $storage = app(Storage::class);
         $kept = (int) config('laralyze.retention', 30) * 86_400;
 
         $exception = (object) [

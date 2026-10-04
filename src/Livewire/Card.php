@@ -9,10 +9,10 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Dashboard\Range;
 use MohammedMojaly\Laralyze\Laralyze;
 use MohammedMojaly\Laralyze\Recorders\Recorder;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use stdClass;
 
 /**
@@ -90,7 +90,7 @@ abstract class Card extends Component
     {
         return $this->objects($this->remember(
             ['aggregate', $type, $aggregates, $orderBy, $limit],
-            fn (DatabaseStorage $storage, int $window) => $this->arrays($storage->aggregate($type, $aggregates, $window, $orderBy, $limit)),
+            fn (Storage $storage, int $window) => $this->arrays($storage->aggregate($type, $aggregates, $window, $orderBy, $limit)),
         ));
     }
 
@@ -103,7 +103,7 @@ abstract class Card extends Component
     {
         return (object) $this->remember(
             ['total', $type, $aggregates, $key],
-            fn (DatabaseStorage $storage, int $window) => (array) $storage->total($type, $aggregates, $window, $key),
+            fn (Storage $storage, int $window) => (array) $storage->total($type, $aggregates, $window, $key),
         );
     }
 
@@ -116,7 +116,7 @@ abstract class Card extends Component
     {
         return collect($this->remember(
             ['graph', $type, $aggregate, $key],
-            fn (DatabaseStorage $storage, int $window) => $storage->graph($type, $aggregate, $window, $key)->all(),
+            fn (Storage $storage, int $window) => $storage->graph($type, $aggregate, $window, $key)->all(),
         ));
     }
 
@@ -129,7 +129,7 @@ abstract class Card extends Component
     {
         return collect($this->remember(
             ['graphKeys', $type],
-            fn (DatabaseStorage $storage, int $window) => $storage->graphKeys($type, $window)->all(),
+            fn (Storage $storage, int $window) => $storage->graphKeys($type, $window)->all(),
         ));
     }
 
@@ -140,7 +140,7 @@ abstract class Card extends Component
     {
         return $this->remember(
             ['countKeys', $type],
-            fn (DatabaseStorage $storage, int $window) => $storage->countKeys($type, $window),
+            fn (Storage $storage, int $window) => $storage->countKeys($type, $window),
         );
     }
 
@@ -154,7 +154,7 @@ abstract class Card extends Component
     {
         return $this->objects($this->remember(
             ['values', $type, $keys],
-            fn (DatabaseStorage $storage) => $this->arrays($storage->values($type, $keys)),
+            fn (Storage $storage) => $this->arrays($storage->values($type, $keys)),
         ));
     }
 
@@ -165,7 +165,7 @@ abstract class Card extends Component
     {
         return $this->remember(
             ['countValues', $type, $seconds],
-            fn (DatabaseStorage $storage) => $storage->countValues($type, $seconds),
+            fn (Storage $storage) => $storage->countValues($type, $seconds),
         );
     }
 
@@ -246,7 +246,7 @@ abstract class Card extends Component
      * @template T of array<mixed>|scalar|null
      *
      * @param  array<int, mixed>  $key
-     * @param  Closure(DatabaseStorage, int): T  $query
+     * @param  Closure(Storage, int): T  $query
      * @return T
      */
     protected function remember(array $key, Closure $query): mixed
@@ -257,7 +257,7 @@ abstract class Card extends Component
         [$value, $milliseconds] = app(Laralyze::class)->ignore(fn () => Cache::remember(
             $cacheKey,
             $this->cacheFor,
-            fn () => Benchmark::value(fn () => $query(app(DatabaseStorage::class), $range->seconds())),
+            fn () => Benchmark::value(fn () => $query(app(Storage::class), $range->seconds())),
         ));
 
         $this->queryTime += $milliseconds;

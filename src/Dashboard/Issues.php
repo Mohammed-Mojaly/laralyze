@@ -2,7 +2,7 @@
 
 namespace MohammedMojaly\Laralyze\Dashboard;
 
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 
 /**
  * Exceptions as issues: open until someone resolves or ignores them. A
@@ -18,7 +18,7 @@ final class Issues
 
     public const IGNORED = 'ignored';
 
-    public function __construct(private DatabaseStorage $storage) {}
+    public function __construct(private Storage $storage) {}
 
     /**
      * The status of each exception, given when each was last seen.

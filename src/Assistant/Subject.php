@@ -4,7 +4,7 @@ namespace MohammedMojaly\Laralyze\Assistant;
 
 use MohammedMojaly\Laralyze\Cards\ExceptionDetail;
 use MohammedMojaly\Laralyze\Cards\Findings;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Support\Format;
 use stdClass;
 
@@ -29,7 +29,7 @@ final class Subject
     /**
      * The subject for a kind and key, or null when Laralyze has nothing on it.
      */
-    public static function find(string $kind, string $key, DatabaseStorage $storage): ?self
+    public static function find(string $kind, string $key, Storage $storage): ?self
     {
         if ($kind === 'general' || ! in_array($kind, self::KINDS, true)) {
             return self::general();
@@ -54,7 +54,7 @@ final class Subject
     /**
      * What the assistant is told about it, as Markdown.
      */
-    public function context(DatabaseStorage $storage, Files $files): string
+    public function context(Storage $storage, Files $files): string
     {
         $context = match ($this->kind) {
             'exception' => $this->exception($storage, $files),
@@ -76,7 +76,7 @@ final class Subject
         return ['kind' => $this->kind, 'key' => $this->key, 'label' => $this->label];
     }
 
-    protected function exception(DatabaseStorage $storage, Files $files): string
+    protected function exception(Storage $storage, Files $files): string
     {
         [$class, $location] = array_pad(array_map('strval', (array) json_decode($this->key, true)), 2, '');
         $details = json_decode((string) ($storage->values('exception_details', [$this->key])->first()->value ?? ''), true);
@@ -109,7 +109,7 @@ final class Subject
         return "Occurrences are for the last 7 days.\n\n".$markdown;
     }
 
-    protected function finding(DatabaseStorage $storage, Files $files): string
+    protected function finding(Storage $storage, Files $files): string
     {
         [$sql, $location] = array_pad(array_map('strval', (array) json_decode($this->key, true)), 2, '');
         $totals = $storage->total($this->kind, ['count', 'max'], self::WEEK, $this->key);
@@ -140,7 +140,7 @@ final class Subject
         return implode("\n", $lines);
     }
 
-    protected function query(DatabaseStorage $storage, Files $files): string
+    protected function query(Storage $storage, Files $files): string
     {
         $totals = $storage->total('query', ['count', 'avg', 'p95', 'max'], self::WEEK, $this->key);
 
@@ -169,7 +169,7 @@ final class Subject
         return implode("\n", $lines);
     }
 
-    protected function route(DatabaseStorage $storage): string
+    protected function route(Storage $storage): string
     {
         $totals = $storage->total('request', ['count', 'avg', 'p95', 'max'], self::WEEK, $this->key);
 

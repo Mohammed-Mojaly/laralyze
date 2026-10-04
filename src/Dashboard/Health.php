@@ -3,8 +3,8 @@
 namespace MohammedMojaly\Laralyze\Dashboard;
 
 use Illuminate\Contracts\Config\Repository;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Laralyze;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use MohammedMojaly\Laralyze\Support\Format;
 use Throwable;
 
@@ -21,7 +21,7 @@ final class Health
 
     private bool $blocking = false;
 
-    public function __construct(private DatabaseStorage $storage, private Laralyze $laralyze, private Repository $config) {}
+    public function __construct(private Storage $storage, private Laralyze $laralyze, private Repository $config) {}
 
     /**
      * @return list<array{level: 'bad'|'warn', title: string, hint: string}>
