@@ -24,12 +24,28 @@ return [
     |
     | Laralyze keeps its data in its own tables. Point it at a separate database
     | connection to keep monitoring data away from your application's data.
-    | Leave empty to use the default connection.
+    | Leave empty to use the default connection. Set LARALYZE_STORAGE=clickhouse
+    | to keep it in ClickHouse instead, for high traffic.
     |
     */
 
     'storage' => [
+        // database (the connection below) or clickhouse.
+        'driver' => env('LARALYZE_STORAGE', 'database'),
+
         'connection' => env('LARALYZE_DB_CONNECTION'),
+
+        'clickhouse' => [
+            'url' => env('LARALYZE_CLICKHOUSE_URL', 'http://127.0.0.1:8123'),
+            'database' => env('LARALYZE_CLICKHOUSE_DATABASE', 'default'),
+            'username' => env('LARALYZE_CLICKHOUSE_USERNAME', 'default'),
+            'password' => env('LARALYZE_CLICKHOUSE_PASSWORD', ''),
+            // Seconds a write may take before recording pauses.
+            'timeout' => (float) env('LARALYZE_CLICKHOUSE_TIMEOUT', 3),
+            // Wait until ClickHouse has saved each write. Turning it off frees
+            // workers sooner (Octane, high traffic) but hides failed writes.
+            'wait' => (bool) env('LARALYZE_CLICKHOUSE_WAIT', true),
+        ],
     ],
 
     /*
