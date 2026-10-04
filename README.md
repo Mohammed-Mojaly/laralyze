@@ -8,7 +8,7 @@
 
 # Laralyze
 
-Self-hosted production monitoring for Laravel. A dashboard inside your app shows requests, jobs, queries, exceptions, cache, outgoing HTTP, mail, notifications, logs, users, servers and visits; timelines of single requests and jobs; N+1 and duplicate queries; and alerts by mail, Slack or Discord. Near-zero overhead, and your data stays in your database.
+Self-hosted production monitoring for Laravel. A dashboard inside your app shows requests, jobs, queries, exceptions, cache, outgoing HTTP, AI calls, mail, notifications, logs, users, servers and visits; timelines of single requests and jobs; N+1 and duplicate queries; and alerts by mail, Slack or Discord. Near-zero overhead, and your data stays in your database.
 
 **Why Laralyze:** Pulse shows totals, Nightwatch shows details but runs as a hosted service with event quotas. Laralyze gives you both in your own app and database, with no quotas: timelines of single requests, jobs and commands, N+1 findings with the fix, issue tracking and alerts, on MySQL, MariaDB, PostgreSQL, SQLite or SQL Server.
 
@@ -44,6 +44,7 @@ Then open `/laralyze`. Restart your queue workers (`php artisan queue:restart`, 
 | Queries | Time per query, reads vs writes, slow queries with the line that ran them |
 | Cache | Hit ratio and hits, misses, writes and deletes per key group |
 | Outgoing Requests | Calls to other services, errors and connections that never got a response |
+| AI | Calls made with `laravel/ai`: tokens, estimated cost, duration and failures per agent, model and user |
 | Mail, Notifications | Sent and failed, per mailable, notification and channel |
 | Users, Visits | Signed-in users and what they hit; visitors, pages, devices, browsers and bots |
 | Logs, Servers | Log levels; CPU, memory and disk |
@@ -56,7 +57,7 @@ Then open `/laralyze`. Restart your queue workers (`php artisan queue:restart`, 
 
 **Timelines**
 
-- Every query, cache call, outgoing request, mail, notification, queued job, log and exception, in order and split into stages (bootstrap, middleware, handle, terminating).
+- Every query, cache call, outgoing request, AI call and the tools it used, mail, notification, queued job, log and exception, in order and split into stages (bootstrap, middleware, handle, terminating).
 - Jobs link to the request or command that queued them, and to their other attempts.
 - Slow, failed and throwing runs are always kept; the rest are sampled.
 
@@ -67,6 +68,16 @@ Each page shows the last 15 minutes, hour, 24 hours, 7, 14 or 30 days. Lists can
 <p align="center"><img src="art/dashboard.webp" alt="The dashboard: requests by status, duration and exceptions" width="100%"></p>
 <p align="center"><img src="art/exception.webp" alt="An exception: where it happened, how often, and the code around the line that threw it" width="100%"></p>
 <p align="center"><img src="art/timeline.webp" alt="The timeline of one request: stages and every query, with an N+1 marked ×15" width="100%"></p>
+
+## AI calls
+
+If your app uses [`laravel/ai`](https://github.com/laravel/ai) (0.6 or later), the AI page shows every agent, embedding, image, audio and transcription call: tokens in and out, estimated cost, duration, p95 and failures, per agent, per model and per user. Nothing to add to your code.
+
+- Costs come from each model's price per token, from [OpenRouter's public list](https://openrouter.ai/api/v1/models). Laralyze ships the prices; `php artisan laralyze:ai-prices` fetches today's, and you can set your own in config.
+- Prompts and responses are never recorded.
+- Each AI call shows in the timeline of its request or job, with the tools it called.
+
+See [AI in the configuration docs](docs/configuration.md#ai).
 
 ## Alerts
 
@@ -110,11 +121,10 @@ Then show them with a card of your own: `php artisan laralyze:make-card Checkout
 
 ## What's next
 
-The next release (0.2) adds optional AI, through [`laravel/ai`](https://github.com/laravel/ai) and the provider you choose:
+An optional AI assistant, through [`laravel/ai`](https://github.com/laravel/ai) and the provider you choose:
 
-- Explain an exception and suggest a fix, from the stack trace and code Laralyze already keeps.
-- Trace an N+1 back to the relation that should be eager loaded.
-- Monitor your app's own AI calls: tokens, cost and latency per model and feature.
+- Explain an exception, an N+1 or a slow query and how to fix it, from what Laralyze already keeps.
+- Hand you a prompt to paste into your own coding agent.
 
 Nothing is sent anywhere unless you turn it on.
 
@@ -132,7 +142,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Please report security issues privately,
 
 Created and maintained by [Mohammed Mojaly](https://github.com/Mohammed-Mojaly).
 
-Brand icons for systems, browsers and bots come from [Simple Icons](https://simpleicons.org) (CC0). The trademarks belong to their owners.
+Brand icons for systems, browsers, bots and AI providers come from [Simple Icons](https://simpleicons.org) (CC0). The trademarks belong to their owners.
 
 ## License
 

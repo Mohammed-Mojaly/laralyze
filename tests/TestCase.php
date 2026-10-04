@@ -3,6 +3,7 @@
 namespace MohammedMojaly\Laralyze\Tests;
 
 use Illuminate\Contracts\Config\Repository;
+use Laravel\Ai\AiServiceProvider;
 use Livewire\LivewireServiceProvider;
 use MohammedMojaly\Laralyze\LaralyzeServiceProvider;
 use MohammedMojaly\Laralyze\Support\Outage;
@@ -21,7 +22,11 @@ abstract class TestCase extends Orchestra
 
     protected function getPackageProviders($app): array
     {
-        return [LivewireServiceProvider::class, LaralyzeServiceProvider::class];
+        return [
+            LivewireServiceProvider::class,
+            LaralyzeServiceProvider::class,
+            ...(class_exists(AiServiceProvider::class) ? [AiServiceProvider::class] : []),
+        ];
     }
 
     protected function defineEnvironment($app): void

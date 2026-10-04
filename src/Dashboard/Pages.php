@@ -112,6 +112,8 @@ class Pages
             'scheduled' => $page('Scheduled Tasks', 'Activity', Recorders\ScheduledTasks::class, 'scheduled'),
             'exceptions' => $page('Exceptions', 'Issues', Recorders\Exceptions::class, 'exceptions'),
             'findings' => $page('Findings', 'Issues', Recorders\Traces::class, 'findings'),
+            // Only for apps that use laravel/ai.
+            ...(interface_exists('Laravel\Ai\Contracts\Agent') ? ['ai' => $page('AI', 'Inside', Recorders\Ai::class, 'ai')] : []),
             'queries' => $page('Queries', 'Inside', Recorders\Queries::class, 'queries'),
             'cache' => $page('Cache', 'Inside', Recorders\Cache::class, 'cache'),
             'outgoing-requests' => $page('Outgoing Requests', 'Inside', Recorders\OutgoingRequests::class, 'outgoing-requests'),

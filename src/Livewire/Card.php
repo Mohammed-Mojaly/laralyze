@@ -182,6 +182,18 @@ abstract class Card extends Component
     }
 
     /**
+     * Sums per key, e.g. tokens per model.
+     *
+     * @return array<string, float>
+     */
+    protected function sums(string $type, int $limit = 1_000): array
+    {
+        return $this->aggregate($type, ['sum'], limit: $limit)
+            ->mapWithKeys(fn (stdClass $row) => [(string) $row->key => (float) $row->sum])
+            ->all();
+    }
+
+    /**
      * The configured recorder of a class (or your subclass of it), built
      * with its options, e.g. to show the thresholds it records with.
      *

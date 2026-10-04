@@ -2,6 +2,13 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## Unreleased
+
+- **AI page**: calls made with `laravel/ai` 0.6 or later (agents, embeddings, images, audio, transcriptions, reranking) with tokens, estimated cost, duration, p95 and failures, per agent, per model and per user. Each agent and model opens a page of its own. Prompts and responses are never recorded. The page appears only when `laravel/ai` is installed.
+- AI calls and the tools they used show in timelines, where they started.
+- Estimated costs from each model's price per token, from OpenRouter's public model list. Prices ship with Laralyze; `php artisan laralyze:ai-prices` fetches today's, and `prices` in the AI recorder's config sets your own.
+- Recorders added in a release are turned on even when `config/laralyze.php` was published before them. Turn one off with `'enabled' => false`.
+
 ## v0.1.1 - 2026-10-04
 
 - A warning on the dashboard and in `php artisan about` when jobs are queued but no worker records running them. Workers load Laralyze when they start, so one already running before the install records nothing until it restarts.

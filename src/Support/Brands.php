@@ -3,7 +3,8 @@
 namespace MohammedMojaly\Laralyze\Support;
 
 /**
- * Small icons for systems, browsers, devices and bots on the Visits page.
+ * Small icons for systems, browsers, devices and bots on the Visits page,
+ * and for AI providers.
  * Brand marks come from Simple Icons; the rest are drawn to match the
  * dashboard's own icons.
  */
@@ -21,6 +22,7 @@ final class Brands
         'Script' => '<rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="m7 10 2.5 2L7 14"/><path d="M12 14.5h4.5"/>',
         'Headless browser' => '<rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 8.5h18"/><path d="M9 14h6" stroke-dasharray="1.5 2"/>',
         'Uptime monitor' => '<path d="M3 12h4l2-5 4 10 2-5h6"/>',
+        'ai' => '<path d="M12 3.5c.6 3.9 2.6 5.9 6.5 6.5-3.9.6-5.9 2.6-6.5 6.5-.6-3.9-2.6-5.9-6.5-6.5 3.9-.6 5.9-2.6 6.5-6.5Z"/><path d="M18.5 15.5c.3 1.6 1 2.3 2.5 2.5-1.5.2-2.2.9-2.5 2.5-.3-1.6-1-2.3-2.5-2.5 1.5-.2 2.2-.9 2.5-2.5Z"/>',
     ];
 
     /**

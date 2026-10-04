@@ -12,14 +12,14 @@ beforeEach(function () {
 
 it('serves every built-in page', function (string $page) {
     $this->get($page === Pages::HOME ? '/laralyze' : "/laralyze/{$page}")->assertOk();
-})->with(['dashboard', 'requests', 'jobs', 'commands', 'scheduled', 'exceptions', 'findings', 'queries', 'cache', 'outgoing-requests', 'mail', 'notifications', 'visits', 'users', 'logs', 'servers']);
+})->with(['dashboard', 'requests', 'jobs', 'commands', 'scheduled', 'exceptions', 'findings', 'queries', 'cache', 'outgoing-requests', 'ai', 'mail', 'notifications', 'visits', 'users', 'logs', 'servers']);
 
 it('lists every page in the sidebar, grouped by section', function () {
     $this->get('/laralyze')->assertOk()->assertSeeInOrder([
         'Dashboard',
         'Issues', 'Exceptions', 'Findings',
         'Activity', 'Requests', 'Jobs', 'Commands', 'Scheduled Tasks',
-        'Inside', 'Queries', 'Cache', 'Outgoing Requests', 'Mail', 'Notifications', 'Logs',
+        'Inside', 'AI', 'Queries', 'Cache', 'Outgoing Requests', 'Mail', 'Notifications', 'Logs',
         'Audience', 'Users', 'Visits',
         'Servers', 'Recording',
     ]);

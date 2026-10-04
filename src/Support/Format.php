@@ -24,6 +24,26 @@ class Format
     }
 
     /**
+     * US dollars: $4.82, or $0.0037 for the small amounts single AI calls cost.
+     */
+    public static function money(int|float|null $usd): string
+    {
+        if ($usd === null) {
+            return '—';
+        }
+
+        $usd = (float) $usd;
+
+        return match (true) {
+            $usd == 0 => '$0',
+            abs($usd) >= 10_000 => '$'.self::number($usd),
+            abs($usd) >= 0.01 => '$'.number_format($usd, 2),
+            abs($usd) >= 0.0001 => '$'.rtrim(number_format($usd, 4), '0'),
+            default => '< $0.0001',
+        };
+    }
+
+    /**
      * Milliseconds for humans: 0.4 ms, 86 ms, 1.24 s, 2.5 min.
      */
     public static function duration(int|float|null $milliseconds): string

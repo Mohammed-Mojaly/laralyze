@@ -155,6 +155,21 @@ return [
             'ignore' => [],
         ],
 
+        // Calls made with laravel/ai: tokens, estimated cost, duration and
+        // failures by agent, model and user. Prompts and responses are never kept.
+        Recorders\Ai::class => [
+            'enabled' => env('LARALYZE_AI_ENABLED', true),
+
+            // USD per million tokens, for models Laralyze has no price for or
+            // that you pay differently for. Keyed by model, or provider/model.
+            'prices' => [
+                // 'my-fine-tuned-model' => ['input' => 0.30, 'output' => 1.20],
+            ],
+
+            // Agent classes to leave out, as regular expressions.
+            'ignore' => [],
+        ],
+
         Recorders\Mail::class => [
             'enabled' => env('LARALYZE_MAIL_ENABLED', true),
             'ignore' => [],

@@ -8,6 +8,7 @@ use Illuminate\Console\Events\ScheduledTaskSkipped;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Contracts\Foundation\CachesConfiguration;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Queue\Events\JobFailed;
@@ -44,6 +45,10 @@ class LaralyzeServiceProvider extends ServiceProvider
         'cache' => Cards\CacheTotals::class,
         'cache-keys' => Cards\CacheKeys::class,
         'outgoing-requests' => Cards\OutgoingRequests::class,
+        'ai-totals' => Cards\AiTotals::class,
+        'ai-agents' => Cards\AiAgents::class,
+        'ai-models' => Cards\AiModels::class,
+        'ai-users' => Cards\AiUsers::class,
         'mail' => Cards\MailList::class,
         'notifications' => Cards\NotificationList::class,
         'logs' => Cards\LogLevels::class,
@@ -62,11 +67,31 @@ class LaralyzeServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/laralyze.php', 'laralyze');
+        $this->addNewRecorders();
 
         $this->app->singleton(Laralyze::class);
         $this->app->singleton(Storage\DatabaseStorage::class);
         $this->app->singleton(Dashboard\Assets::class);
+        $this->app->singleton(Support\AiPrices::class);
         $this->app->scoped(Dashboard\Pages::class);
+    }
+
+    /**
+     * A config published before a recorder existed doesn't list it. New
+     * recorders start on, like they would in a fresh install; turn one
+     * off with 'enabled' => false.
+     */
+    protected function addNewRecorders(): void
+    {
+        if ($this->app instanceof CachesConfiguration && $this->app->configurationIsCached()) {
+            return;
+        }
+
+        $config = $this->app->make('config');
+        $recorders = (array) $config->get('laralyze.recorders', []);
+        $defaults = (array) ((require __DIR__.'/../config/laralyze.php')['recorders'] ?? []);
+
+        $config->set('laralyze.recorders', [...$recorders, ...array_diff_key($defaults, $recorders)]);
     }
 
     public function boot(): void
@@ -89,6 +114,7 @@ class LaralyzeServiceProvider extends ServiceProvider
             $this->commands([
                 Console\InstallCommand::class,
                 Console\MakeCardCommand::class,
+                Console\AiPricesCommand::class,
             ]);
         }
     }

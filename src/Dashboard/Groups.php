@@ -19,6 +19,8 @@ final class Groups
         'commands' => ['command'],
         'queries' => ['query'],
         'outgoing-requests' => ['http', 'http_failed'],
+        // Agents and models share the page; a model's key is ["provider","model"].
+        'ai' => ['ai', 'ai_failed', 'ai_model', 'ai_model_failed'],
         'users' => ['user_request', 'user_job', 'user_exception'],
         'exceptions' => ['exception'],
     ];
@@ -36,6 +38,7 @@ final class Groups
         return match ($page) {
             'users' => (string) (json_decode((string) $storage->values('user', [$key])->first()?->value, true)['name'] ?? $key),
             'exceptions' => (string) ($storage->values('exception_message', [$key])->first()->value ?? json_decode($key, true)[0] ?? $key),
+            'ai' => (string) (json_decode($key, true)[1] ?? $key),
             default => $key,
         };
     }

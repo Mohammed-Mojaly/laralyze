@@ -1460,10 +1460,15 @@ body.lz-root {
 
 .lz-s-calls,
 .lz-s-users,
+.lz-s-input,
 .lz-s-authenticated { --lz-series: var(--lz-data); }
+.lz-s-output { --lz-series: var(--lz-data-soft); }
+
+.lz-figure-bad .lz-figure-value { color: var(--lz-bad); }
 .lz-s-guest { --lz-series: var(--lz-data-soft); }
 .lz-s-max { --lz-series: var(--lz-data-soft); }
 .lz-tip .lz-s-calls,
+.lz-tip .lz-s-input,
 .lz-tip .lz-s-users,
 .lz-tip .lz-s-authenticated { --lz-series: var(--lz-tip-ink); }
 
@@ -1921,6 +1926,18 @@ body.lz-root {
 
 .lz-event-http .lz-event-bar > span {
     background: var(--lz-warn);
+}
+
+.lz-event-ai .lz-event-bar > span {
+    background: var(--lz-accent);
+}
+
+.lz-event-ai .lz-event-kind {
+    color: var(--lz-accent);
+}
+
+.lz-event-tool .lz-event-bar > span {
+    background: var(--lz-data-soft);
 }
 
 @media (max-width: 760px) {

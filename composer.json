@@ -25,6 +25,7 @@
     },
     "require-dev": {
         "larastan/larastan": "^3.12",
+        "laravel/ai": "^0.6|^1.0",
         "laravel/pint": "^1.27",
         "orchestra/testbench": "^10.12|^11.3",
         "pestphp/pest": "^4.4|^5.0"
@@ -54,7 +55,8 @@
         "test": "pest",
         "lint": "pint",
         "analyse": "phpstan analyse --memory-limit=1G",
-        "bench": "@php benchmarks/run.php"
+        "bench": "@php benchmarks/run.php",
+        "prices": "@php bin/ai-prices.php"
     },
     "config": {
         "sort-packages": true,

@@ -7,12 +7,14 @@ use Illuminate\Support\Collection;
 use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Locked;
 use MohammedMojaly\Laralyze\Livewire\Card;
+use MohammedMojaly\Laralyze\Recorders\Ai;
 use MohammedMojaly\Laralyze\Recorders\Requests;
+use MohammedMojaly\Laralyze\Support\AiPrices;
 use MohammedMojaly\Laralyze\Support\Format;
 
 /**
- * Everything about one route, job, command, query, outgoing URL or user:
- * how often it ran, how it went, and how long it took.
+ * Everything about one route, job, command, query, outgoing URL, user,
+ * AI agent or model: how often it ran, how it went, and how long it took.
  */
 #[Lazy]
 class Group extends Card
@@ -76,6 +78,9 @@ class Group extends Card
             'commands' => ['command', ['processed' => 'command', 'failed' => 'command_failed'], true],
             'queries' => ['query', ['calls' => 'query'], true],
             'users' => ['user_request', $statuses('user_request'), false],
+            'ai' => $this->isModel()
+                ? ['ai_model', ['calls' => 'ai_model', 'failed' => 'ai_model_failed'], true]
+                : ['ai', ['calls' => 'ai', 'failed' => 'ai_failed'], true],
             default => abort(404),
         };
     }
@@ -87,6 +92,10 @@ class Group extends Card
      */
     protected function details(): array
     {
+        if ($this->page === 'ai') {
+            return $this->aiDetails();
+        }
+
         if ($this->page !== 'users') {
             return [];
         }
@@ -107,6 +116,39 @@ class Group extends Card
             $n = $count($type);
             $details[$label] = [Format::number($n), $n > 0 ? $class : ''];
         }
+
+        return $details;
+    }
+
+    /**
+     * A model's key is ["provider","model"]; an agent's is its class.
+     */
+    protected function isModel(): bool
+    {
+        return is_array(json_decode($this->name, true));
+    }
+
+    /**
+     * Tokens and estimated cost of an agent or model.
+     *
+     * @return array<string, array{0: string, 1: string}>
+     */
+    protected function aiDetails(): array
+    {
+        $type = $this->isModel() ? 'ai_model' : 'ai';
+        $sum = fn (string $suffix) => (float) ($this->total("{$type}_{$suffix}", ['sum'], $this->name)->sum ?? 0);
+        $details = [];
+
+        if ($this->isModel()) {
+            [$provider, $model] = array_pad($this->parts($this->name), 2, '');
+            $price = app(AiPrices::class)->for($provider, $model);
+            $details['Provider'] = [$provider, ''];
+            $details['Per 1M tokens'] = [$price === null ? 'price unknown' : Format::money($price[0]).' in / '.Format::money($price[1]).' out', $price === null ? 'lz-muted' : ''];
+        }
+
+        $details['Tokens in'] = [Format::number($sum('input')), ''];
+        $details['Tokens out'] = [Format::number($sum('output')), ''];
+        $details['Estimated cost'] = [Format::money($sum('cost') / Ai::MICRO), ''];
 
         return $details;
     }

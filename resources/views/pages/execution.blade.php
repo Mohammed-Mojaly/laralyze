@@ -11,7 +11,10 @@
     $kinds = [
         'query' => 'Queries', 'cache' => 'Cache', 'http' => 'Outgoing requests', 'mail' => 'Mail',
         'notification' => 'Notifications', 'job' => 'Jobs queued', 'log' => 'Logs', 'exception' => 'Exceptions',
+        // Only apps that use laravel/ai have these.
+        ...(isset($execution->counts['ai']) ? ['ai' => 'AI calls', 'tool' => 'AI tools'] : []),
     ];
+    $prices = isset($execution->counts['ai']) ? app(\MohammedMojaly\Laralyze\Support\AiPrices::class) : null;
     $started = now()->setTimestamp($execution->started_at);
     $groupUrl = fn (string $pageKey, string $key) => route('laralyze.group', ['page' => $pageKey, 'group' => hash('xxh128', $key)]);
     // Only reads can be an N+1, the same as the detector.
@@ -134,7 +137,7 @@
 
     <x-laralyze::card title="Timeline" :count="count($events)" cols="full">
         @if ($events === [] && $stages === [])
-            <x-laralyze::empty title="Nothing happened inside it." hint="Queries, cache calls, outgoing requests, mail, notifications, queued jobs, logs and exceptions show here in order." />
+            <x-laralyze::empty title="Nothing happened inside it." hint="Queries, cache calls, outgoing requests, mail, notifications, queued jobs, logs, exceptions and AI calls show here in order." />
         @else
             @if (count($events) < $recorded)
                 <p class="lz-note">Showing the first {{ Format::number(count($events)) }} of {{ Format::number($recorded) }} events. The counts above include them all.</p>
@@ -174,6 +177,20 @@
                                         @break
                                     @case('http')
                                         <span class="lz-mono">{{ $label }}</span> <span @class(['lz-badge', 'lz-badge-bad' => $detail === 'failed' || (int) $detail >= 500, 'lz-badge-warn' => (int) $detail >= 400 && (int) $detail < 500])>{{ $detail }}</span>
+                                        @break
+                                    @case('ai')
+                                        @php([$provider, $model, $in, $out, $aiFailed] = array_pad((array) json_decode((string) $detail, true), 5, null))
+                                        @php($cost = $prices?->cost((string) $provider, (string) $model, [(int) $in, (int) $out, 0, 0]))
+                                        <a href="{{ $groupUrl('ai', $label) }}"><x-laralyze::class-name :name="$label" /></a>
+                                        <span class="lz-with-mark lz-sub">{!! \MohammedMojaly\Laralyze\Support\Brands::svg((string) $provider, 'ai') !!}{{ $model }}</span>
+                                        @if ($aiFailed)
+                                            <span class="lz-badge lz-badge-bad">failed</span>
+                                        @else
+                                            <span class="lz-sub">{{ $out ? Format::number((int) $in).' → '.Format::number((int) $out) : Format::number((int) $in) }} tokens @if ($cost !== null)· {{ Format::money($cost) }}@endif</span>
+                                        @endif
+                                        @break
+                                    @case('tool')
+                                        <x-laralyze::class-name :name="$label" />@if ($detail) <span class="lz-badge lz-badge-bad">{{ $detail }}</span>@endif
                                         @break
                                     @case('log')
                                         <span @class(['lz-badge', 'lz-badge-bad' => in_array($detail, ['error', 'critical', 'alert', 'emergency'], true), 'lz-badge-warn' => $detail === 'warning'])>{{ $detail }}</span> {{ Str::limit((string) $label, 300) }}

@@ -16,6 +16,10 @@
         <livewire:laralyze.queues cols="full" />
     @endif
 
+    @if ($pages->find('ai'))
+        <livewire:laralyze.ai-totals cols="full" summary />
+    @endif
+
     @if ($has(\MohammedMojaly\Laralyze\Recorders\Requests::class))
         <livewire:laralyze.slow-requests cols="full" limit="5" />
     @endif

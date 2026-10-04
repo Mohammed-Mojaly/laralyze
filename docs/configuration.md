@@ -41,13 +41,48 @@ Everything lives in `config/laralyze.php`, published by `php artisan laralyze:in
 | `Commands` | `LARALYZE_COMMANDS_ENABLED` | Runs, duration and failures per Artisan command | Workers and scheduler plumbing are ignored by default. |
 | `Cache` | `LARALYZE_CACHE_ENABLED` | Hits, misses, writes, deletes and failures per key group | Numbers and UUIDs in keys are grouped by default (`user:42` → `user:*`). |
 | `OutgoingRequests` | `LARALYZE_OUTGOING_REQUESTS_ENABLED` | Calls made with Laravel's HTTP client: status, duration, connections that failed | Ids in paths are grouped. |
+| `Ai` | `LARALYZE_AI_ENABLED` | Calls made with [`laravel/ai`](https://github.com/laravel/ai) 0.6 or later: agents, embeddings, images, audio, transcriptions and reranking, with tokens, estimated cost, duration and failures, per agent, model and user | Only when `laravel/ai` is installed. Prompts and responses are never recorded. `ignore` matches the agent class. See below. |
 | `Mail` | `LARALYZE_MAIL_ENABLED` | Mail sent per mailable, duration, failures | A message that started sending but never finished counts as failed. |
 | `Notifications` | `LARALYZE_NOTIFICATIONS_ENABLED` | Per notification and channel: sent, failed, duration | |
 | `Logs` | `LARALYZE_LOGS_ENABLED` | Messages per level | `ignore` matches the level, e.g. `'/^debug$/'`. |
 | `Users` | `LARALYZE_USERS_ENABLED` | Signed-in users over time, their share of requests, and per user: requests by status, timings, slow requests, queued jobs, exceptions and last seen | Only users the app already loaded are counted, so it never adds a query. See `Laralyze::user()`. |
 | `Servers` | `LARALYZE_SERVERS_ENABLED` | CPU, memory and disks, every minute | Runs from your scheduler. `server_name` (`LARALYZE_SERVER_NAME`), `directories` (`LARALYZE_SERVER_DIRECTORIES`, comma separated). |
-| `Traces` | `LARALYZE_TRACES_ENABLED` | Single requests, jobs and commands with their queries, cache calls, outgoing requests, mail, notifications, queued jobs, logs and exceptions in order | Slow (`threshold`), failed and throwing ones are always kept; the rest by `sample_rate` (`LARALYZE_TRACES_SAMPLE_RATE`, 0.1). Kept `keep_days` (`LARALYZE_TRACES_DAYS`, 7). Up to `max_events` (500) events each. Long-running commands like `queue:work` aren't traced themselves; their jobs are. Also finds N+1 queries (the same read 5+ times with other values) and duplicate queries in every execution, sampled or not, for the Findings page. |
+| `Traces` | `LARALYZE_TRACES_ENABLED` | Single requests, jobs and commands with their queries, cache calls, outgoing requests, mail, notifications, queued jobs, logs, exceptions and AI calls with the tools they used, in order | Slow (`threshold`), failed and throwing ones are always kept; the rest by `sample_rate` (`LARALYZE_TRACES_SAMPLE_RATE`, 0.1). Kept `keep_days` (`LARALYZE_TRACES_DAYS`, 7). Up to `max_events` (500) events each. Long-running commands like `queue:work` aren't traced themselves; their jobs are. Also finds N+1 queries (the same read 5+ times with other values) and duplicate queries in every execution, sampled or not, for the Findings page. |
 | `Visits` | `LARALYZE_VISITS_ENABLED` | Page views, unique visitors, visitors right now, devices, systems, browsers, top pages, bots | See below. |
+
+A recorder added in a newer release is turned on even if you published `config/laralyze.php` before it existed, just like in a fresh install. Turn it off with `'enabled' => false`.
+
+### AI
+
+```php
+Recorders\Ai::class => [
+    'enabled' => env('LARALYZE_AI_ENABLED', true),
+    'prices' => [
+        // 'my-fine-tuned-model' => ['input' => 0.30, 'output' => 1.20],
+    ],
+    'ignore' => [],
+],
+```
+
+- Each call is grouped by its agent class. Calls without an agent are grouped by what they do: Embeddings, Images, Audio, Transcription, Reranking.
+- A call that throws counts as failed, for its agent and for its model.
+- **Cost is an estimate:** the tokens of each call times its model's price. Prices come from [OpenRouter's model list](https://openrouter.ai/api/v1/models), which shows what each provider charges, with nothing added. Cached input is charged at the cache price when the model has one. Things priced per image, per second of audio or per search are not counted.
+- **Prices ship with Laralyze** and are updated with each release. To get today's prices without upgrading, run:
+
+  ```bash
+  php artisan laralyze:ai-prices
+  ```
+
+  It saves them in Laralyze's tables, so every server and worker uses them within an hour. They are removed with other old data after the retention period, and the shipped prices apply again. To keep them fresh, schedule it:
+
+  ```php
+  Schedule::command('laralyze:ai-prices')->weekly();
+  ```
+
+- **Your own prices** go under `prices`, in USD per million tokens, keyed by model (`gpt-4o-mini`) or provider and model (`azure/gpt-4o-mini`). They win over everything else. `cache_read` and `cache_write` are optional. Use them for fine-tuned or self-hosted models, or a discount you negotiated. Models with no known price show "price unknown" and are left out of the cost.
+- Models running on Ollama are free. Calls through OpenRouter are priced at OpenRouter's rates; OpenRouter adds its own fee when you buy credits, which isn't included.
+- A model's price is found under the provider's own name for it: `claude-haiku-4-5-20251001` from Anthropic and `anthropic/claude-haiku-4.5` from OpenRouter are the same model. Models from Groq and other hosts are matched by name, when only one vendor has a model of that name. Azure deployments are matched as OpenAI models when named after one.
+- Costs are recorded when the call happens. A price you add later applies to new calls only.
 
 ### Visits
 

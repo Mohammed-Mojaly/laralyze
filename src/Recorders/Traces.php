@@ -31,6 +31,7 @@ use Illuminate\Queue\Queue;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Str;
 use MohammedMojaly\Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\Support\AiCall;
 use MohammedMojaly\Laralyze\Support\Location;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -38,7 +39,7 @@ use Throwable;
 /**
  * Keeps single requests, jobs and commands with what happened inside them,
  * in order: queries, cache calls, outgoing requests, mail, notifications,
- * queued jobs, logs and exceptions. Jobs link back to the request, job or
+ * queued jobs, logs, exceptions and AI calls with the tools they used. Jobs link back to the request, job or
  * command that queued them.
  *
  * Slow and failed ones are always kept; the rest are sampled.
@@ -130,6 +131,13 @@ class Traces extends Recorder
     protected const NO_READS = ['queries' => [], 'binds' => [], 'kept' => 0, 'where' => []];
 
     /**
+     * When AI calls and their tools started, by invocation id.
+     *
+     * @var array<string, float>
+     */
+    protected array $aiStarted = [];
+
+    /**
      * @param  array<string, mixed>  $config
      */
     public function __construct(Laralyze $laralyze, array $config, protected Application $app, protected Auth $auth)
@@ -138,6 +146,15 @@ class Traces extends Recorder
 
         $this->maxEvents = (int) ($config['max_events'] ?? 500);
         $this->requests = new Requests($laralyze, (array) $app->make('config')->get('laralyze.recorders.'.Requests::class, []));
+
+        $this->listen = [
+            ...$this->listen,
+            ...array_keys(AiCall::STARTS),
+            ...array_keys(AiCall::ENDS),
+            AiCall::FAILED,
+            AiCall::TOOL_STARTS,
+            ...AiCall::TOOL_ENDS,
+        ];
     }
 
     public function register(Application $app): void
@@ -179,7 +196,7 @@ class Traces extends Recorder
             $event instanceof CommandStarting => $this->startCommand($event),
             $event instanceof JobProcessed, $event instanceof JobFailed, $event instanceof JobReleasedAfterException => $this->finishJob($event),
             $event instanceof CommandFinished => $this->finishCommand($event),
-            default => null,
+            default => $this->ai($event),
         };
     }
 
@@ -554,6 +571,55 @@ class Traces extends Recorder
         $uri = $request->toPsrRequest()->getUri();
 
         return $request->method().' '.$uri->getHost().($uri->getPath() === '' ? '/' : $uri->getPath());
+    }
+
+    /**
+     * An AI call or a tool it used, placed where it started: both end
+     * after what happened inside them.
+     */
+    protected function ai(object $event): void
+    {
+        $class = $event::class;
+        $tool = $class === AiCall::TOOL_STARTS || in_array($class, AiCall::TOOL_ENDS, true);
+        $id = AiCall::id($event, $tool ? 'toolInvocationId' : 'invocationId') ?? '';
+
+        if ($class === AiCall::TOOL_STARTS || array_key_exists($class, AiCall::STARTS)) {
+            if (count($this->aiStarted) >= 100) {
+                array_shift($this->aiStarted);
+            }
+
+            $this->aiStarted[$id] ??= microtime(true);
+
+            return;
+        }
+
+        $started = $this->aiStarted[$id] ?? null;
+        unset($this->aiStarted[$id]);
+        $duration = $started === null ? null : (microtime(true) - $started) * 1_000;
+
+        if ($tool) {
+            // Agents and MCP tools used as tools name themselves.
+            $instance = $event->tool ?? null;
+            $name = is_object($instance) ? (method_exists($instance, 'name') ? (string) $instance->name() : $instance::class) : 'Tool';
+
+            $this->add('tool', $name, $duration, $class === AiCall::TOOL_ENDS[1] ? 'failed' : null);
+        } else {
+            [$in, $out] = AiCall::tokens($event);
+
+            $this->add('ai', AiCall::name($event), $duration, (string) json_encode([AiCall::provider($event), AiCall::model($event), $in, $out, $class === AiCall::FAILED], JSON_UNESCAPED_SLASHES));
+        }
+
+        $last = array_key_last($this->stack);
+
+        if ($last === null) {
+            return;
+        }
+
+        $events = &$this->stack[$last]['events'];
+
+        for ($i = array_key_last($events); $i > 0 && $events[$i - 1][1] > $events[$i][1]; $i--) {
+            [$events[$i - 1], $events[$i]] = [$events[$i], $events[$i - 1]];
+        }
     }
 
     protected function logged(MessageLogged $event): void
