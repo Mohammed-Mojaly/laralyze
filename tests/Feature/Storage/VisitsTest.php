@@ -68,8 +68,8 @@ it('never stores IP addresses or user agents', function () {
     visitPage('/pricing', CHROME, '203.0.113.9');
 
     $stored = json_encode([
-        DB::table('laralyze_aggregates')->pluck('key'),
-        DB::table('laralyze_values')->get(['key', 'value']),
+        laralyzeRows('laralyze_aggregates')->pluck('key'),
+        laralyzeRows('laralyze_values')->map(fn ($row) => [$row->key, $row->value]),
     ]);
 
     expect($stored)->not->toContain('203.0.113.9')
@@ -93,7 +93,7 @@ it('forgets when visitors were last seen after a day', function () {
     $this->travel(25)->hours();
     app(Storage::class)->trim(30);
 
-    expect(DB::table('laralyze_values')->where('type', 'visitor_seen')->count())->toBe(0);
+    expect(laralyzeRows('laralyze_values')->where('type', 'visitor_seen')->count())->toBe(0);
 });
 
 it('counts pages by route, so tokens in URLs are never stored', function () {
@@ -102,7 +102,7 @@ it('counts pages by route, so tokens in URLs are never stored', function () {
     visitPage('/reset-password/s3cr3t-t0ken-abc');
 
     expect(visitCount('visit', '/reset-password/{token}'))->toBe(1.0)
-        ->and(json_encode(DB::table('laralyze_aggregates')->pluck('key')))->not->toContain('s3cr3t');
+        ->and(json_encode(laralyzeRows('laralyze_aggregates')->pluck('key')))->not->toContain('s3cr3t');
 });
 
 it('shows brand icons next to systems, browsers, devices and bots', function () {

@@ -3,8 +3,11 @@
 namespace MohammedMojaly\Laralyze\Storage;
 
 use Illuminate\Support\Collection;
+use InvalidArgumentException;
 use LogicException;
 use MohammedMojaly\Laralyze\Contracts\Storage;
+use MohammedMojaly\Laralyze\Metrics\Histogram;
+use MohammedMojaly\Laralyze\Metrics\Period;
 use MohammedMojaly\Laralyze\Storage\ClickHouse\Client;
 use MohammedMojaly\Laralyze\Storage\ClickHouse\Schema;
 use MohammedMojaly\Laralyze\Storage\Concerns\ReadsMetrics;
@@ -88,37 +91,152 @@ class ClickHouseStorage implements Storage
 
     public function oldestBucket(): ?int
     {
-        throw new LogicException('Not implemented yet.');
+        $bucket = $this->client->select(
+            'SELECT minOrNull(bucket) AS bucket FROM laralyze_aggregates WHERE period = {period:UInt32}',
+            ['period' => Period::HOUR],
+        )[0]['bucket'] ?? null;
+
+        return $bucket === null ? null : (int) $bucket;
     }
 
     public function aggregate(string $type, array $aggregates, int $window, ?string $orderBy = null, int $limit = 100): Collection
     {
-        throw new LogicException('Not implemented yet.');
+        [$plain, $percentiles] = $this->parseAggregates($aggregates);
+
+        // Keys come from the count rows when only percentiles were asked for.
+        $selected = $plain === [] ? ['count'] : $plain;
+        $order = $orderBy === null ? '' : ' ORDER BY '.$this->assertKnown($orderBy, $selected).' DESC';
+        [$where, $params] = $this->window($type, $window);
+
+        $rows = collect($this->client->select(
+            "SELECT key_hash, any(key) AS key, {$this->columns($selected)} FROM laralyze_aggregates WHERE {$where} AND aggregate IN {stored:Array(String)} GROUP BY key_hash{$order} LIMIT {limit:UInt32}",
+            [...$params, 'stored' => $this->storedAggregatesFor($selected), 'limit' => $limit],
+        ))->map(fn (array $row) => $this->castRow($this->object($row), $plain));
+
+        if ($percentiles !== []) {
+            $bins = $this->binsByKey($type, $window, $rows->pluck('key_hash')->map(fn ($hash) => (string) $hash)->all());
+
+            $rows->each(function (stdClass $row) use ($percentiles, $bins) {
+                foreach ($percentiles as $name => $percentile) {
+                    $row->{$name} = $this->capped(Histogram::percentile($bins[$row->key_hash] ?? [], $percentile), $row);
+                }
+            });
+        }
+
+        return $rows->map(function (stdClass $row) {
+            unset($row->key_hash);
+
+            return $row;
+        })->values();
     }
 
     public function total(string $type, array $aggregates, int $window, ?string $key = null): stdClass
     {
-        throw new LogicException('Not implemented yet.');
+        [$plain, $percentiles] = $this->parseAggregates($aggregates);
+        [$where, $params] = $this->window($type, $window);
+
+        if ($key !== null) {
+            $where .= ' AND key_hash = {key_hash:String}';
+            $params['key_hash'] = hash('xxh128', $key);
+        }
+
+        $total = new stdClass;
+
+        if ($plain !== []) {
+            $row = $this->client->select(
+                "SELECT {$this->columns($plain)} FROM laralyze_aggregates WHERE {$where} AND aggregate IN {stored:Array(String)}",
+                [...$params, 'stored' => $this->storedAggregatesFor($plain)],
+            )[0] ?? [];
+
+            $total = $this->castRow($this->object($row), $plain);
+        }
+
+        if ($percentiles !== []) {
+            $bins = $this->client->select(
+                "SELECT aggregate, toFloat64(sum(total)) AS value FROM laralyze_aggregates WHERE {$where} AND startsWith(aggregate, 'h') GROUP BY aggregate",
+                $params,
+            );
+            $counts = $this->binCounts(array_column($bins, 'value', 'aggregate'));
+
+            foreach ($percentiles as $name => $percentile) {
+                $total->{$name} = $this->capped(Histogram::percentile($counts, $percentile), $total);
+            }
+        }
+
+        return $total;
     }
 
     public function keyFor(array $types, string $hash): ?string
     {
-        throw new LogicException('Not implemented yet.');
+        $row = $this->client->select(
+            'SELECT key FROM laralyze_aggregates WHERE type IN {types:Array(String)} AND key_hash = {hash:String} LIMIT 1',
+            ['types' => $types, 'hash' => $hash],
+        )[0] ?? null;
+
+        return $row === null ? null : (string) $row['key'];
     }
 
     public function graph(string $type, string $aggregate, int $window, ?string $key = null): Collection
     {
-        throw new LogicException('Not implemented yet.');
+        [$plain, $percentiles] = $this->parseAggregates([$aggregate]);
+        [$step, $first, $last] = $this->timeline($window);
+        [$where, $params] = $this->window($type, $window, $first);
+        $params['step'] = $step;
+
+        if ($key !== null) {
+            $where .= ' AND key_hash = {key_hash:String}';
+            $params['key_hash'] = hash('xxh128', $key);
+        }
+
+        $slot = 'bucket - (bucket % {step:Int64})';
+
+        if ($plain !== []) {
+            $values = collect($this->client->select(
+                "SELECT {$slot} AS slot, {$this->aggregateSql($plain[0])} AS value FROM laralyze_aggregates WHERE {$where} AND aggregate IN {stored:Array(String)} GROUP BY slot",
+                [...$params, 'stored' => $this->storedAggregatesFor($plain)],
+            ))->mapWithKeys(fn (array $row) => [(int) $row['slot'] => $row['value'] === null ? null : (float) $row['value']]);
+        } else {
+            $percentile = $percentiles[array_key_first($percentiles)];
+            $maxima = collect($this->client->select(
+                "SELECT {$slot} AS slot, {$this->aggregateSql('max')} AS value FROM laralyze_aggregates WHERE {$where} AND aggregate = 'max' GROUP BY slot",
+                $params,
+            ))->mapWithKeys(fn (array $row) => [(int) $row['slot'] => $row['value']]);
+
+            $values = collect($this->client->select(
+                "SELECT {$slot} AS slot, aggregate, toFloat64(sum(total)) AS value FROM laralyze_aggregates WHERE {$where} AND startsWith(aggregate, 'h') GROUP BY slot, aggregate",
+                $params,
+            ))->groupBy('slot')->map(fn (Collection $bins, int|string $slot) => $this->capped(
+                Histogram::percentile($this->binCounts($bins->pluck('value', 'aggregate')->all()), $percentile),
+                $this->object(['max' => $maxima[(int) $slot] ?? null]),
+            ));
+        }
+
+        return collect(range($first, $last, $step))
+            ->mapWithKeys(fn (int $slot) => [$slot => $values[$slot] ?? null]);
     }
 
     public function graphKeys(string $type, int $window): Collection
     {
-        throw new LogicException('Not implemented yet.');
+        [$step, $first, $last] = $this->timeline($window);
+        [$where, $params] = $this->window($type, $window, $first);
+
+        $values = collect($this->client->select(
+            "SELECT bucket - (bucket % {step:Int64}) AS slot, uniqExact(key_hash) AS value FROM laralyze_aggregates WHERE {$where} AND aggregate = 'count' GROUP BY slot",
+            [...$params, 'step' => $step],
+        ))->mapWithKeys(fn (array $row) => [(int) $row['slot'] => (float) $row['value']]);
+
+        return collect(range($first, $last, $step))
+            ->mapWithKeys(fn (int $slot) => [$slot => $values[$slot] ?? null]);
     }
 
     public function countKeys(string $type, int $window): int
     {
-        throw new LogicException('Not implemented yet.');
+        [$where, $params] = $this->window($type, $window);
+
+        return (int) ($this->client->select(
+            "SELECT uniqExact(key_hash) AS found FROM laralyze_aggregates WHERE {$where} AND aggregate = 'count'",
+            $params,
+        )[0]['found'] ?? 0);
     }
 
     public function values(string $type, ?array $keys = null): Collection
@@ -161,6 +279,77 @@ class ClickHouseStorage implements Storage
         );
 
         return (int) ($found[0]['found'] ?? 0);
+    }
+
+    /**
+     * The rows of one type within a window, as a WHERE clause and its parameters.
+     *
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    protected function window(string $type, int $window, ?int $since = null): array
+    {
+        $period = Period::forWindow($window);
+
+        return [
+            'period = {period:UInt32} AND type = {type:String} AND bucket >= {since:Int64}',
+            ['period' => $period, 'type' => $type, 'since' => Period::bucket($since ?? $this->now() - $window, $period)],
+        ];
+    }
+
+    /**
+     * @param  list<string>  $aggregates  Known names only (see parseAggregates()).
+     */
+    protected function columns(array $aggregates): string
+    {
+        return implode(', ', array_map(fn (string $aggregate) => "{$this->aggregateSql($aggregate)} AS {$aggregate}", $aggregates));
+    }
+
+    /**
+     * Like SQL: NULL when no row holds that aggregate, so a missing max never reads as 0.
+     */
+    protected function aggregateSql(string $aggregate): string
+    {
+        $present = fn (string $name, string $expression) => "if(countIf(aggregate = '{$name}') = 0, NULL, toFloat64({$expression}))";
+
+        return match ($aggregate) {
+            'count', 'sum' => $present($aggregate, "sumIf(total, aggregate = '{$aggregate}')"),
+            'min' => $present('min', "minIf(lowest, aggregate = 'min')"),
+            'max' => $present('max', "maxIf(highest, aggregate = 'max')"),
+            'avg' => "if(sumIf(total, aggregate = 'count') = 0, NULL, toFloat64(sumIf(total, aggregate = 'sum')) / toFloat64(sumIf(total, aggregate = 'count')))",
+            default => throw new InvalidArgumentException("Unknown aggregate [{$aggregate}]."),
+        };
+    }
+
+    /**
+     * @param  array<int, string>  $hashes
+     * @return array<string, array<int, float>>
+     */
+    protected function binsByKey(string $type, int $window, array $hashes): array
+    {
+        if ($hashes === []) {
+            return [];
+        }
+
+        [$where, $params] = $this->window($type, $window);
+
+        return collect($this->client->select(
+            "SELECT key_hash, aggregate, toFloat64(sum(total)) AS value FROM laralyze_aggregates WHERE {$where} AND key_hash IN {hashes:Array(String)} AND startsWith(aggregate, 'h') GROUP BY key_hash, aggregate",
+            [...$params, 'hashes' => $hashes],
+        ))->groupBy('key_hash')->map(fn (Collection $bins) => $this->binCounts($bins->pluck('value', 'aggregate')->all()))->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected function object(array $row): stdClass
+    {
+        $object = new stdClass;
+
+        foreach ($row as $name => $value) {
+            $object->{$name} = $value;
+        }
+
+        return $object;
     }
 
     /**

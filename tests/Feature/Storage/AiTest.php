@@ -85,8 +85,7 @@ it('never stores prompts or responses', function () {
     (new BookWriter)->prompt('My secret manuscript', provider: 'openai', model: 'gpt-4o-mini');
     Laralyze::flush();
 
-    $storage = app(Storage::class);
-    $stored = json_encode([$storage->connection()->table('laralyze_aggregates')->get(), $storage->connection()->table('laralyze_values')->get()]);
+    $stored = json_encode([laralyzeRows('laralyze_aggregates'), laralyzeRows('laralyze_values')]);
 
     expect($stored)->not->toContain('secret manuscript')->not->toContain('desert planet');
 });

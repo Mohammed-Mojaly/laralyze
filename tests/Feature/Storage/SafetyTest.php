@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use MohammedMojaly\Laralyze\Dashboard\Health;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
@@ -13,7 +12,7 @@ beforeEach(function () {
 
 function storedRows(string $type): int
 {
-    return DB::table('laralyze_aggregates')->where('type', $type)->where('period', Period::MINUTE)->count();
+    return laralyzeRows('laralyze_aggregates')->where('type', $type)->where('period', Period::MINUTE)->count();
 }
 
 function failOneWrite(): void
@@ -101,7 +100,7 @@ it('counts what a full web request buffer dropped, and warns about it', function
     Laralyze::flush();
 
     expect(storedRows('import'))->toBe(2)
-        ->and((float) DB::table('laralyze_aggregates')->where('type', 'laralyze_dropped')->where('period', Period::MINUTE)->value('value'))->toBe(3.0);
+        ->and((float) laralyzeRows('laralyze_aggregates')->where('type', 'laralyze_dropped')->where('period', Period::MINUTE)->value('value'))->toBe(3.0);
 
     $this->get('/laralyze')->assertSee('3 metrics were dropped in the last 24 hours.')->assertSee('LARALYZE_BUFFER');
 });

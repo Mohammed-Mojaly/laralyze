@@ -11,7 +11,6 @@ use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Metrics\Period;
@@ -20,10 +19,10 @@ use Symfony\Component\Console\Output\BufferedOutput;
 
 function storedCount(?string $type = null): int
 {
-    return (int) DB::table('laralyze_aggregates')
+    return (int) laralyzeRows('laralyze_aggregates')
         ->where('aggregate', 'count')
         ->where('period', Period::MINUTE)
-        ->when($type, fn ($query) => $query->where('type', $type))
+        ->when($type, fn ($rows) => $rows->where('type', $type))
         ->sum('value');
 }
 
@@ -97,7 +96,7 @@ it('removes minute data after a day and hour data after the retention period', f
 
     Laralyze::trim();
 
-    $kept = fn (int $period) => DB::table('laralyze_aggregates')->where('type', 'request')->where('period', $period)->orderBy('key')->pluck('key')->all();
+    $kept = fn (int $period) => laralyzeRows('laralyze_aggregates')->where('type', 'request')->where('period', $period)->sortBy('key')->pluck('key')->values()->all();
 
     expect($kept(Period::MINUTE))->toBe(['recent'])
         ->and($kept(Period::HOUR))->toBe(['recent', 'two days']);
@@ -118,6 +117,6 @@ it('cleans up from a web request when the scheduler has not run for hours', func
     Laralyze::record('request', 'new')->count();
     Laralyze::flush();
 
-    expect(DB::table('laralyze_aggregates')->where('key', 'old')->exists())->toBeFalse()
-        ->and(DB::table('laralyze_values')->where('type', 'laralyze')->where('key', 'trimmed_at')->exists())->toBeTrue();
+    expect(laralyzeRows('laralyze_aggregates')->where('key', 'old')->isNotEmpty())->toBeFalse()
+        ->and(laralyzeRows('laralyze_values')->where('type', 'laralyze')->where('key', 'trimmed_at')->isNotEmpty())->toBeTrue();
 });

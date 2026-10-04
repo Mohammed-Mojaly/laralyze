@@ -10,7 +10,7 @@ const STORED_AT = 1_727_700_030;
 
 function storedValue(string $aggregate, string $key = 'GET /', int $period = Period::MINUTE): ?float
 {
-    $value = DB::table('laralyze_aggregates')
+    $value = laralyzeRows('laralyze_aggregates')
         ->where('period', $period)
         ->where('aggregate', $aggregate)
         ->where('key_hash', hash('xxh128', $key))
@@ -55,10 +55,10 @@ it('replaces values that are set again', function () {
     recordAndFlush(fn () => Laralyze::set('server', 'web-1', '{"cpu":10}', STORED_AT));
     recordAndFlush(fn () => Laralyze::set('server', 'web-1', '{"cpu":55}', STORED_AT + 5));
 
-    expect(DB::table('laralyze_values')->get(['timestamp', 'value'])->all())
+    expect(laralyzeRows('laralyze_values')->all())
         ->toHaveCount(1)
-        ->and(DB::table('laralyze_values')->value('value'))->toBe('{"cpu":55}')
-        ->and((int) DB::table('laralyze_values')->value('timestamp'))->toBe(STORED_AT + 5);
+        ->and(laralyzeRows('laralyze_values')->value('value'))->toBe('{"cpu":55}')
+        ->and((int) laralyzeRows('laralyze_values')->value('timestamp'))->toBe(STORED_AT + 5);
 });
 
 it('stores thousands of rows in one flush', function () {
@@ -68,7 +68,7 @@ it('stores thousands of rows in one flush', function () {
         }
     });
 
-    expect(DB::table('laralyze_aggregates')->where('type', 'import')->count())->toBe(5_000);
+    expect(laralyzeRows('laralyze_aggregates')->where('type', 'import')->count())->toBe(5_000);
 });
 
 it('round-trips keys with multibyte text', function () {
@@ -76,7 +76,7 @@ it('round-trips keys with multibyte text', function () {
 
     recordAndFlush(fn () => Laralyze::record('request', $key, timestamp: STORED_AT)->count());
 
-    expect(DB::table('laralyze_aggregates')->where('key_hash', hash('xxh128', $key))->value('key'))->toBe($key);
+    expect(laralyzeRows('laralyze_aggregates')->where('key_hash', hash('xxh128', $key))->value('key'))->toBe($key);
 });
 
 it('keeps the buffer when the storage connection is inside a transaction', function () {
@@ -90,7 +90,7 @@ it('keeps the buffer when the storage connection is inside a transaction', funct
     Laralyze::flush();
 
     expect(storedValue('count'))->toBe(1.0);
-});
+})->skip(fn () => usingClickHouse(), 'About SQL connections only.');
 
 it('never throws when storage fails', function () {
     app()->instance(Storage::class, new class(app('db'), config()) extends DatabaseStorage
@@ -117,7 +117,7 @@ it('ignores its own queries while writing', function () {
     recordAndFlush(fn () => Laralyze::record('request', 'GET /', timestamp: STORED_AT)->count());
 
     expect($queries)->toBe(0);
-});
+})->skip(fn () => usingClickHouse(), 'About SQL connections only.');
 
 it('leaves out metrics a filter rejects', function () {
     Laralyze::filter(fn (string $type, string $key) => ! str_contains($key, '@'));
@@ -127,7 +127,7 @@ it('leaves out metrics a filter rejects', function () {
         Laralyze::record('signup', 'newsletter', timestamp: STORED_AT)->count();
     });
 
-    expect(DB::table('laralyze_aggregates')->where('type', 'signup')->pluck('key')->unique()->values()->all())->toBe(['newsletter']);
+    expect(laralyzeRows('laralyze_aggregates')->where('type', 'signup')->pluck('key')->unique()->values()->all())->toBe(['newsletter']);
 });
 
 it('merges values that were already aggregated', function () {
@@ -136,7 +136,7 @@ it('merges values that were already aggregated', function () {
         Laralyze::merge('import', 'users', ['count' => 2, 'sum' => 5, 'max' => 4], STORED_AT);
     });
 
-    $stored = DB::table('laralyze_aggregates')->where('type', 'import')->where('period', 60)->pluck('value', 'aggregate');
+    $stored = laralyzeRows('laralyze_aggregates')->where('type', 'import')->where('period', 60)->pluck('value', 'aggregate');
 
     expect((float) $stored['count'])->toBe(5.0)
         ->and((float) $stored['sum'])->toBe(35.0)
