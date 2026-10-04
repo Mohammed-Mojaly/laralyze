@@ -12,6 +12,7 @@ use MohammedMojaly\Laralyze\Storage\ClickHouse\Client;
 use MohammedMojaly\Laralyze\Storage\ClickHouse\Schema;
 use MohammedMojaly\Laralyze\Storage\Concerns\ReadsMetrics;
 use stdClass;
+use Symfony\Component\Uid\Ulid;
 
 /**
  * Laralyze's data in ClickHouse. Writes are async inserts that the server
@@ -20,6 +21,8 @@ use stdClass;
 class ClickHouseStorage implements Storage
 {
     use ReadsMetrics;
+
+    protected const EXECUTION_COLUMNS = 'uuid, trace, type, name, status, failed, duration, user_id, server, started_at, counts, meta, job_uuid';
 
     public function __construct(protected Client $client) {}
 
@@ -59,22 +62,66 @@ class ClickHouseStorage implements Storage
 
     public function executions(array $filters, int $window, string $order = 'recent', int $limit = 50, int $offset = 0): Collection
     {
-        throw new LogicException('Not implemented yet.');
+        $where = ['started_at >= {since:Int64}'];
+        $params = ['since' => $this->now() - $window, 'limit' => $limit, 'offset' => $offset];
+
+        $filterable = [
+            'type' => ['type = {type:String}', fn ($value) => (string) $value],
+            'name' => ['name_hash = {name:String}', fn ($value) => hash('xxh128', (string) $value)],
+            'user' => ['user_id = {user:String}', fn ($value) => (string) $value],
+            'exception' => ['has(exceptions, {exception:String})', fn ($value) => (string) $value],
+            'slower' => ['duration >= {slower:Float64}', fn ($value) => (float) $value],
+        ];
+
+        foreach ($filterable as $filter => [$condition, $cast]) {
+            if (! empty($filters[$filter])) {
+                $where[] = $condition;
+                $params[$filter] = $cast($filters[$filter]);
+            }
+        }
+
+        if (isset($filters['failed'])) {
+            $where[] = 'failed = {failed:UInt8}';
+            $params['failed'] = $filters['failed'] ? 1 : 0;
+        }
+
+        $by = $order === 'slowest' ? 'duration' : 'started_at';
+
+        return $this->executionRows(
+            'SELECT '.self::EXECUTION_COLUMNS.' FROM laralyze_executions WHERE '.implode(' AND ', $where)." ORDER BY {$by} DESC, uuid DESC LIMIT {limit:UInt32} OFFSET {offset:UInt32}",
+            $params,
+        );
     }
 
     public function execution(string $uuid): ?stdClass
     {
-        throw new LogicException('Not implemented yet.');
+        if (! Ulid::isValid($uuid)) {
+            return null;
+        }
+
+        // A ULID carries when it was made: look only around that day.
+        $at = Ulid::fromString($uuid)->getDateTime()->getTimestamp();
+
+        return $this->executionRows(
+            'SELECT '.self::EXECUTION_COLUMNS.', events FROM laralyze_executions WHERE uuid = {uuid:String} AND started_at BETWEEN {from:Int64} AND {to:Int64} LIMIT 1',
+            ['uuid' => $uuid, 'from' => $at - 86_400, 'to' => $at + 86_400],
+        )->first();
     }
 
     public function related(string $trace, string $except): Collection
     {
-        throw new LogicException('Not implemented yet.');
+        return $this->executionRows(
+            'SELECT '.self::EXECUTION_COLUMNS.' FROM laralyze_executions WHERE trace = {trace:String} AND uuid != {except:String} ORDER BY started_at, uuid LIMIT 100',
+            ['trace' => $trace, 'except' => $except],
+        );
     }
 
     public function attempts(string $jobUuid): Collection
     {
-        throw new LogicException('Not implemented yet.');
+        return $this->executionRows(
+            'SELECT '.self::EXECUTION_COLUMNS.' FROM laralyze_executions WHERE job_uuid = {job:String} ORDER BY started_at, uuid LIMIT 50',
+            ['job' => $jobUuid],
+        );
     }
 
     public function trim(int $retentionDays, int $traceDays = 7): void
@@ -397,6 +444,33 @@ class ClickHouseStorage implements Storage
      */
     protected function executionRow(array $execution): array
     {
-        throw new LogicException('Not implemented yet.');
+        return [
+            'uuid' => (string) $execution['uuid'],
+            'trace' => (string) $execution['trace'],
+            'type' => (string) $execution['type'],
+            'name' => (string) $execution['name'],
+            'name_hash' => hash('xxh128', (string) $execution['name']),
+            'status' => (string) $execution['status'],
+            'failed' => $execution['failed'] ? 1 : 0,
+            'duration' => round((float) $execution['duration'], 2),
+            // No NULL columns: empty means none, and reads turn it back into null.
+            'user_id' => $execution['user_id'] === null ? '' : (string) $execution['user_id'],
+            'server' => (string) $execution['server'],
+            'started_at' => (int) $execution['started_at'],
+            'exceptions' => array_values(array_map(fn ($hash) => (string) $hash, (array) $execution['exceptions'])),
+            'counts' => (string) json_encode($execution['counts']),
+            'meta' => (string) json_encode($execution['meta'] ?? [], JSON_INVALID_UTF8_SUBSTITUTE),
+            'job_uuid' => isset($execution['job_uuid']) ? (string) $execution['job_uuid'] : '',
+            'events' => (string) json_encode($execution['events'], JSON_INVALID_UTF8_SUBSTITUTE),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     * @return Collection<int, stdClass>
+     */
+    protected function executionRows(string $sql, array $params): Collection
+    {
+        return collect($this->client->select($sql, $params))->map(fn (array $row) => $this->castExecution($this->object($row)));
     }
 }

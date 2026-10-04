@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
@@ -176,10 +177,16 @@ it('forgets single executions after a week', function () {
     $this->get('/fine');
     Laralyze::flush();
 
-    DB::table('laralyze_executions')->update(['started_at' => time() - 8 * 86_400]);
+    $kept = laralyzeRows('laralyze_executions')->first();
+    app(Storage::class)->store([], [], [[
+        'uuid' => (string) Str::ulid(now()->subDays(8)), 'trace' => (string) Str::ulid(), 'type' => 'request', 'name' => 'GET /old',
+        'status' => '200', 'failed' => false, 'duration' => 1.0, 'user_id' => null, 'server' => 'web', 'started_at' => time() - 8 * 86_400,
+        'exceptions' => [], 'counts' => [], 'meta' => [], 'events' => [],
+    ]]);
+
     Laralyze::trim();
 
-    expect(DB::table('laralyze_executions')->count())->toBe(0);
+    expect(laralyzeRows('laralyze_executions')->pluck('uuid')->all())->toBe([$kept->uuid]);
 });
 
 it('puts a failed job\'s exception in its timeline, though Laravel reports it after the failure', function () {
