@@ -81,12 +81,4 @@ class Assistant implements Agent, Conversational, HasTools
             app(Tools\SearchCode::class),
         ];
     }
-
-    /**
-     * laravel/ai 1.0 and later: the assistant leans on its tool loop and messages.
-     */
-    public static function supported(): bool
-    {
-        return class_exists('Laravel\Ai\Responses\Data\TextUsage') && interface_exists(Conversational::class);
-    }
 }

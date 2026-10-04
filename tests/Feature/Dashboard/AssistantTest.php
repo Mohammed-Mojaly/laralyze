@@ -12,11 +12,12 @@ use MohammedMojaly\Laralyze\Assistant\Assistant;
 use MohammedMojaly\Laralyze\Assistant\Chats;
 use MohammedMojaly\Laralyze\Assistant\Tools\LaralyzeData;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
+use MohammedMojaly\Laralyze\Livewire\AssistantPanel;
 use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 
 beforeEach(function () {
     // Laralyze's assistant needs laravel/ai 1.0; CI also runs 0.x.
-    if (! Assistant::supported()) {
+    if (! AssistantPanel::enabled()) {
         $this->markTestSkipped('The assistant needs laravel/ai 1.0 or later.');
     }
 

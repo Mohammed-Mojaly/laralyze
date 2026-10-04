@@ -417,6 +417,10 @@ class AssistantPanel extends Component
 
     public static function enabled(): bool
     {
-        return Assistant::supported() && (bool) config('laralyze.assistant.enabled', true);
+        // laravel/ai 1.0 and later, checked by name: loading Assistant
+        // without laravel/ai would be fatal.
+        return class_exists('Laravel\Ai\Responses\Data\TextUsage')
+            && interface_exists('Laravel\Ai\Contracts\Conversational')
+            && (bool) config('laralyze.assistant.enabled', true);
     }
 }
