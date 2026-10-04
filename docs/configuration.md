@@ -7,7 +7,8 @@ Everything lives in `config/laralyze.php`, published by `php artisan laralyze:in
 | Key | Env | Default | What it does |
 |---|---|---|---|
 | `enabled` | `LARALYZE_ENABLED` | `true` | Turns Laralyze off completely: no listeners, no routes, no work. |
-| `storage.connection` | `LARALYZE_DB_CONNECTION` | default connection | Keeps Laralyze's two tables on another database connection. |
+| `storage.driver` | `LARALYZE_STORAGE` | `database` | `database`, or `clickhouse` to keep the data in [ClickHouse](#clickhouse). |
+| `storage.connection` | `LARALYZE_DB_CONNECTION` | default connection | Keeps Laralyze's tables on another database connection. |
 | `retention` | `LARALYZE_RETENTION_DAYS` | `30` | Days of data to keep. Minute-level detail is kept for a day. |
 | `buffer` | `LARALYZE_BUFFER` | `5000` | Distinct metrics one request, job or command holds before writing. A web request that fills it drops the rest, and the dashboard warns. |
 | `alerts.mail` / `.slack` / `.discord` | `LARALYZE_ALERTS_MAIL`, `LARALYZE_ALERTS_SLACK_WEBHOOK`, `LARALYZE_ALERTS_DISCORD_WEBHOOK` | none | Where alerts go. Mail takes comma-separated addresses. Alerts are off until one is set. |
@@ -18,6 +19,29 @@ Everything lives in `config/laralyze.php`, published by `php artisan laralyze:in
 | `middleware` | | `['web', Authorize::class]` | Middleware for the dashboard and its card updates. |
 | `pages` | | `[]` | Add or hide sidebar pages. See [customization](customization.md). |
 | `cards` | | `[]` | Swap built-in cards for your own subclasses. |
+
+### ClickHouse
+
+```php
+'storage' => [
+    'driver' => env('LARALYZE_STORAGE', 'database'),
+    'clickhouse' => [
+        'url' => env('LARALYZE_CLICKHOUSE_URL', 'http://127.0.0.1:8123'),
+        'database' => env('LARALYZE_CLICKHOUSE_DATABASE', 'default'),
+        'username' => env('LARALYZE_CLICKHOUSE_USERNAME', 'default'),
+        'password' => env('LARALYZE_CLICKHOUSE_PASSWORD', ''),
+        'timeout' => (float) env('LARALYZE_CLICKHOUSE_TIMEOUT', 3),
+        'wait' => (bool) env('LARALYZE_CLICKHOUSE_WAIT', true),
+    ],
+],
+```
+
+- `url`: ClickHouse's HTTP interface, `http://…:8123` or `https://…:8443`. Laralyze talks to it over HTTP; no PHP extension needed.
+- `database`, `username`, `password`: the credentials go in request headers, never in the URL, so they stay out of access logs.
+- `timeout`: seconds a write may take. When ClickHouse doesn't answer in time, recording pauses for a minute and the dashboard says why.
+- `wait`: wait until ClickHouse has saved each write. On by default, so failed writes are noticed. See [Octane and high traffic](runtime.md#clickhouse-in-production) before turning it off.
+- `connect_timeout` (not in the published file): seconds to connect, 1 by default.
+- `php artisan laralyze:install` creates the tables, and is safe to run again; run it after upgrading Laralyze.
 
 ## Options every recorder understands
 

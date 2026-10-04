@@ -19,7 +19,7 @@ Self-hosted production monitoring for Laravel. A dashboard inside your app shows
 - PHP 8.3+
 - Laravel 12.69.2+ or 13.32+
 - Livewire 3.8.3+ or 4.3.4+ (installed for you; your app doesn't need to use it). Earlier releases have a known XSS issue.
-- MySQL, MariaDB, PostgreSQL, SQLite or SQL Server
+- MySQL, MariaDB, PostgreSQL, SQLite or SQL Server, or [ClickHouse](#clickhouse) 24.8+
 
 ## Installation
 
@@ -92,6 +92,25 @@ With [`laravel/ai`](https://github.com/laravel/ai) 1.0 and a provider key in you
 - Nothing is sent until someone asks. Conversations stay in Laralyze's tables for 7 days, apart from your app's own AI conversations, and never count as your app's AI calls.
 
 See [Ask AI in the configuration docs](docs/configuration.md#ask-ai).
+
+## ClickHouse
+
+For high traffic, Laralyze can keep its data in [ClickHouse](https://clickhouse.com) instead of your app's database. Set it in `.env`, then run `php artisan laralyze:install` to create the tables:
+
+```env
+LARALYZE_STORAGE=clickhouse
+LARALYZE_CLICKHOUSE_URL=http://127.0.0.1:8123
+LARALYZE_CLICKHOUSE_DATABASE=laralyze
+LARALYZE_CLICKHOUSE_USERNAME=laralyze
+LARALYZE_CLICKHOUSE_PASSWORD=secret
+```
+
+- Every page works the same, with the same numbers.
+- Writes follow ClickHouse's own advice: asynchronous inserts that the server batches, so thousands of requests don't become thousands of small writes. Metrics merge in the background, and old data goes by whole days, without row-by-row deletes.
+- ClickHouse 24.8 or later, on your own server or ClickHouse Cloud. Run `laralyze:install` again after upgrading Laralyze.
+- Your database stays the default. Switching starts with empty tables: existing data isn't copied.
+
+Put ClickHouse next to your app servers. See [ClickHouse in production](docs/runtime.md#clickhouse-in-production) and the [settings](docs/configuration.md#clickhouse).
 
 ## Alerts
 
