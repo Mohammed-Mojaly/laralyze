@@ -4,7 +4,7 @@ namespace MohammedMojaly\Laralyze\Storage;
 
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
-use LogicException;
+use MohammedMojaly\Laralyze\Assistant\Chats;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Metrics\Histogram;
 use MohammedMojaly\Laralyze\Metrics\Period;
@@ -126,7 +126,26 @@ class ClickHouseStorage implements Storage
 
     public function trim(int $retentionDays, int $traceDays = 7): void
     {
-        throw new LogicException('Not implemented yet.');
+        $now = $this->now();
+
+        // Whole days past their cutoff go at once: no row-by-row deletes.
+        $this->dropDaysBefore(DatabaseStorage::AGGREGATES, $now - Period::MINUTE_RETENTION, Period::MINUTE);
+        $this->dropDaysBefore(DatabaseStorage::AGGREGATES, $now - $retentionDays * 86_400, Period::HOUR);
+        $this->dropDaysBefore(DatabaseStorage::EXECUTIONS, $now - min($traceDays, $retentionDays) * 86_400);
+
+        // Values are few: one lightweight delete costs less than partitioning them.
+        $this->client->statement(
+            'DELETE FROM laralyze_values WHERE timestamp < {retention:Int64} OR (type = {chats:String} AND timestamp < {chats_cutoff:Int64}) OR (type IN {short:Array(String)} AND timestamp < {short_cutoff:Int64})',
+            [
+                'retention' => $now - $retentionDays * 86_400,
+                'chats' => Chats::TYPE,
+                'chats_cutoff' => $now - Chats::DAYS * 86_400,
+                'short' => DatabaseStorage::SHORT_LIVED_VALUES,
+                'short_cutoff' => $now - Period::MINUTE_RETENTION,
+            ],
+        );
+
+        $this->store([], [['timestamp' => $now, 'type' => 'laralyze', 'key' => 'trimmed_at', 'value' => (string) $now]]);
     }
 
     public function lastTrimmedAt(): ?int
@@ -326,6 +345,28 @@ class ClickHouseStorage implements Storage
         );
 
         return (int) ($found[0]['found'] ?? 0);
+    }
+
+    /**
+     * Drop the day partitions that ended before the cutoff. Aggregates are
+     * partitioned by (period, day), executions by day.
+     */
+    protected function dropDaysBefore(string $table, int $cutoff, ?int $period = null): void
+    {
+        $parts = $this->client->select(
+            'SELECT DISTINCT partition_id, partition FROM system.parts WHERE database = {database:String} AND table = {table:String} AND active',
+            ['database' => $this->client->database(), 'table' => $table],
+        );
+
+        foreach ($parts as $part) {
+            preg_match_all('/\d+/', (string) $part['partition'], $numbers);
+            $numbers = array_map('intval', $numbers[0]);
+            [$partPeriod, $day] = count($numbers) === 2 ? $numbers : [null, $numbers[0] ?? PHP_INT_MAX];
+
+            if ($partPeriod === $period && ($day + 1) * 86_400 <= $cutoff) {
+                $this->client->statement("ALTER TABLE {$table} DROP PARTITION ID {id:String}", ['id' => (string) $part['partition_id']]);
+            }
+        }
     }
 
     /**

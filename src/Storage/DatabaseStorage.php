@@ -31,7 +31,7 @@ class DatabaseStorage implements Storage
     /**
      * Values only needed for a day, like when each visitor was last seen.
      */
-    protected const SHORT_LIVED_VALUES = ['visitor_seen'];
+    public const SHORT_LIVED_VALUES = ['visitor_seen'];
 
     public function __construct(protected DatabaseManager $db, protected Repository $config) {}
 
