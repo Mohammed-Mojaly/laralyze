@@ -53,6 +53,7 @@ abstract class TestCase extends Orchestra
                     'username' => getenv('LARALYZE_TEST_CLICKHOUSE_USERNAME') ?: 'default',
                     'password' => getenv('LARALYZE_TEST_CLICKHOUSE_PASSWORD') ?: '',
                     'timeout' => 30,
+                    'connect_timeout' => 10,
                     'wait' => true,
                 ]);
             }

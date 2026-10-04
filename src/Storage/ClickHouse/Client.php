@@ -38,7 +38,8 @@ class Client
         return new self(
             new Guzzle([
                 'base_uri' => $url.'/',
-                'connect_timeout' => 1.0,
+                // Short: a server next to the app connects in milliseconds.
+                'connect_timeout' => (float) ($config['connect_timeout'] ?? 1),
                 'http_errors' => false,
                 // Headers, not the URL, so credentials never reach access logs.
                 'headers' => [

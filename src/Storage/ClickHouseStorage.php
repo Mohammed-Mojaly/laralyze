@@ -47,7 +47,11 @@ class ClickHouseStorage implements Storage
 
     public function store(array $rows, array $values, array $executions = []): void
     {
-        throw new LogicException('Not implemented yet.');
+        $this->client->insertMany([
+            DatabaseStorage::AGGREGATES => array_map(fn (array $row) => $this->aggregateRow($row), $rows),
+            DatabaseStorage::VALUES => array_map(fn (array $value) => $this->valueRow($value['type'], $value['key'], $value['value'], $value['timestamp']), $values),
+            DatabaseStorage::EXECUTIONS => array_map(fn (array $execution) => $this->executionRow($execution), $executions),
+        ]);
     }
 
     public function executions(array $filters, int $window, string $order = 'recent', int $limit = 50, int $offset = 0): Collection
@@ -77,7 +81,9 @@ class ClickHouseStorage implements Storage
 
     public function lastTrimmedAt(): ?int
     {
-        throw new LogicException('Not implemented yet.');
+        $value = $this->values('laralyze', ['trimmed_at'])->first()?->value;
+
+        return $value === null ? null : (int) $value;
     }
 
     public function oldestBucket(): ?int
@@ -117,20 +123,90 @@ class ClickHouseStorage implements Storage
 
     public function values(string $type, ?array $keys = null): Collection
     {
-        throw new LogicException('Not implemented yet.');
+        $sql = 'SELECT key, value, timestamp FROM laralyze_values FINAL WHERE type = {type:String} AND deleted = 0';
+        $params = ['type' => $type];
+
+        if ($keys !== null) {
+            $sql .= ' AND key_hash IN {hashes:Array(String)}';
+            $params['hashes'] = array_map(fn (string $key) => hash('xxh128', $key), $keys);
+        }
+
+        return collect($this->client->select($sql.' ORDER BY key', $params))->map(function (array $row): stdClass {
+            $value = new stdClass;
+            $value->key = (string) $row['key'];
+            $value->value = (string) $row['value'];
+            $value->timestamp = (int) $row['timestamp'];
+
+            return $value;
+        });
     }
 
     public function put(string $type, string $key, string $value): void
     {
-        throw new LogicException('Not implemented yet.');
+        // Dashboard actions: written at once so the next render shows them.
+        $this->client->insert(DatabaseStorage::VALUES, [$this->valueRow($type, $key, $value, $this->now())], async: false);
     }
 
     public function forget(string $type, string $key): void
     {
-        throw new LogicException('Not implemented yet.');
+        // A tombstone: reads with FINAL drop the key, and later puts bring it back.
+        $this->client->insert(DatabaseStorage::VALUES, [[...$this->valueRow($type, $key, '', $this->now()), 'deleted' => 1]], async: false);
     }
 
     public function countValues(string $type, int $seconds): int
+    {
+        $found = $this->client->select(
+            'SELECT count() AS found FROM laralyze_values FINAL WHERE type = {type:String} AND deleted = 0 AND timestamp >= {since:Int64}',
+            ['type' => $type, 'since' => $this->now() - $seconds],
+        );
+
+        return (int) ($found[0]['found'] ?? 0);
+    }
+
+    /**
+     * @param  array{bucket: int, period: int, type: string, aggregate: string, key: string, value: float}  $row
+     * @return array<string, int|float|string>
+     */
+    protected function aggregateRow(array $row): array
+    {
+        $value = round($row['value'], 4);
+
+        return [
+            'bucket' => $row['bucket'],
+            'period' => $row['period'],
+            'type' => $row['type'],
+            'aggregate' => $row['aggregate'],
+            'key_hash' => hash('xxh128', $row['key']),
+            'key' => $row['key'],
+            // One value, three merge rules: sums add up, min and max keep the extremes.
+            'total' => $value,
+            'lowest' => $value,
+            'highest' => $value,
+        ];
+    }
+
+    /**
+     * @return array<string, int|string>
+     */
+    protected function valueRow(string $type, string $key, string $value, int $timestamp): array
+    {
+        return [
+            'type' => $type,
+            'key_hash' => hash('xxh128', $key),
+            'key' => $key,
+            'value' => $value,
+            'timestamp' => $timestamp,
+            // The newest write wins, also between two in the same second.
+            'version' => (int) (microtime(true) * 1_000_000),
+            'deleted' => 0,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $execution
+     * @return array<string, mixed>
+     */
+    protected function executionRow(array $execution): array
     {
         throw new LogicException('Not implemented yet.');
     }

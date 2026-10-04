@@ -108,3 +108,10 @@ it('reads its settings from config with defaults for missing keys', function () 
         ->and($client->database())->toBe('monitoring')
         ->and(Client::fromConfig([])->url())->toBe('http://127.0.0.1:8123');
 });
+
+it('connects with a short timeout unless told otherwise', function () {
+    $timeout = fn (Client $client) => (fn () => $this->http->getConfig('connect_timeout'))->call($client);
+
+    expect($timeout(Client::fromConfig([])))->toBe(1.0)
+        ->and($timeout(Client::fromConfig(['connect_timeout' => 5])))->toBe(5.0);
+});
