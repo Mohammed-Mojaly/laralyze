@@ -1,12 +1,10 @@
 <p align="center"><img src="art/hero.png" alt="Laralyze: self-hosted monitoring for Laravel" width="100%"></p>
 
-<!--
 <p align="center">
     <a href="https://github.com/Mohammed-Mojaly/laralyze/actions/workflows/tests.yml"><img src="https://github.com/Mohammed-Mojaly/laralyze/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
     <a href="https://packagist.org/packages/mohammed-mojaly/laralyze"><img src="https://img.shields.io/packagist/v/mohammed-mojaly/laralyze" alt="Latest version"></a>
     <a href="LICENSE.md"><img src="https://img.shields.io/packagist/l/mohammed-mojaly/laralyze" alt="License"></a>
 </p>
--->
 
 # Laralyze
 

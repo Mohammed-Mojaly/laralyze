@@ -2,7 +2,7 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
-## v0.1.0 - 2026-10-03
+## v0.1.0 - 2026-10-04
 
 First release.
 
