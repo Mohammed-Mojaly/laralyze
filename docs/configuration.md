@@ -84,6 +84,29 @@ Recorders\Ai::class => [
 - A model's price is found under the provider's own name for it: `claude-haiku-4-5-20251001` from Anthropic and `anthropic/claude-haiku-4.5` from OpenRouter are the same model. Models from Groq and other hosts are matched by name, when only one vendor has a model of that name. Azure deployments are matched as OpenAI models when named after one.
 - Costs are recorded when the call happens. A price you add later applies to new calls only.
 
+### Ask AI
+
+```php
+'assistant' => [
+    'enabled' => env('LARALYZE_ASSISTANT_ENABLED', true),
+    'provider' => env('LARALYZE_ASSISTANT_PROVIDER'),
+    'model' => env('LARALYZE_ASSISTANT_MODEL'),
+    'stream' => env('LARALYZE_ASSISTANT_STREAM', true),
+    'paths' => ['app', 'routes', 'config', 'database', 'resources', 'tests', 'composer.json'],
+],
+```
+
+- Needs `laravel/ai` 1.0 or later, and a provider with an API key in `config/ai.php` (or Ollama as your default provider). Without one, the chat explains how to add it.
+- **What is sent**, only when someone asks: the question, the conversation so far, what Laralyze recorded about the subject (the exception and its stack trace, the query and its timings, the request's timeline…), and the code the assistant reads.
+- **Reading code**: only files inside `paths`, from your project's root, up to 300 lines at a time. Never `.env` files, keys and certificates, credentials, `auth.json`, `storage`, `vendor`, `node_modules` or `.git`, whatever `paths` says. Values assigned to names like `password`, `secret`, `key` or `token` are shown as `***`, in reads and in searches. It also reads Laralyze's own data: routes, exceptions, findings, queries, jobs, outgoing requests, cache and AI calls.
+- **Where**: the Ask AI button in every page's top bar opens a side chat about what the page shows (an exception, a query, a route, one request…) or about the whole app; Findings have their own button. The **Assistant** page has the same chat full width, with your conversations from the last 7 days next to it.
+- **Provider and model**: a provider from `config/ai.php` and its model. Empty means your app's default provider (`ai.default`) and that provider's default model. The chat shows which it uses. **The model must support tool calling** (function calling): the assistant reads Laralyze's data and your code through tools, and a model without them can only guess. Current OpenAI, Anthropic and Gemini models support it; with Ollama or OpenRouter, check the model's page (Ollama marks them "tools").
+- **Charts**: answers can include charts. The model only names what to draw (a metric, an aggregate like p95, a key, a period); the chart is drawn from what Laralyze recorded, like the dashboard's, so its numbers are never made up. Comparisons the model already has, like cost per model, show as a ranking.
+- **Streaming**: answers appear as they're written, and the chat says what the assistant is reading meanwhile. If your server holds responses back until they're complete (some proxies or compression settings do), the answer simply appears at the end; set `LARALYZE_ASSISTANT_STREAM=false` to always wait for it.
+- **Conversations** are kept per person in `laralyze_values` for 7 days. Asking again about the same exception opens its latest conversation, from the side chat or the Assistant page; nothing is asked until you pick a suggested question or write one. "New conversation" starts another and keeps the old one. Each conversation has its own link (`/laralyze/assistant?chat=…`), which opens it only for the person it belongs to. They never go into laravel/ai's `agent_conversations` tables, so your app's own chat can't show them.
+- **Cost**: each answer shows its tokens and estimated cost, and the chat shows the conversation's total. The assistant's calls are not recorded on the AI page or in timelines. They do fire laravel/ai's events; listeners of your own see them with the agent `MohammedMojaly\Laralyze\Assistant\Assistant`.
+- Turn it off with `LARALYZE_ASSISTANT_ENABLED=false`.
+
 ### Visits
 
 ```php

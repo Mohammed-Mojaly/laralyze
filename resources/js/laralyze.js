@@ -56,3 +56,14 @@
         }
     });
 })();
+
+// "Ask AI": opens the assistant panel about what the button names.
+(() => {
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-laralyze-ask]');
+
+        if (button && window.Livewire) {
+            window.Livewire.dispatch('laralyze-ask', { kind: button.dataset.kind ?? 'general', key: button.dataset.key ?? '' });
+        }
+    });
+})();

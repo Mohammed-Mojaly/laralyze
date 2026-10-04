@@ -3,6 +3,7 @@
 namespace MohammedMojaly\Laralyze\Dashboard;
 
 use Illuminate\Contracts\Config\Repository;
+use MohammedMojaly\Laralyze\Livewire\AssistantPanel;
 use MohammedMojaly\Laralyze\Recorders;
 
 /**
@@ -106,6 +107,7 @@ class Pages
 
         return [
             self::HOME => ['label' => 'Dashboard', 'view' => 'laralyze::pages.dashboard', 'icon' => 'dashboard'],
+            ...(AssistantPanel::enabled() ? ['assistant' => ['label' => 'Assistant', 'view' => 'laralyze::pages.assistant', 'icon' => 'ai']] : []),
             'requests' => $page('Requests', 'Activity', Recorders\Requests::class, 'requests'),
             'jobs' => $page('Jobs', 'Activity', Recorders\Jobs::class, 'jobs'),
             'commands' => $page('Commands', 'Activity', Recorders\Commands::class, 'commands'),

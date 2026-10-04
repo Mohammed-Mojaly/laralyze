@@ -275,6 +275,37 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | AI Assistant
+    |--------------------------------------------------------------------------
+    |
+    | "Ask AI" on an exception, an N+1, a slow query or request, or anything
+    | Laralyze recorded. Needs laravel/ai 1.0+ and a provider with an API key
+    | in config/ai.php. Nothing is sent until someone asks. Conversations are
+    | kept in Laralyze's tables for 7 days and are never recorded as your
+    | app's AI calls.
+    |
+    */
+
+    'assistant' => [
+        'enabled' => env('LARALYZE_ASSISTANT_ENABLED', true),
+
+        // A provider from config/ai.php and its model. Empty: your app's
+        // default AI provider and that provider's default model.
+        'provider' => env('LARALYZE_ASSISTANT_PROVIDER'),
+        'model' => env('LARALYZE_ASSISTANT_MODEL'),
+
+        // Show answers as they're written. Turn off if your server holds
+        // responses back until they're complete.
+        'stream' => env('LARALYZE_ASSISTANT_STREAM', true),
+
+        // Folders and files it may read, from your project's root. .env files,
+        // keys and credentials, storage, vendor and .git are never read, and
+        // values that look like passwords, keys or tokens are masked.
+        'paths' => ['app', 'routes', 'config', 'database', 'resources', 'tests', 'composer.json'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Dashboard
     |--------------------------------------------------------------------------
     |

@@ -40,7 +40,7 @@
     $title = $execution->type === 'command' ? ($meta['line'] ?? $execution->name) : $execution->name;
     $attempt = $attempts->search(fn ($other) => $other->uuid === $execution->uuid);
 @endphp
-<x-laralyze::page :title="$title" :page="$page?->key" mono>
+<x-laralyze::page :title="$title" :page="$page?->key" :ask="['execution', $execution->uuid]" mono>
     @if ($attempts->count() > 1)
         <nav class="lz-attempts lz-span-full" aria-label="Attempts">
             <span class="lz-muted">Attempt {{ $attempt === false ? '?' : $attempt + 1 }} of {{ $attempts->count() }}</span>

@@ -6,8 +6,8 @@
         @php($value = $chart->value($name, $time))
         <p class="lz-tip-row lz-s-{{ $name }}">
             <span class="lz-swatch"></span>
-            <span>{{ $name }}</span>
-            <b>{{ $format === 'duration' ? \MohammedMojaly\Laralyze\Support\Format::duration($value) : \MohammedMojaly\Laralyze\Support\Format::number($value ?? 0) }}</b>
+            <span>{{ $chart->title($name) }}</span>
+            <b>{{ \MohammedMojaly\Laralyze\Support\Format::as($format, $value) }}</b>
         </p>
     @endforeach
 </div>

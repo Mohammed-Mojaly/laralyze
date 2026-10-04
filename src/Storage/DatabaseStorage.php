@@ -10,6 +10,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
 use InvalidArgumentException;
+use MohammedMojaly\Laralyze\Assistant\Chats;
 use MohammedMojaly\Laralyze\Metrics\Histogram;
 use MohammedMojaly\Laralyze\Metrics\Period;
 use stdClass;
@@ -311,6 +312,11 @@ class DatabaseStorage
 
         $connection->table(self::VALUES)
             ->where('timestamp', '<', $now - $retentionDays * 86_400)
+            ->delete();
+
+        $connection->table(self::VALUES)
+            ->where('type', Chats::TYPE)
+            ->where('timestamp', '<', $now - Chats::DAYS * 86_400)
             ->delete();
 
         $connection->table(self::VALUES)

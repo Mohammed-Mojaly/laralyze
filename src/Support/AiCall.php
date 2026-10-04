@@ -50,6 +50,11 @@ final class AiCall
 
     public const TOOL_STARTS = self::EVENTS.'InvokingTool';
 
+    /**
+     * Laralyze's own assistant, which is never counted as the app's.
+     */
+    public const LARALYZE = 'MohammedMojaly\Laralyze\Assistant\Assistant';
+
     public const TOOL_ENDS = [self::EVENTS.'ToolInvoked', self::EVENTS.'ToolFailed'];
 
     /**

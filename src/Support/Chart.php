@@ -18,8 +18,9 @@ final class Chart
 
     /**
      * @param  array<string, Collection<int, float|null>>  $series  Series name => graph() result.
+     * @param  array<string, string>  $titles  What to call a series where its name won't do.
      */
-    public function __construct(public readonly array $series, public readonly Range $range)
+    public function __construct(public readonly array $series, public readonly Range $range, public readonly array $titles = [])
     {
         $first = reset($series);
 
@@ -32,6 +33,11 @@ final class Chart
     public function names(): array
     {
         return array_map(strval(...), array_keys($this->series));
+    }
+
+    public function title(string $name): string
+    {
+        return $this->titles[$name] ?? $name;
     }
 
     public function value(string $name, int $slot): ?float

@@ -59,7 +59,7 @@ class Ai extends Recorder
         $started = $this->pending[$id][0] ?? null;
         unset($this->pending[$id]);
 
-        if ($this->shouldIgnore($name)) {
+        if ($this->shouldIgnore($name) || $name === AiCall::LARALYZE) {
             return;
         }
 
@@ -81,7 +81,7 @@ class Ai extends Recorder
     public function digest(): void
     {
         foreach ($this->pending as [, $name, $provider, $model]) {
-            if (! $this->shouldIgnore($name)) {
+            if (! $this->shouldIgnore($name) && $name !== AiCall::LARALYZE) {
                 $this->failed($name, $provider, $model);
             }
         }

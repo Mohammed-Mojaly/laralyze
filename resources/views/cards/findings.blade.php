@@ -19,9 +19,12 @@
                     </div>
                     <pre class="lz-code"><code>{{ Sql::highlight(Sql::format((string) $finding->sql)) }}</code></pre>
                     <p class="lz-finding-hint">{{ $finding->hint }}</p>
-                    @if ($finding->example)
-                        <a class="lz-button" href="{{ route('laralyze.execution', ['execution' => $finding->example]) }}">See an example</a>
-                    @endif
+                    <div class="lz-finding-actions">
+                        @if ($finding->example)
+                            <a class="lz-button" href="{{ route('laralyze.execution', ['execution' => $finding->example]) }}">See an example</a>
+                        @endif
+                        <x-laralyze::ask :kind="$finding->type" :key="(string) $finding->key" label="Ask AI how to fix it" />
+                    </div>
                 </li>
             @endforeach
         </ol>

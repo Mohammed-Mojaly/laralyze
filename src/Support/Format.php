@@ -24,6 +24,18 @@ class Format
     }
 
     /**
+     * A value in a chart's format: number, duration or money.
+     */
+    public static function as(string $format, int|float|null $value): string
+    {
+        return match ($format) {
+            'duration' => self::duration($value),
+            'money' => self::money($value ?? 0),
+            default => self::number($value ?? 0),
+        };
+    }
+
+    /**
      * US dollars: $4.82, or $0.0037 for the small amounts single AI calls cost.
      */
     public static function money(int|float|null $usd): string

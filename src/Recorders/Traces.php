@@ -30,6 +30,7 @@ use Illuminate\Queue\Events\Looping;
 use Illuminate\Queue\Queue;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Str;
+use MohammedMojaly\Laralyze\Assistant\Assistant;
 use MohammedMojaly\Laralyze\Laralyze;
 use MohammedMojaly\Laralyze\Support\AiCall;
 use MohammedMojaly\Laralyze\Support\Location;
@@ -580,6 +581,12 @@ class Traces extends Recorder
     protected function ai(object $event): void
     {
         $class = $event::class;
+
+        // Laralyze's own assistant and the tools it uses aren't part of the app.
+        if ((isset($event->agent) && $event->agent instanceof Assistant) || AiCall::name($event) === AiCall::LARALYZE) {
+            return;
+        }
+
         $tool = $class === AiCall::TOOL_STARTS || in_array($class, AiCall::TOOL_ENDS, true);
         $id = AiCall::id($event, $tool ? 'toolInvocationId' : 'invocationId') ?? '';
 

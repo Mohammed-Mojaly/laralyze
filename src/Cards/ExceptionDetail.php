@@ -85,7 +85,7 @@ class ExceptionDetail extends Card
             'lastWeek' => (float) ($storage->total('exception', ['count'], 7 * 86_400, $this->name)->count ?? 0),
             'users' => $this->users(),
             'groups' => $this->groups($exception->frames),
-            'markdown' => $this->markdown($exception, $counts, $seen->max),
+            'markdown' => self::markdown($exception, $counts, $seen->max),
             'status' => app(Issues::class)->statuses([$this->name => $seen->max])[$this->name],
         ]);
     }
@@ -132,7 +132,7 @@ class ExceptionDetail extends Card
      *
      * @param  array{handled: float, unhandled: float}  $counts
      */
-    protected function markdown(stdClass $exception, array $counts, ?float $lastSeen): string
+    public static function markdown(stdClass $exception, array $counts, ?float $lastSeen): string
     {
         $lines = ["## {$exception->class}", '', $exception->message, ''];
         $lines[] = "- **Location:** `{$exception->location}`";

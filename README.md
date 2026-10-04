@@ -1,4 +1,4 @@
-<p align="center"><img src="art/hero.png" alt="Laralyze: self-hosted monitoring for Laravel" width="100%"></p>
+<p align="center"><img src="art/hero.png" alt="Laralyze: self-hosted monitoring for Laravel, with an AI assistant that answers from your data" width="100%"></p>
 
 <p align="center">
     <a href="https://github.com/Mohammed-Mojaly/laralyze/actions/workflows/tests.yml"><img src="https://github.com/Mohammed-Mojaly/laralyze/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
@@ -68,6 +68,8 @@ Each page shows the last 15 minutes, hour, 24 hours, 7, 14 or 30 days. Lists can
 <p align="center"><img src="art/dashboard.webp" alt="The dashboard: requests by status, duration and exceptions" width="100%"></p>
 <p align="center"><img src="art/exception.webp" alt="An exception: where it happened, how often, and the code around the line that threw it" width="100%"></p>
 <p align="center"><img src="art/timeline.webp" alt="The timeline of one request: stages and every query, with an N+1 marked ×15" width="100%"></p>
+<p align="center"><img src="art/ai.webp" alt="The AI page: calls, tokens, estimated cost and failures over time" width="100%"></p>
+<p align="center"><img src="art/assistant.webp" alt="The Assistant page: a question about the app, answered from Laralyze's data with a chart" width="100%"></p>
 
 ## AI calls
 
@@ -78,6 +80,18 @@ If your app uses [`laravel/ai`](https://github.com/laravel/ai) (0.6 or later), t
 - Each AI call shows in the timeline of its request or job, with the tools it called.
 
 See [AI in the configuration docs](docs/configuration.md#ai).
+
+## Ask AI
+
+With [`laravel/ai`](https://github.com/laravel/ai) 1.0 and a provider key in your `.env` (OpenAI, Anthropic, Gemini, OpenRouter, Ollama…), every page has an **Ask AI** button. On an exception, an N+1, a query, a route or a single request, it opens a side chat that already knows what Laralyze recorded about it, and explains the cause and the fix. When code needs to change, the answer ends with a prompt you can copy into your own coding agent.
+
+- The **Assistant** page answers questions about the whole app (what's slow, what fails most, what your AI calls cost) with charts drawn from your data, and keeps your conversations from the last 7 days.
+- Answers stream in as they're written, with what the assistant is reading meanwhile.
+- The assistant can read your code, read-only, in the folders you allow. `.env` files, keys, credentials, `storage`, `vendor` and `.git` are never read, and values that look like secrets are masked.
+- It uses your app's default AI provider and model, or the ones you set with `LARALYZE_ASSISTANT_PROVIDER` and `LARALYZE_ASSISTANT_MODEL`. The model must support tool calling (function calling): the assistant uses tools to read your data and code. Current models from OpenAI, Anthropic and Gemini do; with Ollama or OpenRouter, pick one that does.
+- Nothing is sent until someone asks. Conversations stay in Laralyze's tables for 7 days, apart from your app's own AI conversations, and never count as your app's AI calls.
+
+See [Ask AI in the configuration docs](docs/configuration.md#ask-ai).
 
 ## Alerts
 
@@ -118,15 +132,6 @@ Laralyze::record('checkout', $plan, $total)->count()->sum()->max();
 ```
 
 Then show them with a card of your own: `php artisan laralyze:make-card CheckoutFunnel`.
-
-## What's next
-
-An optional AI assistant, through [`laravel/ai`](https://github.com/laravel/ai) and the provider you choose:
-
-- Explain an exception, an N+1 or a slow query and how to fix it, from what Laralyze already keeps.
-- Hand you a prompt to paste into your own coding agent.
-
-Nothing is sent anywhere unless you turn it on.
 
 ## Documentation
 

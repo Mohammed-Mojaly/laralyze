@@ -141,6 +141,8 @@ class LaralyzeServiceProvider extends ServiceProvider
             foreach (self::CARDS as $name => $class) {
                 $livewire->component("laralyze.{$name}", $config->get("laralyze.cards.{$name}", $class));
             }
+
+            $livewire->component('laralyze.assistant', Livewire\AssistantPanel::class);
         });
     }
 

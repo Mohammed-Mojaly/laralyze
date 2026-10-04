@@ -8,7 +8,10 @@
     ][$page->key] ?? null;
     $tracing = (bool) config('laralyze.recorders.'.\MohammedMojaly\Laralyze\Recorders\Traces::class.'.enabled', false);
 @endphp
-<x-laralyze::page :title="$title" :mono="in_array($page->key, ['queries', 'commands'], true)">
+@php
+    $ask = ['exceptions' => 'exception', 'queries' => 'query', 'requests' => 'request'][$page->key] ?? null;
+@endphp
+<x-laralyze::page :title="$title" :mono="in_array($page->key, ['queries', 'commands'], true)" :ask="$ask ? [$ask, $name] : null">
     @if ($page->key === 'exceptions')
         <livewire:laralyze.exception :name="$name" />
     @else
