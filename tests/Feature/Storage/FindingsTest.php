@@ -1,7 +1,11 @@
 <?php
 
+use Illuminate\Contracts\Queue\Job;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -160,4 +164,31 @@ it('still calls it an N+1 when rows share a parent', function () {
     Laralyze::flush();
 
     expect(findings('n_plus_one'))->toHaveCount(1)->and(findings('duplicate_query'))->toBe([]);
+});
+
+it('also finds repeats from before the job or request started', function () {
+    $job = tap(Mockery::mock(Job::class), function ($job) {
+        $job->shouldReceive('resolveName')->andReturn('App\Jobs\GenerateProfile');
+        $job->shouldReceive('payload')->andReturn(['createdAt' => time()]);
+        $job->shouldReceive('getQueue')->andReturn('default');
+        $job->shouldReceive('attempts')->andReturn(1);
+        $job->shouldReceive('uuid')->andReturn('5b6a2d1e-0000-4000-8000-000000000003');
+    });
+
+    event(new Looping('database', 'default'));
+
+    // Settings read again and again while the job is being picked up.
+    foreach (range(1, 3) as $i) {
+        DB::table('authors')->where('name', 'Author 2')->first();
+    }
+
+    event(new JobProcessing('database', $job));
+    event(new JobProcessed('database', $job));
+    Laralyze::flush();
+
+    $found = findings('duplicate_query');
+
+    expect($found)->toHaveCount(1)
+        ->and(json_decode((string) array_key_first($found), true)[1])->toContain('FindingsTest.php:')
+        ->and((float) reset($found)->max)->toBe(3.0);
 });

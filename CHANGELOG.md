@@ -2,6 +2,12 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## v0.1.1 - 2026-10-04
+
+- A warning on the dashboard and in `php artisan about` when jobs are queued but no worker records running them. Workers load Laralyze when they start, so one already running before the install records nothing until it restarts.
+- `laralyze:install` and the README remind you to restart queue workers (`php artisan queue:restart` or `horizon:terminate`).
+- Findings also catch N+1 and duplicate queries that run while the app boots, before the request, command or job starts (e.g. settings read from the cache again and again).
+
 ## v0.1.0 - 2026-10-04
 
 First release.

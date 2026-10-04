@@ -79,7 +79,17 @@ final class Health
             );
         }
 
-        $dropped = (float) ($this->storage->total('laralyze_dropped', ['count'], 86_400)->count ?? 0);
+        // Jobs went onto the queue a while ago, yet no worker ran one with Laralyze loaded.
+        $queued = $this->count('queue_queued', 3_600) - $this->count('queue_queued', 600);
+
+        if ($queued > 0 && $this->count('queue_processing', 3_600) == 0) {
+            $problems[] = $this->warn(
+                'Queued jobs aren\'t being recorded.',
+                'Jobs were queued in the last hour, but no worker recorded running one. Workers load Laralyze when they start: run `php artisan queue:restart` (or `php artisan horizon:terminate`). If no worker runs at all, start one.',
+            );
+        }
+
+        $dropped = $this->count('laralyze_dropped', 86_400);
 
         if ($dropped > 0) {
             $problems[] = $this->warn(
@@ -89,6 +99,11 @@ final class Health
         }
 
         return $problems;
+    }
+
+    private function count(string $type, int $window): float
+    {
+        return (float) ($this->storage->total($type, ['count'], $window)->count ?? 0);
     }
 
     /**

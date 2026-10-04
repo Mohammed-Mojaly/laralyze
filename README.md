@@ -28,7 +28,7 @@ composer require mohammed-mojaly/laralyze
 php artisan laralyze:install
 ```
 
-Then open `/laralyze`. Make sure Laravel's scheduler runs (`* * * * * php artisan schedule:run`): Laralyze uses it for cleanup, server stats and alerts. If something is off (tables missing, the scheduler not running, writes failing), you see a warning above the cards and in `php artisan about`. See [when something is wrong](docs/runtime.md#when-something-is-wrong).
+Then open `/laralyze`. Restart your queue workers (`php artisan queue:restart`, or `php artisan horizon:terminate` with Horizon): a worker loads Laralyze when it starts, so one that was already running won't record its jobs. Make sure Laravel's scheduler runs (`* * * * * php artisan schedule:run`): Laralyze uses it for cleanup, server stats and alerts. If something is off (tables missing, the scheduler not running, writes failing), you see a warning above the cards and in `php artisan about`. See [when something is wrong](docs/runtime.md#when-something-is-wrong).
 
 ## What you get
 

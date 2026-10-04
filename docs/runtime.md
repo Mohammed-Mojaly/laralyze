@@ -29,6 +29,7 @@ The dashboard shows a warning above the cards, and `php artisan about` shows it 
 - Laralyze's tables are missing, or its database can't be reached;
 - a write failed in the last hour, with the reason;
 - the scheduler hasn't run Laralyze's hourly cleanup for over two hours;
+- jobs were queued in the last hour but no worker recorded running one (restart your workers);
 - a web request recorded more distinct metrics than the buffer holds (`LARALYZE_BUFFER`, 5,000 by default) and some were dropped.
 
 ## The scheduler
@@ -55,6 +56,8 @@ Supported, and tested on Swoole and FrankenPHP. Laralyze clears its buffer at th
 ## Queue workers
 
 Each job's numbers are written when the job finishes, and again on every worker loop. Long-running workers don't build up memory.
+
+A worker loads Laralyze when it starts. After installing or upgrading Laralyze, restart your workers with `php artisan queue:restart` (or `php artisan horizon:terminate`), as after any deploy.
 
 ## Several servers
 

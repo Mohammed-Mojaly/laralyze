@@ -32,6 +32,7 @@ class InstallCommand extends Command
 
         $this->components->bulletList([
             'Open the dashboard at <comment>'.url((string) config('laralyze.path', 'laralyze')).'</comment>.',
+            'Restart your queue workers (<comment>php artisan queue:restart</comment> or <comment>horizon:terminate</comment>) so their jobs are recorded too.',
             'Review <comment>config/laralyze.php</comment> to tune what Laralyze records.',
             'Set <comment>LARALYZE_ENABLED=false</comment> to switch it off at any time.',
             'Define the <comment>viewLaralyze</comment> gate to control who can open the dashboard outside local.',

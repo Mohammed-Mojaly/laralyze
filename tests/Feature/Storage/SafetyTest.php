@@ -151,3 +151,17 @@ it('shows its health in php artisan about', function () {
 
     expect(Artisan::output())->toMatch('/Health \.+ OK/');
 });
+
+it('warns when queued jobs never run with Laralyze loaded', function () {
+    Laralyze::record('queue_queued', 'default')->count();
+    Laralyze::flush();
+
+    $this->travel(15)->minutes();
+
+    expect(array_column(app(Health::class)->problems(), 'title'))->toContain("Queued jobs aren't being recorded.");
+
+    Laralyze::record('queue_processing', 'default')->count();
+    Laralyze::flush();
+
+    expect(array_column(app(Health::class)->problems(), 'title'))->not->toContain("Queued jobs aren't being recorded.");
+});

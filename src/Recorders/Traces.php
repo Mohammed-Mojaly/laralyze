@@ -121,6 +121,15 @@ class Traces extends Recorder
     protected array $early = [];
 
     /**
+     * Reads among those events, checked for repeats once something starts.
+     *
+     * @var array{queries: array<string, int>, binds: array<string, list<array<mixed>>>, kept: int, where: array<string, string|null>}
+     */
+    protected array $earlyReads = self::NO_READS;
+
+    protected const NO_READS = ['queries' => [], 'binds' => [], 'kept' => 0, 'where' => []];
+
+    /**
      * @param  array<string, mixed>  $config
      */
     public function __construct(Laralyze $laralyze, array $config, protected Application $app, protected Auth $auth)
@@ -165,7 +174,7 @@ class Traces extends Recorder
             $event instanceof MessageLogged => $this->logged($event),
             $event instanceof RouteMatched => $this->startRequest(),
             $event instanceof RequestHandled => $this->stage('request', 'terminating'),
-            $event instanceof Looping => $this->early = [],
+            $event instanceof Looping => [$this->early, $this->earlyReads] = [[], self::NO_READS],
             $event instanceof JobProcessing => $this->startJob($event),
             $event instanceof CommandStarting => $this->startCommand($event),
             $event instanceof JobProcessed, $event instanceof JobFailed, $event instanceof JobReleasedAfterException => $this->finishJob($event),
@@ -329,6 +338,8 @@ class Traces extends Recorder
         $rate = $this->sampleRate();
         $now = microtime(true);
         $from ??= $now;
+        $events = $this->earlyEvents($from);
+        [$reads, $this->earlyReads] = [$events === [] ? self::NO_READS : $this->earlyReads, self::NO_READS];
 
         $this->stack[] = [
             'uuid' => $uuid,
@@ -339,16 +350,13 @@ class Traces extends Recorder
             'sampled' => is_bool($parent['sampled'] ?? null) ? $parent['sampled'] : ($rate >= 1 || ($rate > 0 && mt_rand() / mt_getrandmax() < $rate)),
             'start' => $from,
             'begun' => $now,
-            'events' => $this->earlyEvents($from),
+            'events' => $events,
             'ms' => [],
             'stages' => [],
             'meta' => $meta,
             'counts' => [],
             'exceptions' => [],
-            'queries' => [],
-            'binds' => [],
-            'kept' => 0,
-            'where' => [],
+            ...$reads,
         ];
     }
 
@@ -463,11 +471,16 @@ class Traces extends Recorder
         $last = array_key_last($this->stack);
         $sql = $event->sql;
 
-        if ($last === null || ! (str_starts_with($sql, 'select') || str_starts_with($sql, 'SELECT'))) {
+        if (! (str_starts_with($sql, 'select') || str_starts_with($sql, 'SELECT'))) {
             return;
         }
 
-        $execution = &$this->stack[$last];
+        // Reads while the app boots belong to what starts next.
+        if ($last === null) {
+            $execution = &$this->earlyReads;
+        } else {
+            $execution = &$this->stack[$last];
+        }
         $count = $execution['queries'][$sql] = ($execution['queries'][$sql] ?? 0) + 1;
 
         // The call stack only exists now, so a read that repeats notes where it
