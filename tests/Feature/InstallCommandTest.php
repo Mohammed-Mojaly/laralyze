@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use MohammedMojaly\Laralyze\Storage\ClickHouseStorage;
 
 function publishedMigrations(): array
 {
@@ -60,4 +61,26 @@ it('overwrites the config file when forced', function () {
     $this->artisan('laralyze:install', ['--force' => true])->assertSuccessful();
 
     expect(File::get(config_path('laralyze.php')))->not->toContain('edited');
+});
+
+it('creates ClickHouse tables instead of publishing the migration', function () {
+    config(['laralyze.storage.driver' => 'clickhouse']);
+    $storage = Mockery::mock(ClickHouseStorage::class);
+    $storage->shouldReceive('install')->once()->andReturn('26.9.1');
+    $storage->shouldReceive('client->url')->andReturn('http://ch.test:8123');
+    app()->instance(ClickHouseStorage::class, $storage);
+
+    $this->artisan('laralyze:install')->assertSuccessful()->expectsOutputToContain('ClickHouse at http://ch.test:8123');
+
+    expect(publishedMigrations())->toBe([]);
+});
+
+it('warns when ClickHouse is older than supported', function () {
+    config(['laralyze.storage.driver' => 'clickhouse']);
+    $storage = Mockery::mock(ClickHouseStorage::class);
+    $storage->shouldReceive('install')->once()->andReturn('23.8.2');
+    $storage->shouldReceive('client->url')->andReturn('http://ch.test:8123');
+    app()->instance(ClickHouseStorage::class, $storage);
+
+    $this->artisan('laralyze:install')->assertSuccessful()->expectsOutputToContain('ClickHouse 23.8.2 is older than 24.8');
 });

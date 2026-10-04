@@ -44,6 +44,19 @@ abstract class TestCase extends Orchestra
             $config->set('database.default', 'testing');
             $config->set('database.connections.testing', $this->databaseConnection());
 
+            // LARALYZE_TEST_STORAGE=clickhouse keeps Laralyze's own data in ClickHouse.
+            if (getenv('LARALYZE_TEST_STORAGE') === 'clickhouse') {
+                $config->set('laralyze.storage.driver', 'clickhouse');
+                $config->set('laralyze.storage.clickhouse', [
+                    'url' => getenv('LARALYZE_TEST_CLICKHOUSE_URL') ?: 'http://127.0.0.1:8123',
+                    'database' => getenv('LARALYZE_TEST_CLICKHOUSE_DATABASE') ?: 'laralyze_test',
+                    'username' => getenv('LARALYZE_TEST_CLICKHOUSE_USERNAME') ?: 'default',
+                    'password' => getenv('LARALYZE_TEST_CLICKHOUSE_PASSWORD') ?: '',
+                    'timeout' => 30,
+                    'wait' => true,
+                ]);
+            }
+
             foreach (static::$bootConfig as $key => $value) {
                 $config->set($key, $value);
             }

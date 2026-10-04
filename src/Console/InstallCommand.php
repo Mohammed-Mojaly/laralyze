@@ -4,6 +4,8 @@ namespace MohammedMojaly\Laralyze\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
+use MohammedMojaly\Laralyze\Storage\ClickHouse\Schema;
+use MohammedMojaly\Laralyze\Storage\ClickHouseStorage;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'laralyze:install')]
@@ -21,12 +23,24 @@ class InstallCommand extends Command
             '--force' => $this->option('force'),
         ]));
 
-        // Publishing again would copy the migration under a new date and run it twice.
-        if ($files->glob(database_path('migrations/*_create_laralyze_tables.php')) === []) {
-            $this->call('vendor:publish', ['--tag' => 'laralyze-migrations']);
-        }
+        if (config('laralyze.storage.driver', 'database') === 'clickhouse') {
+            // ClickHouse isn't a Laravel connection: Laralyze creates its tables itself.
+            $storage = $this->laravel->make(ClickHouseStorage::class);
+            $version = $storage->install();
 
-        $this->call('migrate');
+            if (version_compare($version, Schema::MINIMUM_VERSION, '<')) {
+                $this->components->warn("ClickHouse {$version} is older than ".Schema::MINIMUM_VERSION.', the oldest version Laralyze is tested with.');
+            }
+
+            $this->components->info('Laralyze\'s tables are ready in ClickHouse at '.$storage->client()->url().'.');
+        } else {
+            // Publishing again would copy the migration under a new date and run it twice.
+            if ($files->glob(database_path('migrations/*_create_laralyze_tables.php')) === []) {
+                $this->call('vendor:publish', ['--tag' => 'laralyze-migrations']);
+            }
+
+            $this->call('migrate');
+        }
 
         $this->components->info('Laralyze is installed.');
 
