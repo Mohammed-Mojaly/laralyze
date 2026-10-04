@@ -138,6 +138,49 @@ jobs:
       - name: Tests
         run: vendor/bin/pest --group=storage --group=dashboard
 
+  clickhouse:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest supported LTS and the newest.
+        image: ['clickhouse/clickhouse-server:24.8', 'clickhouse/clickhouse-server:latest']
+
+    name: Storage and dashboard on ${{ matrix.image }}
+
+    services:
+      clickhouse:
+        image: ${{ matrix.image }}
+        env:
+          CLICKHOUSE_DB: laralyze_test
+          CLICKHOUSE_USER: laralyze
+          CLICKHOUSE_PASSWORD: secret
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+        ports: ['8123:8123']
+        options: --health-cmd="wget --spider -q http://127.0.0.1:8123/ping" --health-interval=5s --health-timeout=5s --health-retries=20
+
+    env:
+      LARALYZE_TEST_STORAGE: clickhouse
+      LARALYZE_TEST_CLICKHOUSE_URL: http://127.0.0.1:8123
+      LARALYZE_TEST_CLICKHOUSE_DATABASE: laralyze_test
+      LARALYZE_TEST_CLICKHOUSE_USERNAME: laralyze
+      LARALYZE_TEST_CLICKHOUSE_PASSWORD: secret
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, sqlite3
+          coverage: none
+
+      - run: composer update --prefer-dist --no-interaction
+
+      - name: Tests
+        run: vendor/bin/pest --group=storage --group=dashboard --group=clickhouse
+
   install:
     runs-on: ubuntu-latest
 

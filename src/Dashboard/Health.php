@@ -46,18 +46,22 @@ final class Health
      */
     private function check(): array
     {
-        $connection = $this->config->get('laralyze.storage.connection') ?? $this->config->get('database.default');
+        $clickhouse = $this->config->get('laralyze.storage.driver', 'database') === 'clickhouse';
+        // Where the data lives, never with credentials.
+        $where = $clickhouse
+            ? 'ClickHouse at '.rtrim((string) $this->config->get('laralyze.storage.clickhouse.url', 'http://127.0.0.1:8123'), '/')
+            : 'its database ['.($this->config->get('laralyze.storage.connection') ?? $this->config->get('database.default')).']';
 
         try {
             if (! $this->storage->installed()) {
                 $this->blocking = true;
 
-                return [$this->bad("Laralyze's tables are missing.", 'Run `php artisan migrate`.')];
+                return [$this->bad("Laralyze's tables are missing.", $clickhouse ? 'Run `php artisan laralyze:install`.' : 'Run `php artisan migrate`.')];
             }
         } catch (Throwable $e) {
             $this->blocking = true;
 
-            return [$this->bad("Laralyze can't reach its database [{$connection}].", $e->getMessage())];
+            return [$this->bad("Laralyze can't reach {$where}.", $e->getMessage())];
         }
 
         $problems = [];
