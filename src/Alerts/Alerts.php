@@ -19,7 +19,8 @@ class Alerts
 {
     /**
      * How far back an exception still counts as new. Long jobs and the
-     * ingest queue write what they recorded minutes later.
+     * ingest queue write what they recorded minutes later. Exception alerts
+     * go out once each, so `alerts.every` only spaces out the others.
      */
     protected const LOOKBACK = 3_600;
 
@@ -97,6 +98,10 @@ class Alerts
             } elseif ((float) $row->min >= $since && $statuses[$key] === Issues::OPEN) {
                 $alerts[] = new Alert('new:'.$key, "New exception: {$class}", $message, $url);
             }
+        }
+
+        if ($alerts === []) {
+            return [];
         }
 
         // Each new or returning exception is told once, however late it was written.
