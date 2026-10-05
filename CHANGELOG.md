@@ -2,6 +2,10 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## v0.3.1 - 2026-10-05
+
+- **Fixed:** deadlocks no longer pause recording or lose data on busy MySQL apps. Under steady traffic, concurrent writes deadlocked often, and each deadlock was treated as a database outage: recording paused for a minute in every process, dropping metrics and queued jobs' runs (about 9% of requests in one test). Each statement is now written on its own, outside a transaction, and retried up to five times on a deadlock, lock wait or racing insert, without ever counting anything twice. A write whose retries all fail is counted in a softer dashboard warning, and recording carries on. Applies to MySQL, MariaDB, PostgreSQL, SQLite and SQL Server; no upgrade step.
+
 ## v0.3.0 - 2026-10-05
 
 - **ClickHouse storage**: set `LARALYZE_STORAGE=clickhouse` and the ClickHouse connection variables, then run `php artisan laralyze:install`. Every page works the same. Writes are asynchronous inserts that ClickHouse batches; metrics merge in the background; old data goes by whole days. ClickHouse 24.8 or later. See [ClickHouse in production](docs/runtime.md#clickhouse-in-production).
