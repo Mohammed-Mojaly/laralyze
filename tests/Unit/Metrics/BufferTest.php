@@ -122,3 +122,52 @@ it('refuses new rows once full but still merges existing ones', function () {
         ->and($buffer->size())->toBe(2)
         ->and($buffer->rows()[0]['value'])->toBe(2.0);
 });
+
+it('adds a new key to both periods or to neither', function () {
+    // A key takes a minute row and an hour row: with room for one, it fits nowhere.
+    $one = new Buffer(limit: 1);
+
+    // With room for three, the second key would get its minute row and lose its hour row.
+    $three = new Buffer(limit: 3);
+    $three->add('request', 'GET /a', 'count', 1, AT);
+
+    expect($one->add('request', 'GET /a', 'count', 1, AT))->toBeFalse()
+        ->and($one->size())->toBe(0)
+        ->and($one->rows())->toBe([])
+        ->and($three->add('request', 'GET /b', 'count', 1, AT))->toBeFalse()
+        ->and($three->size())->toBe(2)
+        ->and(array_column($three->rows(), 'key'))->toBe(['GET /a', 'GET /a']);
+});
+
+it('adds a key present in one period only when its missing row fits', function () {
+    $two = new Buffer(limit: 2);
+    $two->add('request', 'GET /a', 'count', 1, AT);
+
+    $three = new Buffer(limit: 3);
+    $three->add('request', 'GET /a', 'count', 1, AT);
+
+    // A minute later: a new minute row, the same hour row.
+    expect($two->add('request', 'GET /a', 'count', 1, AT + 60))->toBeFalse()
+        ->and(array_column($two->rows(), 'value'))->toBe([1.0, 1.0])
+        ->and($three->add('request', 'GET /a', 'count', 1, AT + 60))->toBeTrue()
+        ->and($three->size())->toBe(3)
+        ->and(array_column(array_filter($three->rows(), fn ($row) => $row['period'] === Period::HOUR), 'value'))->toBe([2.0]);
+});
+
+it('always merges into a key present in both periods', function () {
+    $two = new Buffer(limit: 2);
+    $two->add('request', 'GET /a', 'count', 1, AT);
+
+    expect($two->add('request', 'GET /a', 'count', 1, AT))->toBeTrue()
+        ->and(array_column($two->rows(), 'value'))->toBe([2.0, 2.0]);
+});
+
+it('refuses new values once full but still replaces existing ones', function () {
+    $buffer = new Buffer(limit: 1);
+
+    expect($buffer->set('plan', 'a', 'monthly', AT))->toBeTrue()
+        ->and($buffer->set('plan', 'b', 'yearly', AT))->toBeFalse()
+        ->and($buffer->set('plan', 'a', 'yearly', AT))->toBeTrue()
+        ->and($buffer->size())->toBe(1)
+        ->and(array_column($buffer->values(), 'value'))->toBe(['yearly']);
+});

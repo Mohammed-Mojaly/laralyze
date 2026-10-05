@@ -8,9 +8,9 @@
 
 # Laralyze
 
-Self-hosted production monitoring for Laravel. A dashboard inside your app shows requests, jobs, queries, exceptions, cache, outgoing HTTP, AI calls, mail, notifications, logs, users, servers and visits; timelines of single requests and jobs; N+1 and duplicate queries; and alerts by mail, Slack or Discord. Near-zero overhead, and your data stays in your database.
+Self-hosted production monitoring for Laravel. A dashboard inside your app shows requests, jobs, queries, exceptions, cache, outgoing HTTP, AI calls, mail, notifications, logs, users, servers and visits; timelines of single requests and jobs; possible N+1 and duplicate queries; and alerts by mail, Slack or Discord. It adds about 0.03–0.08 ms to a simple request and about 2 ms to one running 1,000 queries ([measured](docs/runtime.md#how-it-adds-so-little) with PHP 8.4 and SQLite), and your data stays in your database.
 
-**Why Laralyze:** Pulse shows totals, Nightwatch shows details but runs as a hosted service with event quotas. Laralyze gives you both in your own app and database, with no quotas: timelines of single requests, jobs and commands, N+1 findings with the fix, issue tracking and alerts, on MySQL, MariaDB, PostgreSQL, SQLite or SQL Server.
+**Why Laralyze:** Pulse shows totals, Nightwatch shows details but runs as a hosted service with event quotas. Laralyze gives you both in your own app and database, with no quotas: timelines of single requests, jobs and commands, possible N+1 queries with the fix, issue tracking and alerts, on MySQL, MariaDB, PostgreSQL, SQLite or SQL Server.
 
 > Laralyze is in `0.x`: things may change between minor releases (`0.1` → `0.2`) until `1.0`. Patch releases (`0.1.1`) never break anything. See the [changelog](CHANGELOG.md) before you upgrade.
 
@@ -35,11 +35,11 @@ Then open `/laralyze`. Restart your queue workers (`php artisan queue:restart`, 
 | Page | Shows |
 |---|---|
 | Dashboard | Requests, timings, exceptions, queues and slow requests at a glance |
-| Requests | Throughput by status class, avg/p95/p99, every route, slow requests |
+| Requests | Throughput by status class, avg and estimated p95/p99, every route, slow requests |
 | Jobs | Queued, processed, released, failed per queue; wait times; every job class |
 | Commands, Scheduled Tasks | Runs, failures, durations; last and next run of each task |
 | Exceptions | Grouped by class and line, with users affected and open, resolved or ignored status |
-| Findings | N+1 and duplicate queries, with the line in your code and the fix |
+| Findings | Possible N+1 and duplicate queries, with the line in your code and the fix |
 | Timelines | Single requests, jobs and commands with everything inside them, in order |
 | Queries | Time per query, reads vs writes, slow queries with the line that ran them |
 | Cache | Hit ratio and hits, misses, writes and deletes per key group |

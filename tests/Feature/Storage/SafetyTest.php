@@ -66,17 +66,6 @@ function renameLaralyzeTable(string $from, string $to): void
         : Schema::rename($from, $to);
 }
 
-function asWebRequest(callable $callback): void
-{
-    (fn () => $this->isRunningInConsole = false)->call(app());
-
-    try {
-        $callback();
-    } finally {
-        (fn () => $this->isRunningInConsole = null)->call(app());
-    }
-}
-
 it('pauses writing for a minute after a failed write, then tries again', function () {
     $reported = [];
     Laralyze::handleExceptionsUsing(function (Throwable $e) use (&$reported) {

@@ -127,6 +127,27 @@ it('finds the same query run again with the same values', function () {
     Livewire::withoutLazyLoading()->test('laralyze.findings')->assertSee('Duplicate')->assertSee('once()');
 });
 
+it('recognises reads written by hand', function (string $sql) {
+    Route::get('/raw', function () use ($sql) {
+        foreach (range(1, 3) as $i) {
+            DB::select($sql, ['Author 1']);
+        }
+
+        return 'ok';
+    });
+
+    $this->get('/raw');
+    Laralyze::flush();
+
+    expect(findings('duplicate_query'))->toHaveCount(1);
+})->with([
+    'leading whitespace' => '
+   select * from authors where name = ?',
+    'mixed case' => 'Select * From authors where name = ?',
+    'a comment first' => '/* settings */ select * from authors where name = ?',
+    'a common table expression' => 'with named as (select * from authors where name = ?) select * from named',
+]);
+
 it('leaves writes and eager loading alone', function () {
     Route::get('/import', function () {
         foreach (range(10, 16) as $i) {

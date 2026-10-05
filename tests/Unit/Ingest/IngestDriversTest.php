@@ -64,6 +64,16 @@ it('round-trips a flush through its payload', function () {
     expect(Batch::decode(Batch::encode($flush['rows'], $flush['values'], $flush['executions'])))->toBe($flush);
 });
 
+it("keeps the newer value when a slow request's flush arrives after a newer one", function () {
+    $batch = new Batch;
+    $seen = fn (int $timestamp, string $value) => ['rows' => [], 'values' => [['timestamp' => $timestamp, 'type' => 'seen', 'key' => 'user 1', 'value' => $value]], 'executions' => []];
+
+    $batch->add($seen(200, 'newer'));
+    $batch->add($seen(100, 'older, from a slow request'));
+
+    expect($batch->values()[0]['value'])->toBe('newer');
+});
+
 it('merges flushes by the same rules as storage', function () {
     $batch = new Batch;
     $row = fn (string $aggregate, float $value) => ['bucket' => 60, 'period' => 60, 'type' => 't', 'aggregate' => $aggregate, 'key' => 'k', 'value' => $value];

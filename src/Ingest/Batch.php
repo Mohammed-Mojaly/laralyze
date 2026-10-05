@@ -7,7 +7,7 @@ use JsonException;
 /**
  * Several flushes merged into one write, by the same rules storage
  * applies: counts and sums add up, min and max keep the extreme, the
- * last value written wins, and executions are all kept.
+ * newest value wins, and executions are all kept.
  */
 final class Batch
 {
@@ -92,9 +92,13 @@ final class Batch
             };
         }
 
-        // Batches arrive in the order they were written, and the last write wins, as it would in storage.
         foreach ($flush['values'] as $value) {
-            $this->values[$value['type'].'|'.$value['key']] = $value;
+            $id = $value['type'].'|'.$value['key'];
+
+            // A slow request's flush can arrive after a newer one: the newer value wins, a tie goes to the later batch.
+            if (! isset($this->values[$id]) || $value['timestamp'] >= $this->values[$id]['timestamp']) {
+                $this->values[$id] = $value;
+            }
         }
 
         foreach ($flush['executions'] as $execution) {

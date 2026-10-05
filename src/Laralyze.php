@@ -7,6 +7,7 @@ use Composer\InstalledVersions;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Lottery;
 use Illuminate\Support\Str;
@@ -47,6 +48,8 @@ class Laralyze
      * Values a web request couldn't fit in the buffer.
      */
     protected int $dropped = 0;
+
+    protected bool $flushing = false;
 
     /**
      * Finished requests, jobs and commands waiting to be written.
@@ -150,8 +153,14 @@ class Laralyze
      */
     public function set(string $type, string $key, string $value, ?int $timestamp = null): void
     {
-        if ($this->isRecording()) {
-            $this->buffer->set($type, $key, $value, $timestamp ?? time());
+        if (! $this->isRecording()) {
+            return;
+        }
+
+        $timestamp ??= time();
+
+        if (! $this->buffer->set($type, $key, $value, $timestamp)) {
+            $this->makeRoom(fn () => $this->buffer->set($type, $key, $value, $timestamp));
         }
     }
 
@@ -160,14 +169,27 @@ class Laralyze
      */
     public function bufferFull(string $type, string $key, string $aggregate, float $value, int $timestamp): void
     {
-        // A web request drops new keys rather than doing I/O before the
-        // response is sent. Commands and workers can afford to write early.
+        $this->makeRoom(fn () => $this->buffer->add($type, $key, $aggregate, $value, $timestamp));
+    }
+
+    /**
+     * The buffer is full. A web request drops the value rather than doing I/O
+     * before the response is sent. Commands and workers can afford to write
+     * early; inside a flush, without running the digesters again.
+     *
+     * @param  Closure(): bool  $retry
+     */
+    protected function makeRoom(Closure $retry): void
+    {
         if ($this->app->runningInConsole()) {
-            $this->flush();
-            $this->buffer->add($type, $key, $aggregate, $value, $timestamp);
-        } else {
-            $this->dropped++;
+            $this->flushing ? $this->write() : $this->flush();
+
+            if ($retry()) {
+                return;
+            }
         }
+
+        $this->dropped++;
     }
 
     public function buffer(): Buffer
@@ -264,10 +286,29 @@ class Laralyze
      */
     public function flush(): void
     {
-        foreach ($this->digesters as $digester) {
-            $this->rescue($digester);
+        // A digester that fills the buffer would otherwise flush again from inside this flush.
+        if ($this->flushing) {
+            return;
         }
 
+        $this->flushing = true;
+
+        try {
+            foreach ($this->digesters as $digester) {
+                $this->rescue($digester);
+            }
+
+            $this->write();
+        } finally {
+            $this->flushing = false;
+        }
+    }
+
+    /**
+     * Write what the buffer holds, without running the digesters.
+     */
+    protected function write(): void
+    {
         if ($this->buffer->isEmpty() && $this->executions === []) {
             return;
         }
@@ -449,8 +490,8 @@ class Laralyze
         try {
             return $this->ignore(fn () => $this->app->make(Ingest::class)->digest($seconds));
         } catch (Throwable $e) {
-            // The batches stay where they are, for the next digest.
-            Contention::causedBy($e) ? $this->contended($e) : $this->failed($e);
+            // The batches stay where they are, for the next digest. It's the only writer, so a duplicate key isn't a race.
+            Contention::causedBy($e) && ! $e instanceof UniqueConstraintViolationException ? $this->contended($e) : $this->failed($e);
 
             return 0;
         }

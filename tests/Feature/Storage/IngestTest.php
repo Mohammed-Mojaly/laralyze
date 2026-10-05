@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -103,7 +104,8 @@ it('stores exactly what writing directly would have stored', function () {
                 'value' => mt_rand(1, 100_000) / 100,
             ]];
         }, range(1, 40))),
-        'values' => [['timestamp' => $now - mt_rand(0, 100), 'type' => 'seen', 'key' => 'user '.mt_rand(1, 4), 'value' => "flush {$i}"]],
+        // In time order: written directly, the last write wins; queued, the newest. Here they agree.
+        'values' => [['timestamp' => $now - 100 + $i, 'type' => 'seen', 'key' => 'user '.mt_rand(1, 4), 'value' => "flush {$i}"]],
         'executions' => [[
             'uuid' => sprintf('01J%023d', $i), 'trace' => sprintf('01J%023d', $i), 'type' => 'request', 'name' => 'GET /', 'status' => '200',
             'failed' => false, 'duration' => 12.5, 'user_id' => null, 'server' => 'web-1', 'started_at' => $now,
@@ -177,6 +179,23 @@ it('keeps the whole batch when a digest fails half way, and counts it once later
     expect((float) $minute['count'])->toBe(2.0)
         ->and((float) $minute['sum'])->toBe(30.0)
         ->and(DB::table('laralyze_executions')->count())->toBe(1);
+});
+
+it('reports a duplicate key in the digest as a failure, not as contention', function () {
+    checkout(10);
+    Laralyze::flush();
+
+    // The digest is the only writer: a duplicate key there is a fault, not a race.
+    DB::connection()->beforeExecuting(function (string $query) {
+        if (str_contains($query, 'laralyze_aggregates') && preg_match('/^\s*(insert|merge)\b/i', $query)) {
+            throw new UniqueConstraintViolationException('testing', $query, [], new PDOException('UNIQUE constraint failed'));
+        }
+    });
+
+    expect(Laralyze::digest())->toBe(0)
+        ->and(Laralyze::contention())->toBe(0)
+        ->and(Laralyze::lastFailure()['message'] ?? '')->toContain('UNIQUE constraint failed')
+        ->and(DB::table('laralyze_ingest')->count())->toBe(1);
 });
 
 it('lets one digest run at a time', function () {

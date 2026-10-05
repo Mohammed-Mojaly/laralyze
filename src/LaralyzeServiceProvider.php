@@ -6,6 +6,7 @@ use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskSkipped;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\CachesConfiguration;
@@ -206,9 +207,14 @@ class LaralyzeServiceProvider extends ServiceProvider
             }
 
             if ($this->app->make(Alerts\Alerts::class)->enabled()) {
-                $schedule->call(fn () => $this->app->make(Alerts\Alerts::class)->run())
+                $alerts = $schedule->call(fn () => $this->app->make(Alerts\Alerts::class)->run())
                     ->everyMinute()
                     ->name('laralyze:alerts');
+
+                // Every server may run the scheduler; one sends. It needs a cache that can lock.
+                if ($this->app->make('cache')->store()->getStore() instanceof LockProvider) {
+                    $alerts->onOneServer();
+                }
             }
         });
     }

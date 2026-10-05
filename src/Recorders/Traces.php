@@ -489,7 +489,7 @@ class Traces extends Recorder
         $last = array_key_last($this->stack);
         $sql = $event->sql;
 
-        if (! (str_starts_with($sql, 'select') || str_starts_with($sql, 'SELECT'))) {
+        if (! (str_starts_with($sql, 'select') || str_starts_with($sql, 'SELECT') || $this->isRead($sql))) {
             return;
         }
 
@@ -512,6 +512,17 @@ class Traces extends Recorder
             $execution['kept']++;
             $execution['binds'][$sql][] = $event->bindings;
         }
+    }
+
+    /**
+     * Reads written by hand: leading spaces or comments, any case, or a
+     * WITH that ends in a select. Only reached when the quick check fails.
+     */
+    protected function isRead(string $sql): bool
+    {
+        $sql = ltrim((string) preg_replace('~^\s*(?:/\*.*?\*/\s*|--[^\n]*\n\s*)*~s', '', $sql));
+
+        return stripos($sql, 'select') === 0 || stripos($sql, 'with') === 0;
     }
 
     /**

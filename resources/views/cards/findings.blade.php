@@ -4,7 +4,7 @@
     @if ($findings->isEmpty())
         <x-laralyze::empty
             :title="'Nothing found in the '.$this->range()->label().'.'"
-            hint="Laralyze looks for N+1 queries (the same read again and again with other values) and duplicate queries in every request, job and command."
+            hint="Laralyze flags possible N+1 queries (the same read again and again with other values) and duplicate queries in every request, job and command."
         />
     @else
         <ol class="lz-findings">

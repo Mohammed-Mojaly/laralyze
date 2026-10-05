@@ -7,6 +7,14 @@ Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch 
 - **Fixed:** an alert that no channel took (Slack down, a mail error) is no longer marked as sent: it goes out on the next check, a minute later. One channel taking it is enough.
 - **Fixed:** a new exception written late, by a long job or through the one-minute ingest queue, could miss its alert. Exceptions first seen in the last hour that haven't been told yet are now alerted, whenever they arrive.
 - An exception that comes back after you resolve it is alerted once each time, instead of every hour while it keeps happening.
+- **Fixed:** a metric that didn't fit in a full buffer could be counted twice in its minute in commands and workers. A metric now goes into its minute and its hour together, or into neither.
+- **Fixed:** `Laralyze::set()` ignored the buffer limit. A full web request now drops a new value and counts it in the dropped-metrics warning; a command writes early to make room.
+- **Fixed:** a recorder that filled the buffer while Laralyze was writing could start a write inside the write, and in the worst case recurse until PHP ran out of memory. The buffer is now written early without running the recorders again.
+- **Fixed:** with database ingest, a slow request's batch merged after a newer one could overwrite a newer value. The newer one wins.
+- **Fixed:** with several servers running the scheduler, each sent the same alert. Alerts now go out from one server when the cache can lock (Redis, Memcached, database, file, DynamoDB).
+- **Fixed:** N+1 and duplicate queries written by hand were missed when they started with spaces, a comment, `Select` in another case, or a `WITH` clause.
+- A duplicate key in the digest is reported as a failure instead of as lock contention: the digest is the only writer, so it's never a race.
+- Docs: the measured overhead instead of "near-zero", "possible" N+1 queries, estimated percentiles, and what the Traces sample rate decides.
 
 ## v0.4.0 - 2026-10-06
 

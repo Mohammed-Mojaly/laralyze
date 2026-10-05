@@ -160,4 +160,9 @@ it('stays quiet without a channel, and only schedules itself with one', function
     $this->rebootWith(['laralyze.alerts.slack' => 'https://hooks.slack.test/abc']);
 
     expect($scheduled())->toContain('laralyze:alerts');
+
+    // Every server runs the scheduler; one sends.
+    $alerts = collect(app(Schedule::class)->events())->firstWhere('description', 'laralyze:alerts');
+
+    expect($alerts->onOneServer)->toBeTrue();
 });

@@ -44,3 +44,17 @@ function laralyzeRows(string $table): Collection
 
     return collect(app(ClickHouseStorage::class)->client()->select($sql))->map(fn (array $row) => (object) $row);
 }
+
+/**
+ * Run the callback as if it were a web request, not a console command.
+ */
+function asWebRequest(callable $callback): void
+{
+    (fn () => $this->isRunningInConsole = false)->call(app());
+
+    try {
+        $callback();
+    } finally {
+        (fn () => $this->isRunningInConsole = null)->call(app());
+    }
+}
