@@ -7,18 +7,22 @@ use Composer\InstalledVersions;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Lottery;
 use Illuminate\Support\Str;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Metrics\Buffer;
 use MohammedMojaly\Laralyze\Metrics\PendingMetric;
 use MohammedMojaly\Laralyze\Metrics\Period;
+use MohammedMojaly\Laralyze\Support\Contention;
 use MohammedMojaly\Laralyze\Support\Outage;
 use Throwable;
 
 class Laralyze
 {
     public const FAILURE_CACHE_KEY = 'laralyze:last_failure';
+
+    public const CONTENTION_CACHE_KEY = 'laralyze:contention';
 
     /**
      * How many ignore() calls are currently running.
@@ -291,8 +295,41 @@ class Laralyze
             });
         } catch (Throwable $e) {
             $this->reset();
-            $this->failed($e);
+
+            // A deadlock that outlasted its retries: the database is busy, not down. Keep recording.
+            Contention::causedBy($e) ? $this->contended($e) : $this->failed($e);
         }
+    }
+
+    /**
+     * Count a write lost to lock contention, for the dashboard.
+     */
+    protected function contended(Throwable $e): void
+    {
+        $this->rescue(fn () => $this->ignore(function () {
+            $cache = $this->app->make('cache')->store();
+            $key = self::CONTENTION_CACHE_KEY.':'.intdiv(Date::now()->getTimestamp(), 600);
+
+            $cache->add($key, 0, 3_600 + 600);
+            $cache->increment($key);
+        }));
+
+        $this->report($e);
+    }
+
+    /**
+     * Writes lost to lock contention over the last hour.
+     */
+    public function contention(): int
+    {
+        $slot = intdiv(Date::now()->getTimestamp(), 600);
+
+        return (int) $this->rescue(fn () => $this->ignore(function () use ($slot) {
+            $cache = $this->app->make('cache')->store();
+
+            // Six ten-minute slots.
+            return array_sum(array_map(fn (int $ago) => (int) $cache->get(self::CONTENTION_CACHE_KEY.':'.($slot - $ago), 0), range(0, 5)));
+        }), 0);
     }
 
     /**

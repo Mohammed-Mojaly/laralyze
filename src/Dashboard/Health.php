@@ -103,6 +103,15 @@ final class Health
             );
         }
 
+        $contention = $this->laralyze->contention();
+
+        if ($contention > 0) {
+            $problems[] = $this->warn(
+                Format::number($contention).' '.($contention == 1 ? 'write' : 'writes').' failed because of lock contention in the last hour.',
+                'Concurrent writes to Laralyze\'s tables kept deadlocking, even after retries, and their metrics were lost. Recording carries on. With this much traffic, keep Laralyze\'s data in ClickHouse (LARALYZE_STORAGE=clickhouse).',
+            );
+        }
+
         return $problems;
     }
 

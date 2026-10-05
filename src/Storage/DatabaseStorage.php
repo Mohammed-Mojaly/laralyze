@@ -6,15 +6,17 @@ use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Query\Builder;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Sleep;
 use InvalidArgumentException;
 use MohammedMojaly\Laralyze\Assistant\Chats;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Metrics\Histogram;
 use MohammedMojaly\Laralyze\Metrics\Period;
 use MohammedMojaly\Laralyze\Storage\Concerns\ReadsMetrics;
+use MohammedMojaly\Laralyze\Support\Contention;
 use stdClass;
+use Throwable;
 
 class DatabaseStorage implements Storage
 {
@@ -27,6 +29,11 @@ class DatabaseStorage implements Storage
     public const EXECUTIONS = 'laralyze_executions';
 
     protected const UNIQUE_AGGREGATE = ['bucket', 'period', 'type', 'aggregate', 'key_hash'];
+
+    /**
+     * Tries per statement when concurrent flushes get in each other's way.
+     */
+    protected const ATTEMPTS = 5;
 
     /**
      * Values only needed for a day, like when each visitor was last seen.
@@ -69,23 +76,23 @@ class DatabaseStorage implements Storage
         $connection = $this->connection();
         $merge = new MergeExpressions($connection, self::AGGREGATES);
 
-        $this->retryingUniqueRaces(fn () => $connection->transaction(function () use ($connection, $merge, $rows, $values, $executions) {
-            foreach ($this->groupByMerge($rows) as $kind => $group) {
-                foreach ($this->chunk($connection, $this->prepareAggregates($group), 7) as $chunk) {
-                    $connection->table(self::AGGREGATES)->upsert($chunk, self::UNIQUE_AGGREGATE, [
-                        'value' => $merge->{$kind}('value'),
-                    ]);
-                }
+        // No transaction around the batch: each statement commits on its own and
+        // lets go of its locks at once, so concurrent flushes seldom deadlock.
+        foreach ($this->groupByMerge($rows) as $kind => $group) {
+            foreach ($this->chunk($connection, $this->prepareAggregates($group), 7) as $chunk) {
+                $this->retrying(fn () => $connection->table(self::AGGREGATES)->upsert($chunk, self::UNIQUE_AGGREGATE, [
+                    'value' => $merge->{$kind}('value'),
+                ]));
             }
+        }
 
-            foreach ($this->chunk($connection, $this->prepareValues($values), 5) as $chunk) {
-                $connection->table(self::VALUES)->upsert($chunk, ['type', 'key_hash'], ['timestamp', 'value']);
-            }
+        foreach ($this->chunk($connection, $this->prepareValues($values), 5) as $chunk) {
+            $this->retrying(fn () => $connection->table(self::VALUES)->upsert($chunk, ['type', 'key_hash'], ['timestamp', 'value']));
+        }
 
-            foreach ($this->chunk($connection, $this->prepareExecutions($executions), 17) as $chunk) {
-                $connection->table(self::EXECUTIONS)->insert($chunk);
-            }
-        }, attempts: 3));
+        foreach ($this->chunk($connection, $this->prepareExecutions($executions), 17) as $chunk) {
+            $this->retrying(fn () => $connection->table(self::EXECUTIONS)->insert($chunk));
+        }
     }
 
     /**
@@ -599,17 +606,26 @@ class DatabaseStorage implements Storage
     }
 
     /**
-     * Two flushes can race to insert the same new row. On SQL Server that
-     * surfaces as a unique violation instead of an update, so try again.
+     * Concurrent flushes can deadlock on the same rows, and on SQL Server two
+     * can race to insert the same new row. The database rolls the failed
+     * statement back whole, so running it again never counts anything twice.
      *
-     * @param  callable(): void  $callback
+     * @param  callable(): mixed  $statement
      */
-    protected function retryingUniqueRaces(callable $callback): void
+    protected function retrying(callable $statement): void
     {
-        try {
-            $callback();
-        } catch (UniqueConstraintViolationException) {
-            $callback();
+        for ($attempt = 1; ; $attempt++) {
+            try {
+                $statement();
+
+                return;
+            } catch (Throwable $e) {
+                if ($attempt >= self::ATTEMPTS || ! Contention::causedBy($e)) {
+                    throw $e;
+                }
+
+                Sleep::usleep(random_int(5_000, 50_000));
+            }
         }
     }
 }

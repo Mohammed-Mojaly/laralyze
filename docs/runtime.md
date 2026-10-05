@@ -30,7 +30,10 @@ The dashboard shows a warning above the cards, and `php artisan about` shows it 
 - a write failed in the last hour, with the reason;
 - the scheduler hasn't run Laralyze's hourly cleanup for over two hours;
 - jobs were queued in the last hour but no worker recorded running one (restart your workers);
-- a web request recorded more distinct metrics than the buffer holds (`LARALYZE_BUFFER`, 5,000 by default) and some were dropped.
+- a web request recorded more distinct metrics than the buffer holds (`LARALYZE_BUFFER`, 5,000 by default) and some were dropped;
+- writes failed because of lock contention in the last hour.
+
+A failed write pauses recording for a minute, since the database is probably down. Lock contention doesn't: when many processes write the same rows at once, a statement can deadlock or wait too long for a lock, and Laralyze tries it again up to five times, a few milliseconds apart. Only a write whose retries all fail is lost and counted, and recording carries on. Seeing this warning often means the traffic is more than your app's database comfortably takes alongside the app. Move Laralyze to [ClickHouse](#clickhouse-in-production), which we recommend for medium and large apps, or to the ingest driver once it's out.
 
 ## The scheduler
 
