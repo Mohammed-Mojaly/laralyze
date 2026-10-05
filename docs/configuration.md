@@ -22,6 +22,8 @@ Everything lives in `config/laralyze.php`, published by `php artisan laralyze:in
 
 ### ClickHouse
 
+Recommended for medium and large apps. Your app's database is fine while traffic is small; with steady traffic, ClickHouse keeps Laralyze's writes off your database and its pages fast. See [ClickHouse](../README.md#clickhouse).
+
 ```php
 'storage' => [
     'driver' => env('LARALYZE_STORAGE', 'database'),

@@ -19,7 +19,7 @@ Self-hosted production monitoring for Laravel. A dashboard inside your app shows
 - PHP 8.3+
 - Laravel 12.69.2+ or 13.32+
 - Livewire 3.8.3+ or 4.3.4+ (installed for you; your app doesn't need to use it). Earlier releases have a known XSS issue.
-- MySQL, MariaDB, PostgreSQL, SQLite or SQL Server, or [ClickHouse](#clickhouse) 24.8+
+- MySQL, MariaDB, PostgreSQL, SQLite or SQL Server, or [ClickHouse](#clickhouse) 24.8+ (recommended for medium and large apps)
 
 ## Installation
 
@@ -95,7 +95,10 @@ See [Ask AI in the configuration docs](docs/configuration.md#ask-ai).
 
 ## ClickHouse
 
-For high traffic, Laralyze can keep its data in [ClickHouse](https://clickhouse.com) instead of your app's database. Create a database for it (`CREATE DATABASE laralyze`), set it in `.env`, then run `php artisan laralyze:install` to create the tables:
+> [!TIP]
+> **We recommend ClickHouse for medium and large apps.** Your app's database is fine for small apps and side projects. Once traffic is steady, every request adds writes to the database your app depends on, and the dashboard's queries grow with the data. ClickHouse is built for exactly this kind of data: writes stay cheap and pages stay fast at millions of rows.
+
+Laralyze can keep its data in [ClickHouse](https://clickhouse.com) instead of your app's database. Create a database for it (`CREATE DATABASE laralyze`), set it in `.env`, then run `php artisan laralyze:install` to create the tables:
 
 ```env
 LARALYZE_STORAGE=clickhouse
