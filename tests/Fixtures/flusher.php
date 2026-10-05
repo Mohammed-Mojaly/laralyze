@@ -17,6 +17,12 @@ require __DIR__.'/../../vendor/autoload.php';
 
 [, $driver, $process, $flushes, $timestamp] = $argv;
 
+// Processes starting together would race to write the same manifest files.
+foreach (['APP_SERVICES_CACHE' => 'services', 'APP_PACKAGES_CACHE' => 'packages'] as $variable => $file) {
+    $_ENV[$variable] = $_SERVER[$variable] = "bootstrap/cache/laralyze-flusher-{$process}-{$file}.php";
+    putenv("{$variable}={$_ENV[$variable]}");
+}
+
 $app = Application::create(options: [
     'load_environment_variables' => false,
     'extra' => ['providers' => [LaralyzeServiceProvider::class], 'dont-discover' => ['*']],

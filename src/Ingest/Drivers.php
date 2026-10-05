@@ -5,7 +5,6 @@ namespace MohammedMojaly\Laralyze\Ingest;
 use Illuminate\Contracts\Foundation\Application;
 use InvalidArgumentException;
 use MohammedMojaly\Laralyze\Contracts\Ingest;
-use MohammedMojaly\Laralyze\Contracts\Storage;
 
 /**
  * Picks how flushes reach storage, from `laralyze.ingest.driver`.
@@ -48,6 +47,6 @@ final class Drivers
     {
         return self::name($app) === 'database'
             ? $app->make(DatabaseIngest::class)
-            : new DirectIngest($app->make(Storage::class));
+            : new DirectIngest($app);
     }
 }

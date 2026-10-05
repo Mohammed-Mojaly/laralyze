@@ -1,6 +1,7 @@
 <?php
 
 use MohammedMojaly\Laralyze\Contracts\Ingest;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Ingest\Batch;
 use MohammedMojaly\Laralyze\Ingest\DatabaseIngest;
 use MohammedMojaly\Laralyze\Ingest\DirectIngest;
@@ -8,7 +9,8 @@ use MohammedMojaly\Laralyze\Ingest\Drivers;
 
 function ingestDriverFor(array $config): string
 {
-    config(['laralyze.ingest.driver' => null, ...$config]);
+    // The suite also runs with ClickHouse storage, which always writes directly.
+    config(['laralyze.storage.driver' => 'database', 'laralyze.ingest.driver' => null, ...$config]);
 
     return Drivers::name(app());
 }
@@ -35,7 +37,7 @@ it('follows LARALYZE_INGEST when it is set', function () {
 
 it('works with a config published before ingest existed', function () {
     config(['laralyze' => collect(config('laralyze'))->except('ingest')->all()]);
-    config(['database.connections.busy' => ['driver' => 'pgsql'], 'laralyze.storage.connection' => 'busy']);
+    config(['database.connections.busy' => ['driver' => 'pgsql'], 'laralyze.storage.connection' => 'busy', 'laralyze.storage.driver' => 'database']);
     app()->forgetInstance(Ingest::class);
 
     expect(app(Ingest::class))->toBeInstanceOf(DatabaseIngest::class);
@@ -72,4 +74,17 @@ it('merges flushes by the same rules as storage', function () {
     expect(collect($batch->rows())->pluck('value', 'aggregate')->all())->toBe(['count' => 3.0, 'min' => 3.0, 'max' => 9.0, 'h3' => 3.0])
         ->and($batch->values()[0]['value'])->toBe('second')
         ->and($batch->executions())->toBe([['uuid' => 'a'], ['uuid' => 'b']]);
+});
+
+it('writes directly to the storage bound at the time of the write', function () {
+    config(['laralyze.ingest.driver' => 'direct']);
+    app()->forgetInstance(Ingest::class);
+    $ingest = app(Ingest::class);
+
+    // Swapped in after the ingest was resolved, like a test or an app that changes storage.
+    $storage = Mockery::mock(Storage::class);
+    $storage->shouldReceive('store')->once()->with([], [['timestamp' => 1, 'type' => 't', 'key' => 'k', 'value' => 'v']], []);
+    app()->instance(Storage::class, $storage);
+
+    $ingest->write([], [['timestamp' => 1, 'type' => 't', 'key' => 'k', 'value' => 'v']], []);
 });

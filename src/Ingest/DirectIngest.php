@@ -2,6 +2,7 @@
 
 namespace MohammedMojaly\Laralyze\Ingest;
 
+use Illuminate\Contracts\Container\Container;
 use MohammedMojaly\Laralyze\Contracts\Ingest;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 
@@ -12,11 +13,12 @@ use MohammedMojaly\Laralyze\Contracts\Storage;
  */
 class DirectIngest implements Ingest
 {
-    public function __construct(protected Storage $storage) {}
+    public function __construct(protected Container $app) {}
 
     public function write(array $rows, array $values, array $executions): void
     {
-        $this->storage->store($rows, $values, $executions);
+        // Resolved on each write, so a storage swapped in later is the one written to.
+        $this->app->make(Storage::class)->store($rows, $values, $executions);
     }
 
     public function digest(int $seconds = 50): int

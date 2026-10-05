@@ -11,7 +11,6 @@ use MohammedMojaly\Laralyze\Ingest\Batch;
 use MohammedMojaly\Laralyze\Ingest\DatabaseIngest;
 use MohammedMojaly\Laralyze\Ingest\DirectIngest;
 use MohammedMojaly\Laralyze\Metrics\Period;
-use MohammedMojaly\Laralyze\Storage\DatabaseStorage;
 use MohammedMojaly\Laralyze\Support\Outage;
 
 beforeEach(function () {
@@ -120,7 +119,7 @@ it('stores exactly what writing directly would have stored', function () {
         return ['rows' => $merged->rows(), 'values' => $merged->values(), 'executions' => $flush['executions']];
     }, $flushes);
 
-    $direct = new DirectIngest(app(DatabaseStorage::class));
+    $direct = new DirectIngest(app());
 
     foreach ($flushes as $flush) {
         $direct->write($flush['rows'], $flush['values'], $flush['executions']);
