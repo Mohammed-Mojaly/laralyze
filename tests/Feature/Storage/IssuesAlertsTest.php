@@ -75,6 +75,54 @@ it('sends an alert for a new exception by mail and to Slack, once', function () 
     Http::assertSent(fn (Request $request) => $request->url() === 'https://hooks.slack.test/abc' && str_contains((string) $request['text'], 'Card declined'));
 });
 
+it('alerts on an exception recorded before the last check but written after it', function () {
+    config(['laralyze.alerts.slack' => 'https://hooks.slack.test/abc']);
+    Http::fake();
+
+    // A check runs; then a long job, or the minute-long ingest queue, delivers an older exception.
+    app(Alerts::class)->run();
+    seenAt((string) json_encode([LogicException::class, 'app/Jobs/Import.php:40']), time() - 120);
+
+    app(Alerts::class)->run();
+    app(Alerts::class)->run();
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn (Request $request) => str_contains((string) $request['text'], 'New exception: LogicException'));
+});
+
+it('tries again when no channel took the alert', function () {
+    config(['laralyze.alerts.slack' => 'https://hooks.slack.test/abc']);
+    Http::fake(['hooks.slack.test/*' => Http::sequence()->push('down', 503)->push('ok')]);
+
+    report(new RuntimeException('Card declined'));
+    Laralyze::flush();
+
+    app(Alerts::class)->run();
+    app(Alerts::class)->run();
+    app(Alerts::class)->run();
+
+    // Failed, sent on the next check, then not again.
+    Http::assertSentCount(2);
+});
+
+it('alerts once each time a resolved exception comes back', function () {
+    config(['laralyze.alerts.slack' => 'https://hooks.slack.test/abc']);
+    Http::fake();
+    $key = (string) json_encode([LogicException::class, 'app/Shelf.php:12']);
+    seenAt($key, time() - 7_200);
+    app(Issues::class)->resolve($key);
+
+    $this->travel(10)->seconds();
+    seenAt($key, now()->getTimestamp());
+    app(Alerts::class)->run();
+    $this->travel(61)->minutes();
+    seenAt($key, now()->getTimestamp());
+    app(Alerts::class)->run();
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn (Request $request) => str_contains((string) $request['text'], 'Reopened: LogicException'));
+});
+
 it('alerts on a high error rate and on failing jobs', function () {
     config(['laralyze.alerts.discord' => 'https://discord.test/hook']);
     Http::fake();

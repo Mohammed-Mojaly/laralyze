@@ -2,6 +2,12 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## Unreleased
+
+- **Fixed:** an alert that no channel took (Slack down, a mail error) is no longer marked as sent: it goes out on the next check, a minute later. One channel taking it is enough.
+- **Fixed:** a new exception written late, by a long job or through the one-minute ingest queue, could miss its alert. Exceptions first seen in the last hour that haven't been told yet are now alerted, whenever they arrive.
+- An exception that comes back after you resolve it is alerted once each time, instead of every hour while it keeps happening.
+
 ## v0.4.0 - 2026-10-06
 
 - **Upgrade:** run `php artisan laralyze:install`. It adds one migration, for the new `laralyze_ingest` table, and runs it. No other step. Until you do, Laralyze keeps writing directly, and the dashboard asks you to.

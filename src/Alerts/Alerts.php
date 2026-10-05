@@ -17,6 +17,12 @@ use stdClass;
  */
 class Alerts
 {
+    /**
+     * How far back an exception still counts as new. Long jobs and the
+     * ingest queue write what they recorded minutes later.
+     */
+    protected const LOOKBACK = 3_600;
+
     public function __construct(
         protected Storage $storage,
         protected Issues $issues,
@@ -52,14 +58,10 @@ class Alerts
      */
     public function check(): array
     {
-        $now = time();
-        $since = (int) ($this->storage->values('laralyze', ['alerts_checked_at'])->first()->value ?? $now - 60);
         $rules = (array) $this->config->get('laralyze.alerts.rules', []);
 
-        $this->storage->put('laralyze', 'alerts_checked_at', (string) $now);
-
         return [
-            ...(($rules['exceptions'] ?? true) ? $this->exceptions($since) : []),
+            ...(($rules['exceptions'] ?? true) ? $this->exceptions() : []),
             ...$this->errorRate($rules['error_rate'] ?? null),
             ...$this->failedJobs($rules['failed_jobs'] ?? null),
         ];
@@ -68,8 +70,9 @@ class Alerts
     /**
      * @return list<Alert>
      */
-    protected function exceptions(int $since): array
+    protected function exceptions(): array
     {
+        $since = time() - self::LOOKBACK;
         $kept = (int) $this->config->get('laralyze.retention', 30) * 86_400;
         $recent = $this->storage->aggregate('exception', ['min', 'max'], $kept, 'max', 1_000)
             ->filter(fn (stdClass $row) => (float) $row->max >= $since);
@@ -96,7 +99,10 @@ class Alerts
             }
         }
 
-        return $alerts;
+        // Each new or returning exception is told once, however late it was written.
+        $sent = $this->storage->values('alert_sent', array_map(fn (Alert $alert) => $alert->id, $alerts))->pluck('key')->all();
+
+        return array_values(array_filter($alerts, fn (Alert $alert) => ! in_array($alert->id, $sent, true)));
     }
 
     /**
@@ -157,23 +163,39 @@ class Alerts
      */
     protected function send(array $alerts): void
     {
-        foreach ($alerts as $alert) {
-            $this->storage->put('alert_sent', $alert->id, '1');
-        }
-
         $text = implode("\n\n", array_map(fn (Alert $alert) => "*{$alert->title}*\n{$alert->body}\n{$alert->url}", $alerts));
+        $delivered = [];
 
         if (($to = $this->mailTo()) !== []) {
-            $this->laralyze->rescue(fn () => Notification::route('mail', $to)->notifyNow(new AlertNotification($alerts)));
+            $delivered[] = $this->deliver(fn () => Notification::route('mail', $to)->notifyNow(new AlertNotification($alerts)));
         }
 
         if ($slack = (string) $this->config->get('laralyze.alerts.slack')) {
-            $this->laralyze->rescue(fn () => Http::timeout(5)->post($slack, ['text' => $text]));
+            $delivered[] = $this->deliver(fn () => Http::timeout(5)->post($slack, ['text' => $text])->throw());
         }
 
         if ($discord = (string) $this->config->get('laralyze.alerts.discord')) {
-            $this->laralyze->rescue(fn () => Http::timeout(5)->post($discord, ['content' => Str::limit(str_replace('*', '**', $text), 1_900)]));
+            $delivered[] = $this->deliver(fn () => Http::timeout(5)->post($discord, ['content' => Str::limit(str_replace('*', '**', $text), 1_900)])->throw());
         }
+
+        // Only once a channel took them: alerts that reached no one go out on the next check.
+        if (in_array(true, $delivered, true)) {
+            foreach ($alerts as $alert) {
+                $this->storage->put('alert_sent', $alert->id, '1');
+            }
+        }
+    }
+
+    /**
+     * Whether the channel took it. A failure is reported, never thrown.
+     */
+    protected function deliver(callable $send): bool
+    {
+        return (bool) $this->laralyze->rescue(function () use ($send) {
+            $send();
+
+            return true;
+        }, false);
     }
 
     /**
