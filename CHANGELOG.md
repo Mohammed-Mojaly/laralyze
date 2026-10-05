@@ -2,7 +2,7 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
-## Unreleased
+## v0.3.0 - 2026-10-05
 
 - **ClickHouse storage**: set `LARALYZE_STORAGE=clickhouse` and the ClickHouse connection variables, then run `php artisan laralyze:install`. Every page works the same. Writes are asynchronous inserts that ClickHouse batches; metrics merge in the background; old data goes by whole days. ClickHouse 24.8 or later. See [ClickHouse in production](docs/runtime.md#clickhouse-in-production).
 - Nothing changes for apps on MySQL, MariaDB, PostgreSQL, SQLite or SQL Server, and no step is needed when upgrading. Custom code that resolved `MohammedMojaly\Laralyze\Storage\DatabaseStorage` keeps working; new code should use `MohammedMojaly\Laralyze\Contracts\Storage`.
