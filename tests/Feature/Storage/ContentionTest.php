@@ -3,6 +3,7 @@
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Sleep;
+use MohammedMojaly\Laralyze\Contracts\Ingest;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Dashboard\Health;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
@@ -31,11 +32,13 @@ function failingWrites(Throwable $e): void
     $storage->shouldReceive('store')->andThrow($e);
 
     app()->instance(Storage::class, $storage);
+    app()->forgetInstance(Ingest::class);
 }
 
 function workingWrites(): void
 {
     app()->forgetInstance(Storage::class);
+    app()->forgetInstance(Ingest::class);
     app()->forgetInstance(Health::class);
 }
 

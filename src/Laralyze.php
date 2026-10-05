@@ -10,7 +10,9 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Lottery;
 use Illuminate\Support\Str;
+use MohammedMojaly\Laralyze\Contracts\Ingest;
 use MohammedMojaly\Laralyze\Contracts\Storage;
+use MohammedMojaly\Laralyze\Ingest\DatabaseIngest;
 use MohammedMojaly\Laralyze\Metrics\Buffer;
 use MohammedMojaly\Laralyze\Metrics\PendingMetric;
 use MohammedMojaly\Laralyze\Metrics\Period;
@@ -289,9 +291,11 @@ class Laralyze
                 $executions = $this->executions;
                 $this->executions = [];
 
-                $storage->store([...$this->filtered($rows), ...$this->droppedRows()], $this->filtered($values), $executions);
+                $ingest = $this->app->make(Ingest::class);
+                $ingest->write([...$this->filtered($rows), ...$this->droppedRows()], $this->filtered($values), $executions);
 
                 $this->trimWhenOverdue($storage);
+                $this->digestWhenOverdue($ingest);
             });
         } catch (Throwable $e) {
             $this->reset();
@@ -430,9 +434,48 @@ class Laralyze
      */
     public function trim(): void
     {
-        $this->rescue(fn () => $this->ignore(
-            fn () => $this->app->make(Storage::class)->trim((int) $this->config->get('laralyze.retention', 30), $this->traceDays()),
-        ));
+        $this->rescue(fn () => $this->ignore(function () {
+            $this->app->make(Storage::class)->trim((int) $this->config->get('laralyze.retention', 30), $this->traceDays());
+            $this->app->make(Ingest::class)->trim((int) $this->config->get('laralyze.retention', 30));
+        }));
+    }
+
+    /**
+     * Merge what flushes left in the ingest table into Laralyze's tables.
+     * Runs every minute from the scheduler; returns how many batches it merged.
+     */
+    public function digest(int $seconds = 50): int
+    {
+        try {
+            return $this->ignore(fn () => $this->app->make(Ingest::class)->digest($seconds));
+        } catch (Throwable $e) {
+            // The batches stay where they are, for the next digest.
+            Contention::causedBy($e) ? $this->contended($e) : $this->failed($e);
+
+            return 0;
+        }
+    }
+
+    /**
+     * Apps without a running scheduler still need their batches merged, so
+     * now and then a flush checks whether the digest has gone missing.
+     */
+    protected function digestWhenOverdue(Ingest $ingest): void
+    {
+        if (! $ingest instanceof DatabaseIngest) {
+            return;
+        }
+
+        [$chances, $outOf] = $this->config->get('laralyze.ingest.lottery', [1, 500]);
+
+        if (! Lottery::odds($chances, $outOf)->choose()) {
+            return;
+        }
+
+        if (($ingest->digestedAt() ?? 0) < Date::now()->getTimestamp() - 180) {
+            // Shorter than the scheduler's run: this one holds up a request's worker.
+            $ingest->digest(10);
+        }
     }
 
     /**

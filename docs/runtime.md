@@ -3,7 +3,7 @@
 ## How it adds so little
 
 - During a request, Laralyze only adds numbers to an in-memory buffer. Queries and cache calls are summed per SQL string or key; fingerprinting and grouping wait.
-- Everything is written once, **after the response has been sent**, on Laralyze's own connection, and never inside a transaction your app has open.
+- Everything is written once, **after the response has been sent**, on Laralyze's own connection, and never inside a transaction your app has open. On MySQL, MariaDB, PostgreSQL and SQL Server that write is a single plain insert ([how writes reach the database](#how-writes-reach-the-database)).
 - Jobs, commands and scheduled tasks are written when each one finishes.
 - If Laralyze's storage fails, your app never sees the error. Laralyze stops writing for a minute, so a database that is down doesn't make every request wait for its connection timeout, then tries again. The pause is shared through APCu when it's installed.
 
@@ -18,6 +18,17 @@ Measured on a reference app (PHP 8.4, SQLite), before the response:
 
 Each query or cache call goes through Laravel's event dispatcher, about 1–2 µs, like any tool that listens to them (one listener serves every recorder); a request with 1,000 queries gets about 4–5% slower. If that matters for a hot path, turn the recorder off or wrap the code in `Laralyze::ignore(fn () => ...)`.
 
+## How writes reach the database
+
+Laralyze's tables hold one row per metric and minute, so every request adds to the same rows: the count for `GET /`, the sum of a query's time. Many processes adding to the same rows at once is what databases lock against, and on a busy MySQL those locks deadlock. So there are two ways in, set by `LARALYZE_INGEST`:
+
+- **`database`**, the default on MySQL, MariaDB, PostgreSQL and SQL Server. Each request, job and command adds one row to `laralyze_ingest`: a plain insert that never waits on a lock. Every minute, the scheduler's `laralyze:digest` merges what's waiting into Laralyze's tables. It's the only process writing to them, so nothing deadlocks, nothing is lost and nothing is counted twice. The dashboard is up to a minute behind.
+- **`direct`**, the default on SQLite. Each request, job and command writes to Laralyze's tables itself, retrying a statement that deadlocks. Fine for quiet apps; with steady traffic on a server database, use `database`.
+
+ClickHouse only ever appends, so it always writes directly and ignores this setting.
+
+The digest needs the scheduler. Without it, now and then a request runs the digest itself after its response (for at most 10 seconds), and the dashboard warns when batches have waited more than five minutes. Several servers may all run the scheduler: a cache lock keeps one digest at a time.
+
 ## Timelines
 
 The `Traces` recorder keeps single requests, jobs and commands with what happened inside them. Every execution collects its events in memory (up to 500); at the end, a slow, failed or throwing one is written as one row, and the rest only when sampled (10% by default). Lower `LARALYZE_TRACES_SAMPLE_RATE` on busy apps, or set it to 1 while debugging.
@@ -31,9 +42,10 @@ The dashboard shows a warning above the cards, and `php artisan about` shows it 
 - the scheduler hasn't run Laralyze's hourly cleanup for over two hours;
 - jobs were queued in the last hour but no worker recorded running one (restart your workers);
 - a web request recorded more distinct metrics than the buffer holds (`LARALYZE_BUFFER`, 5,000 by default) and some were dropped;
-- writes failed because of lock contention in the last hour.
+- writes failed because of lock contention in the last hour;
+- recorded batches have waited more than five minutes for the digest (an hour or more is an error): the scheduler isn't running.
 
-A failed write pauses recording for a minute, since the database is probably down. Lock contention doesn't: when many processes write the same rows at once, a statement can deadlock or wait too long for a lock, and Laralyze tries it again up to five times, a few milliseconds apart. Only a write whose retries all fail is lost and counted, and recording carries on. Seeing this warning often means the traffic is more than your app's database comfortably takes alongside the app. Move Laralyze to [ClickHouse](#clickhouse-in-production), which we recommend for medium and large apps, or to the ingest driver once it's out.
+A failed write pauses recording for a minute, since the database is probably down. Lock contention doesn't: when many processes write the same rows at once, a statement can deadlock or wait too long for a lock, and Laralyze tries it again up to five times, a few milliseconds apart. Only a write whose retries all fail is lost and counted, and recording carries on. Seeing this warning often means the traffic is more than your app's database comfortably takes alongside the app. Switch to [database ingest](#how-writes-reach-the-database) (`LARALYZE_INGEST=database`, the default on MySQL, MariaDB, PostgreSQL and SQL Server), or move Laralyze to [ClickHouse](#clickhouse-in-production), which we recommend for medium and large apps.
 
 ## The scheduler
 
@@ -46,6 +58,7 @@ Add Laravel's usual cron entry:
 Laralyze adds two tasks to your schedule:
 
 - `laralyze:trim`, hourly: removes data past the retention period. Without cron, Laralyze still cleans up now and then after a request.
+- `laralyze:digest`, every minute, with [database ingest](#how-writes-reach-the-database): merges what requests, jobs and commands recorded into Laralyze's tables.
 - `laralyze:servers`, every minute: CPU, memory and disk. Each server that runs the scheduler reports itself.
 
 ## PHP-FPM, LiteSpeed, Apache

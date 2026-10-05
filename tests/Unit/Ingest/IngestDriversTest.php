@@ -1,0 +1,75 @@
+<?php
+
+use MohammedMojaly\Laralyze\Contracts\Ingest;
+use MohammedMojaly\Laralyze\Ingest\Batch;
+use MohammedMojaly\Laralyze\Ingest\DatabaseIngest;
+use MohammedMojaly\Laralyze\Ingest\DirectIngest;
+use MohammedMojaly\Laralyze\Ingest\Drivers;
+
+function ingestDriverFor(array $config): string
+{
+    config(['laralyze.ingest.driver' => null, ...$config]);
+
+    return Drivers::name(app());
+}
+
+it('queues writes on databases where concurrent upserts lock each other', function (string $driver) {
+    config(['database.connections.busy' => ['driver' => $driver]]);
+
+    expect(ingestDriverFor(['laralyze.storage.connection' => 'busy']))->toBe('database');
+})->with(['mysql', 'mariadb', 'pgsql', 'sqlsrv']);
+
+it('writes directly to SQLite and ClickHouse', function () {
+    config(['database.connections.small' => ['driver' => 'sqlite']]);
+
+    expect(ingestDriverFor(['laralyze.storage.connection' => 'small']))->toBe('direct')
+        ->and(ingestDriverFor(['laralyze.storage.driver' => 'clickhouse', 'laralyze.ingest.driver' => 'database']))->toBe('direct');
+});
+
+it('follows LARALYZE_INGEST when it is set', function () {
+    config(['database.connections.busy' => ['driver' => 'mysql']]);
+
+    expect(ingestDriverFor(['laralyze.storage.connection' => 'busy', 'laralyze.ingest.driver' => 'direct']))->toBe('direct')
+        ->and(ingestDriverFor(['laralyze.ingest.driver' => 'database']))->toBe('database');
+});
+
+it('works with a config published before ingest existed', function () {
+    config(['laralyze' => collect(config('laralyze'))->except('ingest')->all()]);
+    config(['database.connections.busy' => ['driver' => 'pgsql'], 'laralyze.storage.connection' => 'busy']);
+    app()->forgetInstance(Ingest::class);
+
+    expect(app(Ingest::class))->toBeInstanceOf(DatabaseIngest::class);
+});
+
+it('refuses an unknown ingest driver', function () {
+    ingestDriverFor(['laralyze.ingest.driver' => 'redis']);
+})->throws(InvalidArgumentException::class, 'ingest driver [redis]');
+
+it('binds the matching ingest', function () {
+    config(['laralyze.ingest.driver' => 'direct']);
+    app()->forgetInstance(Ingest::class);
+
+    expect(app(Ingest::class))->toBeInstanceOf(DirectIngest::class);
+});
+
+it('round-trips a flush through its payload', function () {
+    $flush = [
+        'rows' => [['bucket' => 1_800_000_000, 'period' => 60, 'type' => 'query', 'aggregate' => 'sum', 'key' => "select * from \"users\" where name = 'Zoë'", 'value' => 12.0]],
+        'values' => [['timestamp' => 1_800_000_000, 'type' => 'seen', 'key' => '42', 'value' => '{"a":1}']],
+        'executions' => [['uuid' => '01J00000000000000000000001', 'duration' => 1.5, 'counts' => ['query' => 3], 'events' => [['type' => 'log', 'message' => 'ünïcödé']]]],
+    ];
+
+    expect(Batch::decode(Batch::encode($flush['rows'], $flush['values'], $flush['executions'])))->toBe($flush);
+});
+
+it('merges flushes by the same rules as storage', function () {
+    $batch = new Batch;
+    $row = fn (string $aggregate, float $value) => ['bucket' => 60, 'period' => 60, 'type' => 't', 'aggregate' => $aggregate, 'key' => 'k', 'value' => $value];
+
+    $batch->add(['rows' => [$row('count', 1), $row('min', 5), $row('max', 5), $row('h3', 1)], 'values' => [['timestamp' => 10, 'type' => 'v', 'key' => 'k', 'value' => 'first']], 'executions' => [['uuid' => 'a']]]);
+    $batch->add(['rows' => [$row('count', 2), $row('min', 3), $row('max', 9), $row('h3', 2)], 'values' => [['timestamp' => 10, 'type' => 'v', 'key' => 'k', 'value' => 'second']], 'executions' => [['uuid' => 'b']]]);
+
+    expect(collect($batch->rows())->pluck('value', 'aggregate')->all())->toBe(['count' => 3.0, 'min' => 3.0, 'max' => 9.0, 'h3' => 3.0])
+        ->and($batch->values()[0]['value'])->toBe('second')
+        ->and($batch->executions())->toBe([['uuid' => 'a'], ['uuid' => 'b']]);
+});

@@ -28,7 +28,7 @@ composer require mohammed-mojaly/laralyze
 php artisan laralyze:install
 ```
 
-Then open `/laralyze`. Restart your queue workers (`php artisan queue:restart`, or `php artisan horizon:terminate` with Horizon): a worker loads Laralyze when it starts, so one that was already running won't record its jobs. Make sure Laravel's scheduler runs (`* * * * * php artisan schedule:run`): Laralyze uses it for cleanup, server stats and alerts. If something is off (tables missing, the scheduler not running, writes failing), you see a warning above the cards and in `php artisan about`. See [when something is wrong](docs/runtime.md#when-something-is-wrong).
+Then open `/laralyze`. Restart your queue workers (`php artisan queue:restart`, or `php artisan horizon:terminate` with Horizon): a worker loads Laralyze when it starts, so one that was already running won't record its jobs. Make sure Laravel's scheduler runs (`* * * * * php artisan schedule:run`): Laralyze uses it to merge what was recorded into the dashboard every minute (on MySQL, MariaDB, PostgreSQL and SQL Server), and for cleanup, server stats and alerts. If something is off (tables missing, the scheduler not running, writes failing), you see a warning above the cards and in `php artisan about`. See [when something is wrong](docs/runtime.md#when-something-is-wrong).
 
 ## What you get
 
@@ -160,7 +160,7 @@ Then show them with a card of your own: `php artisan laralyze:make-card Checkout
 
 - [Configuration](docs/configuration.md): every setting and recorder
 - [Customization](docs/customization.md): pages, cards, recorders, filters, theme
-- [Running in production](docs/runtime.md): overhead, scheduler, FPM, Octane, queues, several servers
+- [Running in production](docs/runtime.md): overhead, how writes reach the database, scheduler, FPM, Octane, queues, several servers
 
 ## Contributing and security
 

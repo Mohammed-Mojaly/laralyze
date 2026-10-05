@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static \MohammedMojaly\Laralyze\Metrics\Buffer buffer()
  * @method static void flush()
  * @method static int contention()
+ * @method static int digest(int $seconds = 50)
  * @method static void merge(string $type, string $key, array<string, int|float> $aggregates, ?int $timestamp = null)
  * @method static \MohammedMojaly\Laralyze\Laralyze filter(callable $filter)
  * @method static \MohammedMojaly\Laralyze\Laralyze user(callable $resolver)

@@ -620,7 +620,8 @@ class DatabaseStorage implements Storage
 
                 return;
             } catch (Throwable $e) {
-                if ($attempt >= self::ATTEMPTS || ! Contention::causedBy($e)) {
+                // Inside a transaction a deadlock rolls back all of it: only the whole transaction can run again.
+                if ($attempt >= self::ATTEMPTS || ! Contention::causedBy($e) || $this->connection()->transactionLevel() > 0) {
                     throw $e;
                 }
 

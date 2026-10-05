@@ -9,6 +9,8 @@ Everything lives in `config/laralyze.php`, published by `php artisan laralyze:in
 | `enabled` | `LARALYZE_ENABLED` | `true` | Turns Laralyze off completely: no listeners, no routes, no work. |
 | `storage.driver` | `LARALYZE_STORAGE` | `database` | `database`, or `clickhouse` to keep the data in [ClickHouse](#clickhouse). |
 | `storage.connection` | `LARALYZE_DB_CONNECTION` | default connection | Keeps Laralyze's tables on another database connection. |
+| `ingest.driver` | `LARALYZE_INGEST` | `database` on MySQL, MariaDB, PostgreSQL and SQL Server; `direct` on SQLite | `database`: each request, job and command adds one row to `laralyze_ingest`, and the scheduler merges them every minute, so concurrent writes never lock each other; the dashboard is up to a minute behind. `direct`: each writes to Laralyze's tables itself. ClickHouse always writes directly. See [how writes reach the database](runtime.md#how-writes-reach-the-database). |
+| `ingest.lottery` | | `[1, 500]` | Odds that a write runs the digest itself when it hasn't run for three minutes (no scheduler). |
 | `retention` | `LARALYZE_RETENTION_DAYS` | `30` | Days of data to keep. Minute-level detail is kept for a day. |
 | `buffer` | `LARALYZE_BUFFER` | `5000` | Distinct metrics one request, job or command holds before writing. A web request that fills it drops the rest, and the dashboard warns. |
 | `alerts.mail` / `.slack` / `.discord` | `LARALYZE_ALERTS_MAIL`, `LARALYZE_ALERTS_SLACK_WEBHOOK`, `LARALYZE_ALERTS_DISCORD_WEBHOOK` | none | Where alerts go. Mail takes comma-separated addresses. Alerts are off until one is set. |

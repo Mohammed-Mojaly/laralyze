@@ -2,6 +2,13 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## v0.4.0 - 2026-10-06
+
+- **Upgrade:** run `php artisan laralyze:install`. It adds one migration, for the new `laralyze_ingest` table, and runs it. No other step. Until you do, Laralyze keeps writing directly, and the dashboard asks you to.
+- **Database ingest, now the default on MySQL, MariaDB, PostgreSQL and SQL Server.** Each request, job and command adds one row to `laralyze_ingest`, a plain insert that never waits on a lock, and the scheduler's new `laralyze:digest` merges them into Laralyze's tables every minute, as their only writer. Busy apps no longer deadlock on Laralyze's tables, and no longer lose or double count what they record. The dashboard is up to a minute behind. `LARALYZE_INGEST=direct` keeps the previous behaviour; SQLite keeps it by default, and ClickHouse is unchanged. See [how writes reach the database](docs/runtime.md#how-writes-reach-the-database).
+- Without a scheduler, now and then a request runs the digest itself after its response. The dashboard warns when batches have waited more than five minutes.
+- `laralyze:install` now publishes only the migrations an app doesn't have yet.
+
 ## v0.3.1 - 2026-10-05
 
 - **Fixed:** deadlocks no longer pause recording or lose data on busy MySQL apps. Under steady traffic, concurrent writes deadlocked often, and each deadlock was treated as a database outage: recording paused for a minute in every process, dropping metrics and queued jobs' runs (about 9% of requests in one test). Each statement is now written on its own, outside a transaction, and retried up to five times on a deadlock, lock wait or racing insert, without ever counting anything twice. A write whose retries all fail is counted in a softer dashboard warning, and recording carries on. Applies to MySQL, MariaDB, PostgreSQL, SQLite and SQL Server; no upgrade step.

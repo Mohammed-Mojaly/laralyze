@@ -41,6 +41,10 @@ abstract class TestCase extends Orchestra
 
             // The 1-in-1,000 cleanup after a flush would make tests flaky.
             $config->set('laralyze.trim_lottery', [0, 1]);
+            $config->set('laralyze.ingest.lottery', [0, 1]);
+
+            // Most tests read what a flush wrote straight away; the ingest tests switch to the queued path.
+            $config->set('laralyze.ingest.driver', 'direct');
             $config->set('database.default', 'testing');
             $config->set('database.connections.testing', $this->databaseConnection());
 

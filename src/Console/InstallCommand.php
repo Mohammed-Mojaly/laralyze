@@ -48,10 +48,7 @@ class InstallCommand extends Command
 
             $this->components->info('Laralyze\'s tables are ready in ClickHouse at '.$storage->client()->url().'.');
         } else {
-            // Publishing again would copy the migration under a new date and run it twice.
-            if ($files->glob(database_path('migrations/*_create_laralyze_tables.php')) === []) {
-                $this->call('vendor:publish', ['--tag' => 'laralyze-migrations']);
-            }
+            $this->publishMissingMigrations($files);
 
             $this->call('migrate');
         }
@@ -67,5 +64,28 @@ class InstallCommand extends Command
         ]);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Published migrations carry the date they were published, so match them
+     * by name: an upgrade gets only the ones it doesn't have yet.
+     */
+    protected function publishMissingMigrations(Filesystem $files): void
+    {
+        $publishedAt = now();
+
+        foreach ($files->glob(__DIR__.'/../../database/migrations/*.php') as $migration) {
+            $name = (string) preg_replace('/^\d{4}_\d{2}_\d{2}_\d{6}_/', '', basename($migration));
+
+            if ($files->glob(database_path('migrations/*_'.$name)) !== []) {
+                continue;
+            }
+
+            $files->ensureDirectoryExists(database_path('migrations'));
+            $files->copy($migration, database_path('migrations/'.$publishedAt->format('Y_m_d_His').'_'.$name));
+            $publishedAt = $publishedAt->addSecond();
+
+            $this->components->task("Publishing migration {$name}");
+        }
     }
 }

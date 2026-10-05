@@ -78,6 +78,7 @@ class LaralyzeServiceProvider extends ServiceProvider
         $this->app->singleton(Contracts\Storage::class, fn ($app) => $app['config']->get('laralyze.storage.driver', 'database') === 'clickhouse'
             ? $app->make(Storage\ClickHouseStorage::class)
             : $app->make(Storage\DatabaseStorage::class));
+        $this->app->singleton(Contracts\Ingest::class, fn ($app) => Ingest\Drivers::resolve($app));
         $this->app->singleton(Dashboard\Assets::class);
         $this->app->singleton(Support\AiPrices::class);
         $this->app->scoped(Dashboard\Pages::class);
@@ -196,6 +197,13 @@ class LaralyzeServiceProvider extends ServiceProvider
             $schedule->call(fn () => $this->app->make(Laralyze::class)->trim())
                 ->hourly()
                 ->name('laralyze:trim');
+
+            if (Ingest\Drivers::name($this->app) === 'database') {
+                $schedule->call(fn () => $this->app->make(Laralyze::class)->digest())
+                    ->everyMinute()
+                    ->name('laralyze:digest')
+                    ->withoutOverlapping();
+            }
 
             if ($this->app->make(Alerts\Alerts::class)->enabled()) {
                 $schedule->call(fn () => $this->app->make(Alerts\Alerts::class)->run())

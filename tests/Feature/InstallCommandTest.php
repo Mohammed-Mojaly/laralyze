@@ -6,7 +6,7 @@ use MohammedMojaly\Laralyze\Storage\ClickHouseStorage;
 
 function publishedMigrations(): array
 {
-    return File::glob(database_path('migrations/*_create_laralyze_tables.php'));
+    return File::glob(database_path('migrations/*_create_laralyze_*.php'));
 }
 
 function cleanUpInstall(): void
@@ -31,20 +31,33 @@ it('publishes the config file', function () {
         ->and(File::get(config_path('laralyze.php')))->toContain('LARALYZE_ENABLED');
 });
 
-it('publishes the migration and creates the tables', function () {
+it('publishes the migrations and creates the tables', function () {
     $this->artisan('laralyze:install')->assertSuccessful();
 
-    expect(publishedMigrations())->toHaveCount(1)
+    expect(publishedMigrations())->toHaveCount(2)
         ->and(Schema::hasTable('laralyze_aggregates'))->toBeTrue()
         ->and(Schema::hasTable('laralyze_values'))->toBeTrue()
-        ->and(Schema::hasTable('laralyze_executions'))->toBeTrue();
+        ->and(Schema::hasTable('laralyze_executions'))->toBeTrue()
+        ->and(Schema::hasTable('laralyze_ingest'))->toBeTrue();
 });
 
-it('does not publish the migration twice', function () {
+it('does not publish the migrations twice', function () {
     $this->artisan('laralyze:install')->assertSuccessful();
     $this->artisan('laralyze:install')->assertSuccessful();
 
-    expect(publishedMigrations())->toHaveCount(1);
+    expect(publishedMigrations())->toHaveCount(2);
+});
+
+it('adds only the new migration to an app installed before it', function () {
+    // A 0.3 install: the first migration, published under the date it was installed.
+    File::copy(__DIR__.'/../../database/migrations/2026_09_30_000000_create_laralyze_tables.php', database_path('migrations/2026_10_04_101500_create_laralyze_tables.php'));
+    $this->artisan('migrate')->assertSuccessful();
+
+    $this->artisan('laralyze:install')->assertSuccessful();
+
+    expect(publishedMigrations())->toHaveCount(2)
+        ->and(File::glob(database_path('migrations/*_create_laralyze_tables.php')))->toBe([database_path('migrations/2026_10_04_101500_create_laralyze_tables.php')])
+        ->and(Schema::hasTable('laralyze_ingest'))->toBeTrue();
 });
 
 it('keeps an edited config file when run again', function () {

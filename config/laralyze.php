@@ -52,6 +52,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Ingest
+    |--------------------------------------------------------------------------
+    |
+    | How recorded data reaches the database. "database": each request, job
+    | and command adds one row to a waiting table, and the scheduler merges
+    | them into Laralyze's tables every minute, so concurrent writes never
+    | lock each other. "direct": each one writes to the tables itself. Left
+    | empty, MySQL, MariaDB, PostgreSQL and SQL Server use "database", and
+    | SQLite uses "direct". ClickHouse always writes directly.
+    |
+    */
+
+    'ingest' => [
+        'driver' => env('LARALYZE_INGEST'),
+
+        // Without a scheduler, now and then a write merges what's waiting itself.
+        'lottery' => [1, 500],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Retention
     |--------------------------------------------------------------------------
     |

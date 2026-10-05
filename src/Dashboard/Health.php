@@ -3,7 +3,9 @@
 namespace MohammedMojaly\Laralyze\Dashboard;
 
 use Illuminate\Contracts\Config\Repository;
+use MohammedMojaly\Laralyze\Contracts\Ingest;
 use MohammedMojaly\Laralyze\Contracts\Storage;
+use MohammedMojaly\Laralyze\Ingest\DatabaseIngest;
 use MohammedMojaly\Laralyze\Laralyze;
 use MohammedMojaly\Laralyze\Storage\ClickHouse\Client;
 use MohammedMojaly\Laralyze\Support\Format;
@@ -22,7 +24,7 @@ final class Health
 
     private bool $blocking = false;
 
-    public function __construct(private Storage $storage, private Laralyze $laralyze, private Repository $config) {}
+    public function __construct(private Storage $storage, private Laralyze $laralyze, private Repository $config, private Ingest $ingest) {}
 
     /**
      * @return list<array{level: 'bad'|'warn', title: string, hint: string}>
@@ -112,7 +114,38 @@ final class Health
             );
         }
 
+        if ($this->ingest instanceof DatabaseIngest) {
+            $problems = [...$problems, ...$this->ingestProblems($now)];
+        }
+
         return $problems;
+    }
+
+    /**
+     * @return list<array{level: 'bad'|'warn', title: string, hint: string}>
+     */
+    private function ingestProblems(int $now): array
+    {
+        /** @var DatabaseIngest $ingest */
+        $ingest = $this->ingest;
+
+        if (! $ingest->installed()) {
+            return [$this->warn(
+                "Laralyze's ingest table is missing.",
+                "Run `php artisan laralyze:install` to create it. Until then, each request, job and command writes to Laralyze's tables itself.",
+            )];
+        }
+
+        ['count' => $count, 'oldest' => $oldest] = $ingest->backlog();
+
+        if ($oldest === null || $oldest >= $now - 300) {
+            return [];
+        }
+
+        $title = Format::number($count).' '.($count == 1 ? 'batch has' : 'batches have').' been waiting since '.now()->setTimestamp($oldest)->diffForHumans().'.';
+        $hint = 'The scheduler merges them into the dashboard every minute, so it shows nothing newer. Add `* * * * * php artisan schedule:run` to cron, or run `php artisan schedule:work`.';
+
+        return [$oldest < $now - 3_600 ? $this->bad($title, $hint) : $this->warn($title, $hint)];
     }
 
     private function count(string $type, int $window): float

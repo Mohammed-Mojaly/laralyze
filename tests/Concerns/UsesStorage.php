@@ -43,5 +43,6 @@ trait UsesStorage
         DB::table('laralyze_aggregates')->truncate();
         DB::table('laralyze_values')->truncate();
         DB::table('laralyze_executions')->truncate();
+        DB::table('laralyze_ingest')->truncate();
     }
 }
