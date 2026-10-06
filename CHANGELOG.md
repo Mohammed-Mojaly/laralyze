@@ -6,6 +6,8 @@ Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch 
 
 - A separate permission for Ask AI: `Gate::define('useLaralyzeAssistant', ...)` decides who may make the assistant read your code and send it to your AI provider. By default it's whoever may view the dashboard, so nothing changes unless you define it. Denied, the Ask AI button and the Assistant page are hidden, and the assistant refuses every action.
 - SECURITY.md describes what the assistant reads, masks and sends.
+- **Faster:** the last 24 hours now read hour buckets instead of minute buckets, 24 rows per key instead of 1,440. On MySQL with a day of busy data, the routes card went from about 1.2 s to the 50 ms the 7-day range takes. Its charts show one bar per hour, and the range starts at the top of the hour, like the longer ones.
+- **Fixed:** the dashboard's Needs attention and AI cards showed up empty when they had nothing to show, instead of staying hidden.
 
 ## v0.5.0 - 2026-10-06
 

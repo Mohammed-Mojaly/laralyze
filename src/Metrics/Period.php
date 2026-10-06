@@ -3,8 +3,8 @@
 namespace MohammedMojaly\Laralyze\Metrics;
 
 /**
- * Metrics are stored at two resolutions: minute buckets for recent,
- * detailed charts and hour buckets for everything older than a day.
+ * Metrics are stored at two resolutions: minute buckets for the last day,
+ * read for windows shorter than a day, and hour buckets for the rest.
  */
 final class Period
 {
@@ -25,10 +25,12 @@ final class Period
     }
 
     /**
-     * Pick the resolution that can answer a window of the given length.
+     * Pick the resolution that answers a window of the given length. From a
+     * day on, hour buckets: 24 rows per key instead of 1,440, at the cost of
+     * starting at the top of the hour.
      */
     public static function forWindow(int $seconds): int
     {
-        return $seconds <= self::MINUTE_RETENTION ? self::MINUTE : self::HOUR;
+        return $seconds < self::MINUTE_RETENTION ? self::MINUTE : self::HOUR;
     }
 }

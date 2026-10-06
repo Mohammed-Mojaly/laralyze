@@ -10,12 +10,13 @@ it('floors a timestamp to the start of its bucket', function (int $timestamp, in
     'middle of an hour' => [1_727_701_799, Period::HOUR, 1_727_701_200],
 ]);
 
-it('reads windows up to a day from minute buckets', function () {
+it('reads windows shorter than a day from minute buckets', function () {
     expect(Period::forWindow(15 * 60))->toBe(Period::MINUTE)
-        ->and(Period::forWindow(86_400))->toBe(Period::MINUTE);
+        ->and(Period::forWindow(3_600))->toBe(Period::MINUTE)
+        ->and(Period::forWindow(86_399))->toBe(Period::MINUTE);
 });
 
-it('reads windows longer than a day from hour buckets', function () {
-    expect(Period::forWindow(86_401))->toBe(Period::HOUR)
+it('reads a day and longer from hour buckets, so 24 hours reads 24 rows per key instead of 1,440', function () {
+    expect(Period::forWindow(86_400))->toBe(Period::HOUR)
         ->and(Period::forWindow(30 * 86_400))->toBe(Period::HOUR);
 });

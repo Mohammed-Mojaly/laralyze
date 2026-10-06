@@ -293,6 +293,11 @@ body.lz-root {
     display: none !important;
 }
 
+/* Cards set display, which would otherwise win over the hidden attribute. */
+[hidden] {
+    display: none !important;
+}
+
 .lz-nav-section + .lz-nav-section {
     margin-top: 14px;
 }

@@ -54,6 +54,11 @@ it('keeps four columns of the queues table on the dashboard', function () {
     Livewire::withoutLazyLoading()->test('laralyze.queues')->assertSee('Avg wait')->assertDontSee('All jobs');
 });
 
+it('really hides cards that hide themselves, whatever their own display', function () {
+    // .lz-card and .lz-grid set display, which would otherwise win over [hidden].
+    expect($this->get('/laralyze')->getContent())->toMatch('/\[hidden\]\s*\{\s*display:\s*none\s*!important;?\s*\}/');
+});
+
 it('leaves the AI summary out until there are calls', function () {
     Livewire::withoutLazyLoading()->test('laralyze.ai-totals', ['summary' => true])->assertSee('hidden wire:poll.30s', escape: false);
 

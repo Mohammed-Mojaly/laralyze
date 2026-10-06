@@ -30,7 +30,7 @@ it('reads back exactly what a brute-force count of the same events gives', funct
 
     foreach ([900, 3_600, 86_400, 7 * 86_400, 30 * 86_400] as $window) {
         // Windows start at the beginning of the bucket they fall in.
-        $period = $window <= 86_400 ? 60 : 3_600;
+        $period = $window < 86_400 ? 60 : 3_600;
         $since = ($now - $window) - (($now - $window) % $period);
 
         foreach (['orders', 'signups', 'imports'] as $type) {
