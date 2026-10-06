@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\View;
+use MohammedMojaly\Laralyze\Dashboard\StorageInfo;
 use MohammedMojaly\Laralyze\Recorders\Requests;
 
 beforeEach(function () {
@@ -12,6 +13,17 @@ it('shows the dashboard at /laralyze', function () {
         ->assertOk()
         ->assertSee('<title>Dashboard · Laralyze</title>', escape: false)
         ->assertSee('laralyze.request-totals');
+});
+
+it('says where the data lives, and has a menu button for phones', function () {
+    $storage = StorageInfo::describe(app());
+
+    $this->get('/laralyze/requests')
+        ->assertOk()
+        ->assertSee($storage['label'])
+        ->assertSee($storage['detail'])
+        ->assertSee('class="lz-menu-button"', escape: false)
+        ->assertSee('<span class="lz-sidebar-page">Requests</span>', escape: false);
 });
 
 it('serves each page on its own route', function () {

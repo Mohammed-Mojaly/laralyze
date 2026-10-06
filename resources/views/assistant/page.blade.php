@@ -9,8 +9,9 @@
 @endphp
 <div
     class="lz-assistant-page"
-    x-data="{ list: (() => { try { return localStorage.getItem('laralyze.chats') !== 'closed' } catch { return true } })() }"
-    x-init="$watch('list', (open) => { try { localStorage.setItem('laralyze.chats', open ? 'open' : 'closed') } catch {} })"
+    {{-- On a phone the list covers the chat, so it starts closed there and the choice isn't remembered. --}}
+    x-data="{ phone: matchMedia('(max-width: 900px)').matches, list: false }"
+    x-init="list = ! phone && (() => { try { return localStorage.getItem('laralyze.chats') !== 'closed' } catch { return true } })(); $watch('list', (open) => { if (phone) return; try { localStorage.setItem('laralyze.chats', open ? 'open' : 'closed') } catch {} })"
     x-effect="const url = new URL(location.href); $wire.chat ? url.searchParams.set('chat', $wire.chat) : url.searchParams.delete('chat'); if (url.href !== location.href) history.replaceState(history.state, '', url)"
     x-bind:class="{ 'is-list-closed': ! list }"
 >
@@ -20,7 +21,7 @@
             <button type="button" class="lz-icon-button" x-on:click="list = false" title="Hide conversations" aria-label="Hide conversations"><x-laralyze::icon name="sidebar" /></button>
         </div>
 
-        <button type="button" class="lz-chat-new" wire:click="start"><x-laralyze::icon name="new" />New conversation</button>
+        <button type="button" class="lz-chat-new" wire:click="start" x-on:click="phone && (list = false)"><x-laralyze::icon name="new" />New conversation</button>
 
         <div class="lz-chat-groups">
             @forelse ($groups as $label => $items)
@@ -28,7 +29,7 @@
                     <h3>{{ $label }}</h3>
                     @foreach ($items as $item)
                         <div @class(['lz-chat-row', 'is-active' => $item['id'] === $chat]) wire:key="c{{ $item['id'] }}">
-                            <button type="button" class="lz-chat-link" wire:click="show(@js($item['id']))" title="{{ $item['title'] }}">
+                            <button type="button" class="lz-chat-link" wire:click="show(@js($item['id']))" x-on:click="phone && (list = false)" title="{{ $item['title'] }}">
                                 <span class="lz-chat-kind"><x-laralyze::icon :name="$icons[$item['kind']] ?? 'ai'" /></span>
                                 <span class="lz-chat-text">
                                     <span class="lz-chat-title" dir="auto">{{ $item['title'] }}</span>

@@ -4,8 +4,10 @@
     $footer = $sections['System'] ?? [];
     unset($sections['System']);
     $version = \MohammedMojaly\Laralyze\Laralyze::version();
+    $storage = \MohammedMojaly\Laralyze\Dashboard\StorageInfo::describe(app());
 @endphp
-<aside class="lz-sidebar">
+{{-- On a phone the sidebar is a bar at the top, and the menu opens from its button. --}}
+<aside class="lz-sidebar" x-data="{ open: false }" :class="{ 'is-open': open }" x-on:keydown.escape.window="open = false">
     <a class="lz-brand" href="{{ route('laralyze.dashboard', $range === \MohammedMojaly\Laralyze\Dashboard\Range::Hour ? [] : ['period' => $range->value]) }}">
         {{-- An L made of trace spans. --}}
         <svg viewBox="0 0 32 32" aria-hidden="true">
@@ -17,7 +19,14 @@
         <span>Laralyze</span>
     </a>
 
-    <nav class="lz-nav" aria-label="Laralyze">
+    <span class="lz-sidebar-page">{{ $current?->label }}</span>
+
+    <button type="button" class="lz-menu-button" x-on:click="open = ! open" :aria-expanded="open" aria-controls="lz-nav" aria-label="Menu">
+        <x-laralyze::icon name="menu" x-show="! open" />
+        <x-laralyze::icon name="close" x-show="open" x-cloak />
+    </button>
+
+    <nav class="lz-nav" id="lz-nav" aria-label="Laralyze">
         @foreach ($sections as $section => $sectionPages)
             <div class="lz-nav-section">
                 @if ($section !== '')
@@ -41,6 +50,11 @@
                 @if ($version)
                     <span class="lz-nav-version">{{ $version }}</span>
                 @endif
+            </p>
+
+            <p class="lz-nav-storage" title="{{ $storage['detail'] }}">
+                <x-laralyze::icon name="queries" />
+                <span class="lz-nav-storage-name">{{ $storage['label'] }}</span>
             </p>
         </div>
     </nav>
