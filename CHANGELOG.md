@@ -2,7 +2,7 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
-## Unreleased
+## v0.5.2 - 2026-10-07
 
 - **Fixed:** a Livewire update is now named after the component Livewire actually loaded, never after the request body. A forged update with a huge component name could stop the digest on MySQL and MariaDB.
 - **Fixed:** keys and run names are cut to 4 KB, types to 64 bytes, servers to 128 and user ids to 64, so every database column takes them.
