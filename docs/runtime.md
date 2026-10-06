@@ -39,7 +39,7 @@ Point every server at the same database or ClickHouse. A cache lock keeps one di
 ## PHP-FPM, Octane and queue workers
 
 - **PHP-FPM and LiteSpeed** (also behind Apache or Nginx): data is written after the response is sent.
-- **Octane** (Swoole, FrankenPHP): the buffer is cleared at the start of every request. Cards check the `viewLaralyze` gate on every update.
+- **Octane** (Swoole, FrankenPHP): written at the end of each request like elsewhere; anything left unwritten is discarded when the next request starts. Cards check the `viewLaralyze` gate on every update.
 - **Queue workers**: each job is written when it finishes. A worker loads Laralyze when it starts, so restart workers after installing or upgrading (`php artisan queue:restart` or `horizon:terminate`).
 
 ## When something is wrong

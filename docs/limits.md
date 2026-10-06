@@ -15,4 +15,4 @@ What Laralyze doesn't see, and where its numbers are estimates.
 - **Workers** load Laralyze when they start. Restart them after installing or upgrading.
 - **Alerts** are checked every minute. Each exception is told once; other alerts repeat at most every `LARALYZE_ALERTS_EVERY` minutes.
 - **ClickHouse**: inserts are asynchronous and metrics merge in the background, so a write shows up after its batch is saved.
-- **When it writes**: after the response is sent on PHP-FPM and LiteSpeed. Under Octane the buffer is cleared at the start of every request, so nothing carries over.
+- **When it writes**: after the response is sent on PHP-FPM and LiteSpeed. Octane: written at the end of each request like elsewhere; anything left unwritten is discarded when the next request starts.
