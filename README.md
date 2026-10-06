@@ -1,4 +1,4 @@
-<p align="center"><img src="art/hero.png" alt="Laralyze: monitoring for Laravel inside your app" width="100%"></p>
+<p align="center"><a href="https://laralyze-demo.mohammedmojaly.me/laralyze"><img src="art/hero.png" alt="Laralyze: self-hosted monitoring for Laravel, with AI" width="100%"></a></p>
 
 <p align="center">
     <a href="https://github.com/Mohammed-Mojaly/laralyze/actions/workflows/tests.yml"><img src="https://github.com/Mohammed-Mojaly/laralyze/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
@@ -9,6 +9,8 @@
 # Laralyze
 
 Laralyze records what your Laravel app does in production and shows it on a dashboard inside the app: requests, jobs, commands, queries, exceptions, cache, outgoing HTTP, AI calls, mail, notifications, logs, users, servers and visits, and the timeline of single requests and jobs. The data stays in your app's database, or in ClickHouse if you choose. It adds about 0.03–0.08 ms to a simple request and about 2 ms to one with 1,000 queries ([measured](docs/runtime.md#overhead) with PHP 8.4 and SQLite).
+
+See it running in the [live demo](https://laralyze-demo.mohammedmojaly.me/laralyze).
 
 > Laralyze is in `0.x`: minor releases (`0.1` → `0.2`) may change things until `1.0`; patch releases don't. Read the [changelog](CHANGELOG.md) before you upgrade.
 
