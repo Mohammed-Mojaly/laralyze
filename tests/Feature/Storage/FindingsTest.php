@@ -107,6 +107,29 @@ it('finds an N+1, where it happens, and how to fix it', function () {
     $this->get('/laralyze/executions/'.$uuid)->assertSee('×6');
 });
 
+it('keeps the location of a very long query, even one full of Arabic', function () {
+    // About 9 KB of SQL, and three times that once JSON escapes the Arabic.
+    $columns = implode(', ', array_map(fn (int $i) => "'عمود رقم {$i}' as c{$i}", range(1, 250)));
+
+    Route::get('/report', function () use ($columns) {
+        foreach (range(1, 3) as $i) {
+            DB::table('authors')->selectRaw($columns)->where('name', 'Author 1')->first();
+        }
+
+        return 'ok';
+    });
+
+    $this->get('/report');
+    Laralyze::flush();
+
+    $key = (string) array_key_first(findings('duplicate_query'));
+
+    expect(json_decode($key, true))->toBeArray()
+        ->and(json_decode($key, true)[1])->toContain('FindingsTest.php:');
+
+    Livewire::withoutLazyLoading()->test('laralyze.findings')->assertSee('FindingsTest.php:')->assertDontSee('location unknown');
+});
+
 it('finds the same query run again with the same values', function () {
     Route::get('/settings', function () {
         foreach (range(1, 3) as $i) {

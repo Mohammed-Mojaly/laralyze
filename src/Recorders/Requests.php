@@ -29,13 +29,13 @@ class Requests extends Recorder
 
         // Livewire 3 and 4 fire it for each component of an update, after checking its checksum.
         if (function_exists('Livewire\on')) {
-            on('hydrate', function (Component $component) use ($app) {
+            on('hydrate', fn (Component $component) => $this->laralyze->rescue(function () use ($app, $component) {
                 $request = $app->make('request');
 
                 if (! $request->attributes->has(self::LIVEWIRE)) {
                     $request->attributes->set(self::LIVEWIRE, $component);
                 }
-            });
+            }));
         }
     }
 

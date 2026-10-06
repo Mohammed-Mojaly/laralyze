@@ -39,6 +39,13 @@ class Laralyze
     public const MAX_TYPE = 64;
 
     /**
+     * Bytes of SQL kept in a key that also holds where it ran, as JSON.
+     * JSON can triple non-ASCII text, and the key must stay under MAX_KEY
+     * whole, or it no longer decodes.
+     */
+    public const MAX_SQL_IN_KEY = 1_200;
+
+    /**
      * How many ignore() calls are currently running.
      */
     protected int $ignoreDepth = 0;

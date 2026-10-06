@@ -696,7 +696,7 @@ class Traces extends Recorder
         $keep = $kept !== null;
 
         foreach ($this->findings($execution) as [$type, $sql, $where, $times]) {
-            $key = (string) json_encode([$sql, $where]);
+            $key = (string) json_encode([Laralyze::cut($sql, Laralyze::MAX_SQL_IN_KEY), $where]);
 
             // Count is how many executions had it, max the most times in one.
             $this->laralyze->record($type, $key, $times)->count()->max();

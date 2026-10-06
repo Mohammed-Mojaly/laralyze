@@ -167,7 +167,7 @@ class Queries extends Recorder
                 continue;
             }
 
-            $this->laralyze->record('slow_query', (string) json_encode([$key, $query['location']]), $query['time'])->count()->max();
+            $this->laralyze->record('slow_query', (string) json_encode([Laralyze::cut($key, Laralyze::MAX_SQL_IN_KEY), $query['location']]), $query['time'])->count()->max();
         }
     }
 
