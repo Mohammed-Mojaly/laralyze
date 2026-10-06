@@ -121,7 +121,7 @@ it('warns on the dashboard when no channel took the alerts, until one does', fun
 
     expect($problems())->toHaveCount(1)
         ->and($problems()->first()['level'])->toBe('warn')
-        ->and($problems()->first()['title'])->toEndWith('seconds ago.')
+        ->and($problems()->first()['title'])->toMatch('/^Alerts couldn\'t be delivered \d+ seconds? ago\.$/')
         ->and($problems()->first()['hint'])->toContain('Slack:')->toContain('503');
 
     app(Alerts::class)->run();
