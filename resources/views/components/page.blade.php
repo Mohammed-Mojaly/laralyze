@@ -50,7 +50,7 @@
         </main>
     </div>
 
-    @if ($tools && ! $health->blocking() && \MohammedMojaly\Laralyze\Livewire\AssistantPanel::enabled())
+    @if ($tools && ! $health->blocking() && \MohammedMojaly\Laralyze\Livewire\AssistantPanel::allowed())
         <livewire:laralyze.assistant />
     @endif
 </x-laralyze::layout>

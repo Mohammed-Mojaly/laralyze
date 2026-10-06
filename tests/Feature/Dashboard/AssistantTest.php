@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Auth\GenericUser;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Laravel\Ai\Responses\Data\Meta;
@@ -204,6 +205,35 @@ it('draws charts in answers from what Laralyze recorded, and rankings from the a
         ->assertSee('$4.43')
         ->assertDontSee('drop table')
         ->assertDontSee('```chart');
+});
+
+it('lets the app decide who may use Ask AI, apart from who may see the dashboard', function () {
+    app()->detectEnvironment(fn () => 'production');
+    Gate::define('viewLaralyze', fn ($user = null) => true);
+    Gate::define('useLaralyzeAssistant', fn ($user = null) => false);
+
+    $this->get('/laralyze')->assertOk()->assertSee('laralyze.request-totals')
+        ->assertDontSee('data-kind=', false)
+        ->assertDontSee('laralyze.assistant')
+        ->assertDontSee('/laralyze/assistant', false);
+    $this->get('/laralyze/assistant')->assertNotFound();
+
+    Livewire::test('laralyze.assistant')->assertForbidden();
+});
+
+it('lets the people who see the dashboard use Ask AI unless the app says otherwise', function () {
+    app()->detectEnvironment(fn () => 'production');
+    Gate::define('viewLaralyze', fn ($user = null) => true);
+
+    $this->get('/laralyze')->assertOk()->assertSee('data-kind="general"', false)->assertSee('laralyze.assistant');
+    $this->get('/laralyze/assistant')->assertOk();
+
+    expect(Gate::allows('useLaralyzeAssistant'))->toBeTrue();
+
+    // Nobody may see the dashboard: nobody may ask either.
+    Gate::define('viewLaralyze', fn ($user = null) => false);
+
+    expect(Gate::allows('useLaralyzeAssistant'))->toBeFalse();
 });
 
 it('has a page of its own with your conversations', function () {

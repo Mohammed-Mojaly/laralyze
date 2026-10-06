@@ -2,6 +2,11 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## Unreleased
+
+- A separate permission for Ask AI: `Gate::define('useLaralyzeAssistant', ...)` decides who may make the assistant read your code and send it to your AI provider. By default it's whoever may view the dashboard, so nothing changes unless you define it. Denied, the Ask AI button and the Assistant page are hidden, and the assistant refuses every action.
+- SECURITY.md describes what the assistant reads, masks and sends.
+
 ## v0.5.0 - 2026-10-06
 
 - **Changed:** `Laralyze::filter()` also decides which timelines are kept. A request, job or command whose route, class or name it rejects is no longer stored with its timeline, as its metrics already weren't. Check your filters if you relied on the old behaviour.

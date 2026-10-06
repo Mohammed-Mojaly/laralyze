@@ -227,6 +227,11 @@ class LaralyzeServiceProvider extends ServiceProvider
     protected function defineGate(): void
     {
         Gate::define('viewLaralyze', fn ($user = null) => $this->app->environment('local'));
+
+        // Ask AI reads your code and sends it to your AI provider: its own
+        // permission, given by default to whoever may see the dashboard.
+        Gate::define('useLaralyzeAssistant', fn ($user = null) => ! in_array(Http\Middleware\Authorize::class, (array) $this->app->make('config')->get('laralyze.middleware', []), true)
+            || Gate::forUser($user)->allows('viewLaralyze'));
     }
 
     protected function registerPublishing(): void

@@ -68,6 +68,8 @@ Gate::define('viewLaralyze', fn ($user) => $user->isAdmin());
 
 The gate is checked on the page and on every card update.
 
+`Gate::define('useLaralyzeAssistant', ...)` decides who may use Ask AI; by default, the same people who may view the dashboard.
+
 ## Documentation
 
 - [Configuration](docs/configuration.md): every setting and recorder

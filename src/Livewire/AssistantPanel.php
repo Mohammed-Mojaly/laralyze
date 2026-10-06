@@ -3,6 +3,7 @@
 namespace MohammedMojaly\Laralyze\Livewire;
 
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Laravel\Ai\Streaming\Events\TextDelta;
 use Laravel\Ai\Streaming\Events\ToolCall;
@@ -92,6 +93,15 @@ class AssistantPanel extends Component
     public bool $thinking = false;
 
     public ?string $error = null;
+
+    /**
+     * Runs before mount and before every action, so a prompt or a tool
+     * never runs for someone the gate turns away.
+     */
+    public function boot(): void
+    {
+        Gate::authorize('useLaralyzeAssistant');
+    }
 
     public function mount(bool $page = false): void
     {
@@ -413,6 +423,15 @@ class AssistantPanel extends Component
     protected function owner(): string
     {
         return (string) (auth()->id() ?? 'guest');
+    }
+
+    /**
+     * Whether the person looking may use it: laravel/ai is there and the
+     * useLaralyzeAssistant gate lets them.
+     */
+    public static function allowed(): bool
+    {
+        return self::enabled() && Gate::allows('useLaralyzeAssistant');
     }
 
     public static function enabled(): bool

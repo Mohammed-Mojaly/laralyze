@@ -107,7 +107,7 @@ class Pages
 
         return [
             self::HOME => ['label' => 'Dashboard', 'view' => 'laralyze::pages.dashboard', 'icon' => 'dashboard'],
-            ...(AssistantPanel::enabled() ? ['assistant' => ['label' => 'Assistant', 'view' => 'laralyze::pages.assistant', 'icon' => 'ai']] : []),
+            ...(AssistantPanel::allowed() ? ['assistant' => ['label' => 'Assistant', 'view' => 'laralyze::pages.assistant', 'icon' => 'ai']] : []),
             'requests' => $page('Requests', 'Activity', Recorders\Requests::class, 'requests'),
             'jobs' => $page('Jobs', 'Activity', Recorders\Jobs::class, 'jobs'),
             'commands' => $page('Commands', 'Activity', Recorders\Commands::class, 'commands'),
