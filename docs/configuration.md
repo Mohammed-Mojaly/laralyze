@@ -81,7 +81,7 @@ With `laravel/ai` 1.0 and a provider key, every page has an **Ask AI** button, a
 ],
 ```
 
-- **What is sent**, only when someone asks: the question, the conversation, what Laralyze recorded about the subject, and the code the assistant reads. Nothing is sent otherwise.
+- **What is sent** to your AI provider, only when someone asks: the question, the conversation, what Laralyze recorded about the subject, and the code the assistant reads. Nothing is sent otherwise. With a local model such as Ollama, nothing leaves your servers.
 - **Code it reads**: files inside `paths`, read-only. Never `.env`, keys, credentials, `storage`, `vendor` or `.git`. Values assigned to names like `password`, `secret`, `key` or `token` show as `***`.
 - **Model**: empty means your app's default provider and model. It must support tool calling.
 - **Conversations** are kept per person for 7 days, in Laralyze's tables. The assistant's own calls don't appear on the AI page.

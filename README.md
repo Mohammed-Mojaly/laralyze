@@ -54,7 +54,7 @@ Each page shows the last 15 minutes to 30 days. Every recorder can be turned off
 
 Laralyze stores counts and timings, not payloads. SQL keeps `?` in place of values; bindings, request bodies and cache values aren't stored, and outgoing URLs lose their query string. Exceptions keep file, line and function names, never arguments; secrets in their context and in the code around each frame are masked. Visits don't store IP addresses or user agents.
 
-Keep anything else out with [`Laralyze::filter()`](docs/customization.md#keep-data-out). With Ask AI, what Laralyze recorded about the subject and the code the assistant reads go to your AI provider when someone asks, and only then. See the [known limits](docs/limits.md).
+Keep anything else out with [`Laralyze::filter()`](docs/customization.md#keep-data-out). With Ask AI, what Laralyze recorded about the subject and the code the assistant reads go to your AI provider when someone asks, and only then; with a local model such as Ollama, they stay on your servers. See the [known limits](docs/limits.md).
 
 ## Authorization
 
