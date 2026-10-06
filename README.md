@@ -19,6 +19,8 @@ Laralyze records what your Laravel app does in production and shows it on a dash
 - Livewire 3.8.3+ or 4.3.4+ (installed for you). Earlier releases have a known XSS issue.
 - MySQL, MariaDB, PostgreSQL, SQLite or SQL Server, or ClickHouse 24.8+
 
+For medium and large apps, we recommend [ClickHouse](docs/configuration.md#clickhouse): it keeps Laralyze's writes off your app's database, and the dashboard stays fast as data grows.
+
 ## Installation
 
 ```bash

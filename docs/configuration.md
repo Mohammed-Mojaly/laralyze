@@ -89,7 +89,7 @@ With `laravel/ai` 1.0 and a provider key, every page has an **Ask AI** button, a
 
 ## ClickHouse
 
-Laralyze can keep its data in [ClickHouse](https://clickhouse.com) 24.8+ instead of your app's database. With steady traffic, this keeps Laralyze's writes off the database your app depends on.
+Laralyze can keep its data in [ClickHouse](https://clickhouse.com) 24.8+ instead of your app's database. We recommend it for medium and large apps: it keeps Laralyze's writes off the database your app depends on, and the dashboard stays fast as data grows.
 
 ```env
 LARALYZE_STORAGE=clickhouse
