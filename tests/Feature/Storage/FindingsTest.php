@@ -97,7 +97,8 @@ it('finds an N+1, where it happens, and how to fix it', function () {
         ->and(findings('duplicate_query'))->toBe([]);
 
     Livewire::withoutLazyLoading()->test('laralyze.findings')
-        ->assertSee('N+1')
+        ->assertSee('Possible N+1')
+        ->assertSee('The same read ran up to 6× in one execution, with different values.')
         ->assertSee("->with('author')")
         ->assertSee('See an example');
 
@@ -124,7 +125,10 @@ it('finds the same query run again with the same values', function () {
         ->and((float) reset($found)->max)->toBe(3.0)
         ->and(findings('n_plus_one'))->toBe([]);
 
-    Livewire::withoutLazyLoading()->test('laralyze.findings')->assertSee('Duplicate')->assertSee('once()');
+    Livewire::withoutLazyLoading()->test('laralyze.findings')
+        ->assertSee('Duplicate')
+        ->assertSee('The same read ran up to 3× in one execution, with the same values.')
+        ->assertSee('once()');
 });
 
 it('recognises reads written by hand', function (string $sql) {

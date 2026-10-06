@@ -18,6 +18,7 @@
                         </span>
                     </div>
                     <pre class="lz-code"><code>{{ Sql::highlight(Sql::format((string) $finding->sql)) }}</code></pre>
+                    <p class="lz-sub lz-finding-why">{{ $this->why($finding->type, (int) $finding->max) }}</p>
                     <p class="lz-finding-hint">{{ $finding->hint }}</p>
                     <div class="lz-finding-actions">
                         @if ($finding->example)

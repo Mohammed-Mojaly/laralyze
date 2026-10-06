@@ -17,7 +17,7 @@ use stdClass;
 #[Lazy]
 class Findings extends Card
 {
-    public const TYPES = ['n_plus_one' => 'N+1', 'duplicate_query' => 'Duplicate'];
+    public const TYPES = ['n_plus_one' => 'Possible N+1', 'duplicate_query' => 'Duplicate'];
 
     public function render(): View
     {
@@ -55,6 +55,14 @@ class Findings extends Card
             ->pluck('value', 'key')
             ->map(fn ($uuid) => (string) $uuid)
             ->all();
+    }
+
+    /**
+     * Why it was flagged, from what was recorded.
+     */
+    public function why(string $type, int $times): string
+    {
+        return "The same read ran up to {$times}× in one execution, with ".($type === 'duplicate_query' ? 'the same' : 'different').' values.';
     }
 
     /**

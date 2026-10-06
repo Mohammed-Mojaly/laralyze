@@ -19,6 +19,11 @@ class ExceptionList extends Card
 {
     use ListsRows;
 
+    /**
+     * Rows in the compact list.
+     */
+    public const COMPACT_ROWS = 5;
+
     public string $sort = 'latest';
 
     /**
@@ -33,9 +38,18 @@ class ExceptionList extends Card
 
     public int $limit = 100;
 
+    /**
+     * Only the open ones seen most, without the list's controls, as on the dashboard.
+     */
+    public bool $compact = false;
+
     public function render(): View
     {
         $exceptions = $this->exceptions();
+
+        if ($this->compact) {
+            [$this->status, $this->show, $this->search, $this->sort, $this->direction] = ['open', 'all', '', 'count', 'desc'];
+        }
         $inStatus = $exceptions->filter(fn (stdClass $exception) => match ($this->status) {
             'resolved' => $exception->status === Issues::RESOLVED,
             'ignored' => $exception->status === Issues::IGNORED,
@@ -47,7 +61,7 @@ class ExceptionList extends Card
                 'handled' => $exception->handled > 0,
                 'unhandled' => $exception->unhandled > 0,
                 default => true,
-            }), 'search'),
+            }), 'search')->when($this->compact, fn (Collection $rows) => $rows->take(self::COMPACT_ROWS)),
             'unhandledCount' => $inStatus->where('unhandled', '>', 0)->count(),
             'statusCounts' => [
                 'open' => $exceptions->whereIn('status', [Issues::OPEN, Issues::REOPENED])->count(),

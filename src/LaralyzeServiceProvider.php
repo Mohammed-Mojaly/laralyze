@@ -29,6 +29,7 @@ class LaralyzeServiceProvider extends ServiceProvider
      * Built-in cards, used as <livewire:laralyze.{name} />.
      */
     public const CARDS = [
+        'attention' => Cards\Attention::class,
         'request-totals' => Cards\RequestTotals::class,
         'request-duration' => Cards\RequestDuration::class,
         'routes' => Cards\Routes::class,

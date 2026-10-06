@@ -1,16 +1,20 @@
 @use('MohammedMojaly\Laralyze\Support\Chart')
 @use('MohammedMojaly\Laralyze\Support\Format')
-<x-laralyze::card :card="$this" title="Exceptions" :count="$exceptions->count()">
+<x-laralyze::card :card="$this" title="Exceptions" :count="$compact ? $statusCounts['open'] : $exceptions->count()">
     <x-slot:actions>
-        <x-laralyze::search placeholder="Search exceptions" />
-        <x-laralyze::segmented :options="['open' => 'Open '.$statusCounts['open'], 'resolved' => 'Resolved '.$statusCounts['resolved'], 'ignored' => 'Ignored '.$statusCounts['ignored']]" :value="$status" model="status" label="Status" />
-        <div class="lz-segmented" role="group" aria-label="Show">
-            @foreach (['all' => 'View all', 'handled' => 'Handled', 'unhandled' => 'Unhandled'] as $option => $text)
-                <button type="button" wire:click="$set('show', '{{ $option }}')" @class(['is-active' => $show === $option]) aria-pressed="{{ $show === $option ? 'true' : 'false' }}">
-                    {{ $text }}@if ($option === 'unhandled' && $unhandledCount > 0) <span class="lz-badge lz-badge-bad">{{ $unhandledCount }}</span>@endif
-                </button>
-            @endforeach
-        </div>
+        @if ($compact)
+            <a class="lz-button" href="{{ route('laralyze.page', ['page' => 'exceptions', ...($this->period === '1h' ? [] : ['period' => $this->period])]) }}">All exceptions</a>
+        @else
+            <x-laralyze::search placeholder="Search exceptions" />
+            <x-laralyze::segmented :options="['open' => 'Open '.$statusCounts['open'], 'resolved' => 'Resolved '.$statusCounts['resolved'], 'ignored' => 'Ignored '.$statusCounts['ignored']]" :value="$status" model="status" label="Status" />
+            <div class="lz-segmented" role="group" aria-label="Show">
+                @foreach (['all' => 'View all', 'handled' => 'Handled', 'unhandled' => 'Unhandled'] as $option => $text)
+                    <button type="button" wire:click="$set('show', '{{ $option }}')" @class(['is-active' => $show === $option]) aria-pressed="{{ $show === $option ? 'true' : 'false' }}">
+                        {{ $text }}@if ($option === 'unhandled' && $unhandledCount > 0) <span class="lz-badge lz-badge-bad">{{ $unhandledCount }}</span>@endif
+                    </button>
+                @endforeach
+            </div>
+        @endif
     </x-slot:actions>
 
     @if (array_sum($totals) == 0)
@@ -31,10 +35,17 @@
         @else
             <x-laralyze::table class="lz-table-links">
                 <x-slot:head>
-                    <x-laralyze::sort-header :card="$this" column="latest" :num="false">Last seen</x-laralyze::sort-header>
-                    <x-laralyze::sort-header :card="$this" column="class" :num="false">Exception</x-laralyze::sort-header>
-                    <x-laralyze::sort-header :card="$this" column="count">Count</x-laralyze::sort-header>
-                    <x-laralyze::sort-header :card="$this" column="users">Users</x-laralyze::sort-header>
+                    @if ($compact)
+                        <th scope="col">Last seen</th>
+                        <th scope="col">Exception</th>
+                        <th scope="col" class="lz-num">Count</th>
+                        <th scope="col" class="lz-num">Users</th>
+                    @else
+                        <x-laralyze::sort-header :card="$this" column="latest" :num="false">Last seen</x-laralyze::sort-header>
+                        <x-laralyze::sort-header :card="$this" column="class" :num="false">Exception</x-laralyze::sort-header>
+                        <x-laralyze::sort-header :card="$this" column="count">Count</x-laralyze::sort-header>
+                        <x-laralyze::sort-header :card="$this" column="users">Users</x-laralyze::sort-header>
+                    @endif
                 </x-slot:head>
 
                 @foreach ($exceptions as $exception)

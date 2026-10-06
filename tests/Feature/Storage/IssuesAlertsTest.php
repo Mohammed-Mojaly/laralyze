@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use MohammedMojaly\Laralyze\Alerts\AlertNotification;
 use MohammedMojaly\Laralyze\Alerts\Alerts;
+use MohammedMojaly\Laralyze\Dashboard\Health;
 use MohammedMojaly\Laralyze\Dashboard\Issues;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 
@@ -103,6 +104,29 @@ it('tries again when no channel took the alert', function () {
 
     // Failed, sent on the next check, then not again.
     Http::assertSentCount(2);
+});
+
+it('warns on the dashboard when no channel took the alerts, until one does', function () {
+    config(['laralyze.alerts.slack' => 'https://hooks.slack.test/abc']);
+    Http::fake(['hooks.slack.test/*' => Http::sequence()->push('down', 503)->push('ok')]);
+    $problems = function () {
+        app()->forgetInstance(Health::class);
+
+        return collect(app(Health::class)->problems())->filter(fn (array $problem) => str_starts_with($problem['title'], 'Alerts couldn'))->values();
+    };
+
+    report(new RuntimeException('Card declined'));
+    Laralyze::flush();
+    app(Alerts::class)->run();
+
+    expect($problems())->toHaveCount(1)
+        ->and($problems()->first()['level'])->toBe('warn')
+        ->and($problems()->first()['title'])->toEndWith('seconds ago.')
+        ->and($problems()->first()['hint'])->toContain('Slack:')->toContain('503');
+
+    app(Alerts::class)->run();
+
+    expect($problems())->toBeEmpty();
 });
 
 it('alerts once each time a resolved exception comes back', function () {

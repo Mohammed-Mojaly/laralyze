@@ -88,6 +88,15 @@
             <div><dt>Duration</dt><dd class="lz-strong">{{ Format::duration($execution->duration) }}</dd></div>
             <div><dt>Peak memory</dt><dd>{{ Format::bytes($execution->counts['memory'] ?? null) }}</dd></div>
             <div><dt>Server</dt><dd>{{ $execution->server }}</dd></div>
+            @isset($meta['kept'])
+                <div><dt>Kept</dt><dd>{{ match ($meta['kept']) {
+                    'failed' => 'It failed.',
+                    'exception' => 'It reported an exception.',
+                    'slow' => 'It ran longer than its slow threshold.',
+                    'sampled' => 'Picked by the sample (rate '.($meta['sample_rate'] ?? '?').').',
+                    default => '—',
+                } }}</dd></div>
+            @endisset
             @if ($parent)
                 <div><dt>Queued by</dt><dd><a href="{{ route('laralyze.execution', ['execution' => $parent->uuid]) }}"><span class="lz-badge">{{ $parent->type }}</span> <span class="lz-mono">{{ $parent->type === 'command' ? ($parent->meta['line'] ?? $parent->name) : $parent->name }}</span></a></dd></div>
             @endif

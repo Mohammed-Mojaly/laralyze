@@ -158,6 +158,14 @@ class Traces extends Recorder
         ];
     }
 
+    /**
+     * The share of fine, fast executions that are kept, for the dashboard.
+     */
+    public function rate(): float
+    {
+        return $this->sampleRate();
+    }
+
     public function register(Application $app): void
     {
         $this->afterEachRequest($app, $this->finishRequest(...));
@@ -677,7 +685,15 @@ class Traces extends Recorder
      */
     protected function finish(array $execution, string $name, string $status, bool $failed, float $duration, ?string $user): void
     {
-        $keep = $failed || $execution['sampled'] || $execution['exceptions'] !== [] || $duration >= $this->threshold($name);
+        // The first reason that holds is shown on its page.
+        $kept = match (true) {
+            $failed => 'failed',
+            $execution['exceptions'] !== [] => 'exception',
+            $duration >= $this->threshold($name) => 'slow',
+            $execution['sampled'] => 'sampled',
+            default => null,
+        };
+        $keep = $kept !== null;
 
         foreach ($this->findings($execution) as [$type, $sql, $where, $times]) {
             $key = (string) json_encode([$sql, $where]);
@@ -709,7 +725,10 @@ class Traces extends Recorder
             'started_at' => (int) $execution['start'],
             'exceptions' => array_values(array_unique($execution['exceptions'])),
             'counts' => [...$counts, 'memory' => memory_get_peak_usage(true)],
-            'meta' => [...$execution['meta'], 'ms' => $ms, 'stages' => $this->closeStages($execution, $duration), 'error' => $this->firstError($execution)],
+            'meta' => [
+                ...$execution['meta'], 'ms' => $ms, 'stages' => $this->closeStages($execution, $duration), 'error' => $this->firstError($execution),
+                'kept' => $kept, ...($kept === 'sampled' ? ['sample_rate' => $this->sampleRate()] : []),
+            ],
             'job_uuid' => $execution['meta']['job_uuid'] ?? null,
             'events' => array_map(fn (array $event) => [$event[0], round($event[1], 2), ...array_slice($event, 2)], $execution['events']),
         ]);

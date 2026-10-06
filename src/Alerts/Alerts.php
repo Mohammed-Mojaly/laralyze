@@ -10,6 +10,7 @@ use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Dashboard\Issues;
 use MohammedMojaly\Laralyze\Laralyze;
 use stdClass;
+use Throwable;
 
 /**
  * Checks for trouble every minute and tells you by mail, Slack or Discord:
@@ -23,6 +24,8 @@ class Alerts
      * go out once each, so `alerts.every` only spaces out the others.
      */
     protected const LOOKBACK = 3_600;
+
+    public const FAILURE = 'alert_failure';
 
     public function __construct(
         protected Storage $storage,
@@ -169,38 +172,56 @@ class Alerts
     protected function send(array $alerts): void
     {
         $text = implode("\n\n", array_map(fn (Alert $alert) => "*{$alert->title}*\n{$alert->body}\n{$alert->url}", $alerts));
-        $delivered = [];
+        $channels = [];
+        $failures = [];
 
         if (($to = $this->mailTo()) !== []) {
-            $delivered[] = $this->deliver(fn () => Notification::route('mail', $to)->notifyNow(new AlertNotification($alerts)));
+            $channels['Mail'] = fn () => Notification::route('mail', $to)->notifyNow(new AlertNotification($alerts));
         }
 
         if ($slack = (string) $this->config->get('laralyze.alerts.slack')) {
-            $delivered[] = $this->deliver(fn () => Http::timeout(5)->post($slack, ['text' => $text])->throw());
+            $channels['Slack'] = fn () => Http::timeout(5)->post($slack, ['text' => $text])->throw();
         }
 
         if ($discord = (string) $this->config->get('laralyze.alerts.discord')) {
-            $delivered[] = $this->deliver(fn () => Http::timeout(5)->post($discord, ['content' => Str::limit(str_replace('*', '**', $text), 1_900)])->throw());
+            $channels['Discord'] = fn () => Http::timeout(5)->post($discord, ['content' => Str::limit(str_replace('*', '**', $text), 1_900)])->throw();
         }
 
-        // Only once a channel took them: alerts that reached no one go out on the next check.
-        if (in_array(true, $delivered, true)) {
-            foreach ($alerts as $alert) {
-                $this->storage->put('alert_sent', $alert->id, '1');
+        foreach ($channels as $channel => $send) {
+            try {
+                $send();
+            } catch (Throwable $e) {
+                $this->laralyze->report($e);
+                $failures[$channel] = Str::limit($e->getMessage(), 300);
             }
         }
+
+        // A failure is reported, never thrown. Only once a channel took them are they
+        // marked sent: alerts that reached no one go out on the next check.
+        if (count($failures) === count($channels)) {
+            $this->storage->put('laralyze', self::FAILURE, (string) json_encode(['at' => time(), 'channels' => $failures]));
+
+            return;
+        }
+
+        foreach ($alerts as $alert) {
+            $this->storage->put('alert_sent', $alert->id, '1');
+        }
+
+        $this->storage->forget('laralyze', self::FAILURE);
     }
 
     /**
-     * Whether the channel took it. A failure is reported, never thrown.
+     * When alerts last reached no channel, with each channel's error,
+     * cleared by the next send that gets through.
+     *
+     * @return array{at: int, channels: array<string, string>}|null
      */
-    protected function deliver(callable $send): bool
+    public function lastFailure(): ?array
     {
-        return (bool) $this->laralyze->rescue(function () use ($send) {
-            $send();
+        $failure = json_decode((string) ($this->storage->values('laralyze', [self::FAILURE])->first()->value ?? ''), true);
 
-            return true;
-        }, false);
+        return is_array($failure) && isset($failure['at']) ? ['at' => (int) $failure['at'], 'channels' => (array) ($failure['channels'] ?? [])] : null;
     }
 
     /**

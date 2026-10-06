@@ -6,6 +6,12 @@ Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch 
 
 - **Fixed:** the dashboard on phones. The sidebar is now a bar with the page you're on and a menu button that opens every page; card headers wrap their search and filters; long messages wrap inside tables, which scroll sideways. On the Assistant page the conversation list starts closed and closes again when you pick one.
 - The sidebar shows where the data lives: the kind of database and its name (e.g. `MySQL · shop`, `ClickHouse · laralyze`), with the connection and how writes reach it on hover. Never credentials.
+- The dashboard puts what matters first. A **Needs attention** card, only there when something needs it, lists up to five things worst first, each linking to its page: a server that stopped reporting or has CPU, memory or a disk at 90% or more, the most frequent unhandled open exception, failed jobs, a failed scheduled task, a service that failed 5 times or more, the slowest route over its threshold, and the worst possible N+1.
+- The dashboard's Exceptions card shows the open exceptions seen most, without the search and filters, with a link to all of them; its Queues card keeps four columns, with a link to Jobs. Slow jobs sit next to slow requests. The AI card only shows once there are AI calls.
+- When no channel takes an alert, the dashboard warns for an hour, with each channel's error, until one does.
+- Findings say why each one was flagged ("the same read ran up to 27× in one execution, with different values"), and an N+1 is labelled **Possible N+1**.
+- A single request, job or command says why it was kept: it failed, reported an exception, was slow, or was picked by the sample (with its rate). Only for ones recorded from now on.
+- The executions list says what the sample rate is, and that the numbers on the other pages count every request, job and command.
 
 ## v0.4.1 - 2026-10-06
 

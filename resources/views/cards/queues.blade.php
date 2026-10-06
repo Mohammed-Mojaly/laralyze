@@ -1,6 +1,12 @@
 @use('MohammedMojaly\Laralyze\Support\Chart')
 @use('MohammedMojaly\Laralyze\Support\Format')
 <x-laralyze::card :card="$this" title="Queues">
+    @if ($compact)
+        <x-slot:actions>
+            <a class="lz-button" href="{{ route('laralyze.page', ['page' => 'jobs', ...($this->period === '1h' ? [] : ['period' => $this->period])]) }}">All jobs</a>
+        </x-slot:actions>
+    @endif
+
     @if (array_sum($totals) > 0)
         <div class="lz-figures">
             <x-laralyze::figure :value="Format::number($totals['processed'])" label="processed" />
@@ -13,22 +19,34 @@
             <x-laralyze::table>
                 <x-slot:head>
                     <th scope="col">Queue</th>
-                    <th scope="col" class="lz-num">Queued</th>
+                    @unless ($compact)
+                        <th scope="col" class="lz-num">Queued</th>
+                    @endunless
                     <th scope="col" class="lz-num">Processed</th>
-                    <th scope="col" class="lz-num">Released</th>
+                    @unless ($compact)
+                        <th scope="col" class="lz-num">Released</th>
+                    @endunless
                     <th scope="col" class="lz-num">Failed</th>
-                    <th scope="col" class="lz-num">Avg wait</th>
+                    @unless ($compact)
+                        <th scope="col" class="lz-num">Avg wait</th>
+                    @endunless
                     <th scope="col" class="lz-num">Longest wait</th>
                 </x-slot:head>
 
                 @foreach ($queues as $queue)
                     <tr wire:key="{{ $queue->name }}">
                         <td class="lz-mono">{{ $queue->name }}</td>
-                        <td class="lz-num">{{ Format::number($queue->queued) }}</td>
+                        @unless ($compact)
+                            <td class="lz-num">{{ Format::number($queue->queued) }}</td>
+                        @endunless
                         <td class="lz-num lz-strong">{{ Format::number($queue->processed) }}</td>
-                        <td class="lz-num">{{ Format::number($queue->released) }}</td>
+                        @unless ($compact)
+                            <td class="lz-num">{{ Format::number($queue->released) }}</td>
+                        @endunless
                         <td @class(['lz-num', 'lz-bad' => $queue->failed > 0])>{{ Format::number($queue->failed) }}</td>
-                        <td class="lz-num">{{ Format::duration($queue->wait) }}</td>
+                        @unless ($compact)
+                            <td class="lz-num">{{ Format::duration($queue->wait) }}</td>
+                        @endunless
                         <td class="lz-num">{{ Format::duration($queue->max_wait) }}</td>
                     </tr>
                 @endforeach

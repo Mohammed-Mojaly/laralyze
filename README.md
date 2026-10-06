@@ -126,7 +126,7 @@ LARALYZE_ALERTS_SLACK_WEBHOOK=https://hooks.slack.com/services/...
 LARALYZE_ALERTS_DISCORD_WEBHOOK=https://discord.com/api/webhooks/...
 ```
 
-You hear about new exceptions, resolved ones that come back, more than 5% of requests failing, and 10 or more failed jobs in 5 minutes. The same alert is sent at most once an hour (`LARALYZE_ALERTS_EVERY`, in minutes). Change the rules in `alerts.rules`.
+You hear about new exceptions, resolved ones that come back, more than 5% of requests failing, and 10 or more failed jobs in 5 minutes. The same alert is sent at most once an hour (`LARALYZE_ALERTS_EVERY`, in minutes). Change the rules in `alerts.rules`. If no channel takes an alert, the dashboard says so, with the error.
 
 ## Privacy
 

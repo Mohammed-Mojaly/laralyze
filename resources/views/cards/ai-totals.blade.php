@@ -1,6 +1,7 @@
 @use('MohammedMojaly\Laralyze\Support\Chart')
 @use('MohammedMojaly\Laralyze\Support\Format')
-<div class="lz-span-full lz-grid" @if ($this->poll > 0) wire:poll.visible.{{ $this->poll }}s @endif>
+{{-- The dashboard leaves it out until there are calls, still polling; the AI page stays in the sidebar. --}}
+<div class="lz-span-full lz-grid" {!! $summary && $calls == 0 ? 'hidden wire:poll.30s' : ($this->poll > 0 ? 'wire:poll.visible.'.$this->poll.'s' : '') !!}>
     <x-laralyze::card title="AI calls" cols="full">
         @if ($summary)
             <x-slot:actions>

@@ -8,6 +8,7 @@ use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Locked;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Livewire\Card;
+use MohammedMojaly\Laralyze\Recorders\Traces;
 use stdClass;
 
 /**
@@ -110,6 +111,7 @@ class ExecutionList extends Card
             'speeds' => $speeds,
             'more' => $rows->count() > $this->limit,
             'current' => $page,
+            'rate' => $this->recorder(Traces::class)?->rate() ?? 1.0,
         ]);
     }
 

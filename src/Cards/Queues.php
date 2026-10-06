@@ -15,6 +15,11 @@ class Queues extends Card
 {
     public const OUTCOMES = ['processed', 'released', 'failed'];
 
+    /**
+     * Fewer columns and a link to the Jobs page, as on the dashboard.
+     */
+    public bool $compact = false;
+
     public function render(): View
     {
         $totals = ['queued' => (float) ($this->total('queue_queued', ['count'])->count ?? 0)];

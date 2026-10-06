@@ -11,7 +11,7 @@
     @if ($executions->isEmpty())
         <x-laralyze::empty
             :title="'Nothing kept in the '.$this->range()->label().($status !== 'all' || $speed !== 'all' ? ' with these filters' : '').'.'"
-            hint="Slow, failed and throwing ones are always kept with their timeline; the rest are sampled (LARALYZE_TRACES_SAMPLE_RATE)."
+            :hint="$rate < 1 ? 'Slow, failed and throwing ones are always kept with their timeline; the rest are sampled at '.$rate.' (LARALYZE_TRACES_SAMPLE_RATE).' : 'Each one is kept with its timeline.'"
         />
     @else
         <x-laralyze::table class="lz-table-links">
@@ -74,6 +74,10 @@
                 <span class="lz-muted">Page {{ $current }}</span>
                 <button type="button" class="lz-button" wire:click="nextPage" @disabled(! $more)>Next ›</button>
             </nav>
+        @endif
+
+        @if ($rate < 1)
+            <p class="lz-note lz-list-note">Slow, failed and throwing ones are always kept; the rest are sampled at {{ $rate }} (LARALYZE_TRACES_SAMPLE_RATE). The numbers on the other pages count every one.</p>
         @endif
     @endif
 </x-laralyze::card>

@@ -1682,6 +1682,35 @@ body.lz-root {
     overflow-wrap: anywhere;
 }
 
+/* What to look at first, on the dashboard */
+.lz-attention-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lz-attention-item {
+    padding: 7px 0 7px 12px;
+    border-top: 1px solid var(--lz-line);
+    border-left: 3px solid var(--lz-attention);
+    overflow-wrap: anywhere;
+}
+
+.lz-attention-item:first-child {
+    border-top: 0;
+}
+
+.lz-attention-item a {
+    color: var(--lz-ink);
+}
+
+.lz-attention-item a:hover {
+    color: var(--lz-attention);
+}
+
+.lz-attention-bad { --lz-attention: var(--lz-bad); }
+.lz-attention-warn { --lz-attention: var(--lz-warn); }
+
 /* Badges and small buttons */
 .lz-badge {
     display: inline-block;
@@ -1941,6 +1970,10 @@ body.lz-root {
     font-size: 13px;
 }
 
+.lz-list-note {
+    margin: 12px 0 0;
+}
+
 .lz-timeline {
     margin: 0;
     padding: 0;
@@ -2075,6 +2108,14 @@ body.lz-root {
     margin: 8px 0;
     color: var(--lz-ink-2);
     font-size: 13px;
+}
+
+.lz-finding-why {
+    margin: 8px 0 0;
+}
+
+.lz-finding-why + .lz-finding-hint {
+    margin-top: 4px;
 }
 
 .lz-pager {

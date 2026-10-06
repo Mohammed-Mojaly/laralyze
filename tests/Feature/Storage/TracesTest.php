@@ -103,7 +103,41 @@ it('always keeps failed, throwing and slow ones, and samples the rest', function
     Laralyze::flush();
 
     expect(kept()->pluck('name')->sort()->values()->all())->toBe(['GET /broken', 'GET /slow', 'GET /throws'])
-        ->and(kept()->firstWhere('name', 'GET /broken')->failed)->toBeTrue();
+        ->and(kept()->firstWhere('name', 'GET /broken')->failed)->toBeTrue()
+        ->and(kept()->pluck('meta.kept', 'name')->sortKeys()->all())->toBe(['GET /broken' => 'failed', 'GET /slow' => 'slow', 'GET /throws' => 'exception']);
+
+    $this->get('/laralyze/executions/'.kept()->firstWhere('name', 'GET /slow')->uuid)->assertSee('Kept')->assertSee('It ran longer than its slow threshold.');
+});
+
+it('tells under the list that the rest are sampled, and at what rate', function () {
+    traceWith(['sample_rate' => 0.1, 'threshold' => 0]);
+
+    Route::get('/fine', fn () => 'ok');
+    $this->get('/fine');
+    Laralyze::flush();
+
+    Livewire::withoutLazyLoading()->test('laralyze.executions')
+        ->assertSee('the rest are sampled at 0.1')
+        ->assertSee('The numbers on the other pages count every one.');
+
+    traceWith(['sample_rate' => 1, 'threshold' => 0]);
+
+    Livewire::withoutLazyLoading()->test('laralyze.executions')->assertDontSee('the rest are sampled');
+});
+
+it('says when one was kept by the sample, and at what rate', function () {
+    traceWith(['sample_rate' => 1, 'threshold' => 60_000]);
+
+    Route::get('/fine', fn () => 'ok');
+    $this->get('/fine');
+    Laralyze::flush();
+
+    $execution = kept()->first();
+
+    expect($execution->meta['kept'])->toBe('sampled')
+        ->and($execution->meta['sample_rate'])->toEqual(1);
+
+    $this->get('/laralyze/executions/'.$execution->uuid)->assertSee('Picked by the sample (rate 1).');
 });
 
 it('links a job to the request that queued it', function () {
