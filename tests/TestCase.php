@@ -8,6 +8,7 @@ use Livewire\LivewireServiceProvider;
 use MohammedMojaly\Laralyze\LaralyzeServiceProvider;
 use MohammedMojaly\Laralyze\Support\Outage;
 use MohammedMojaly\Laralyze\Tests\Concerns\UsesStorage;
+use MohammedMojaly\Laralyze\Tests\Fixtures\AdminsOnly;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra
@@ -31,6 +32,9 @@ abstract class TestCase extends Orchestra
 
     protected function defineEnvironment($app): void
     {
+        // An app's own middleware alias, for the dashboard's middleware setting.
+        $app['router']->aliasMiddleware('laralyze-admins', AdminsOnly::class);
+
         tap($app['config'], function (Repository $config) {
             $config->set('app.key', 'base64:'.base64_encode(str_repeat('r', 32)));
 

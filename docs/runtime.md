@@ -24,6 +24,8 @@ Every request adds to the same rows (the count for `GET /`, a query's total time
 
 ClickHouse always writes directly.
 
+The digest can only merge so much each minute. On a local MySQL 8, with a typical request (12 queries, 4 cache keys), it merged about 545 a second: at 100 requests a second it takes about 11 seconds of each minute, and somewhere around 450 a second it can't keep up, and batches over a day old are dropped. Your server will give different numbers, but a very busy app should use ClickHouse. The digest also runs inside `schedule:run`, so on a busy app the app's other tasks due that minute start a few seconds later.
+
 ## The scheduler
 
 ```

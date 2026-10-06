@@ -1936,39 +1936,7 @@ body.lz-root {
     color: var(--lz-warn);
 }
 
-/* One execution: counts and timeline */
-.lz-tally {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 10px;
-}
-
-.lz-tally > div {
-    padding: 10px 12px;
-    border: 1px solid var(--lz-line);
-    border-radius: 6px;
-}
-
-.lz-tally dt {
-    color: var(--lz-ink-3);
-    font-size: 12px;
-}
-
-.lz-tally dd {
-    margin-top: 2px;
-    font-family: var(--lz-mono);
-    font-size: 18px;
-    font-weight: 600;
-}
-
-.lz-tally .is-zero dd {
-    color: var(--lz-ink-3);
-}
-
-.lz-tally .lz-bad dd {
-    color: var(--lz-bad);
-}
-
+/* One execution: timeline */
 .lz-note {
     margin-bottom: 10px;
     color: var(--lz-ink-3);

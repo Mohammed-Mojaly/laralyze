@@ -2,6 +2,11 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## Unreleased
+
+- **Fixed:** a middleware alias in `laralyze.middleware` (like `'admin'`) now also runs on the cards' Livewire updates, not only on page loads. Livewire compares class names, so the alias never matched. Middleware groups like `web` are still left out.
+- Docs: how much the database digest can take each minute, and when to switch to ClickHouse.
+
 ## v0.5.2 - 2026-10-07
 
 - **Fixed:** a Livewire update is now named after the component Livewire actually loaded, never after the request body. A forged update with a huge component name could stop the digest on MySQL and MariaDB.

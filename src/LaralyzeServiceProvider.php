@@ -142,11 +142,19 @@ class LaralyzeServiceProvider extends ServiceProvider
         $this->callAfterResolving('livewire', function (LivewireManager $livewire) {
             $config = $this->app->make('config');
 
-            // Livewire updates run the same checks as the page itself.
-            $livewire->addPersistentMiddleware(array_map(
-                fn ($middleware) => is_string($middleware) ? Str::before($middleware, ':') : $middleware,
-                (array) $config->get('laralyze.middleware', []),
-            ));
+            // Livewire updates run the same checks as the page itself. Livewire
+            // compares class names, so aliases are resolved; groups are left
+            // out, since the list applies to every Livewire update in the app.
+            $this->app->booted(function () use ($livewire, $config) {
+                $router = $this->app->make('router');
+
+                $livewire->addPersistentMiddleware(collect((array) $config->get('laralyze.middleware', []))
+                    ->map(fn ($middleware) => is_string($middleware) ? Str::before($middleware, ':') : $middleware)
+                    ->reject(fn ($middleware) => is_string($middleware) && $router->hasMiddlewareGroup($middleware))
+                    ->map(fn ($middleware) => is_string($middleware) ? ($router->getMiddleware()[$middleware] ?? $middleware) : $middleware)
+                    ->values()
+                    ->all());
+            });
 
             foreach (self::CARDS as $name => $class) {
                 $livewire->component("laralyze.{$name}", $config->get("laralyze.cards.{$name}", $class));
