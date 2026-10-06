@@ -2,7 +2,7 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
-## Unreleased
+## v0.4.2 - 2026-10-06
 
 - **Fixed:** the dashboard on phones. The sidebar is now a bar with the page you're on and a menu button that opens every page; card headers wrap their search and filters; long messages wrap inside tables, which scroll sideways. On the Assistant page the conversation list starts closed and closes again when you pick one.
 - The sidebar shows where the data lives: the kind of database and its name (e.g. `MySQL · shop`, `ClickHouse · laralyze`), with the connection and how writes reach it on hover. Never credentials.
