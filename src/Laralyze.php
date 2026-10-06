@@ -235,7 +235,8 @@ class Laralyze
 
     /**
      * Keep only the metrics the callback accepts, e.g. to drop keys that
-     * contain customer data:
+     * contain customer data. A request, job or command it turns away loses
+     * its timelines too, by its route, class or name:
      *
      *     Laralyze::filter(fn (string $type, string $key) => ! str_contains($key, '@'));
      *
@@ -333,6 +334,11 @@ class Laralyze
                 $this->executions = [];
 
                 $ingest = $this->app->make(Ingest::class);
+                // A timeline goes with its metric: a request under its route, a job under its class.
+                if ($this->filters !== []) {
+                    $executions = array_values(array_filter($executions, fn (array $execution) => $this->accepts((string) $execution['type'], (string) $execution['name'])));
+                }
+
                 $ingest->write([...$this->filtered($rows), ...$this->droppedRows()], $this->filtered($values), $executions);
 
                 $this->trimWhenOverdue($storage);
@@ -459,15 +465,18 @@ class Laralyze
             return $rows;
         }
 
-        return array_values(array_filter($rows, function (array $row) {
-            foreach ($this->filters as $filter) {
-                if (! $filter($row['type'], $row['key'])) {
-                    return false;
-                }
-            }
+        return array_values(array_filter($rows, fn (array $row) => $this->accepts($row['type'], $row['key'])));
+    }
 
-            return true;
-        }));
+    protected function accepts(string $type, string $key): bool
+    {
+        foreach ($this->filters as $filter) {
+            if (! $filter($type, $key)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

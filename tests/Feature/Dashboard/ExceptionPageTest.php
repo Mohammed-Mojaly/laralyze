@@ -151,6 +151,33 @@ it('filters handled and unhandled exceptions, and searches them', function () {
         ->assertSee('No exceptions match');
 });
 
+it('hides secrets in an exception\'s context, at any depth, and shortens long values', function () {
+    $exception = new class('Signup failed') extends RuntimeException
+    {
+        public function context(): array
+        {
+            return [
+                'email' => 'ann@example.com',
+                'Password' => 'hunter2',
+                'request' => ['headers' => ['Authorization' => 'Bearer abc', 'Accept' => 'json'], 'api_key' => ['live', 'test']],
+                'payment' => ['card_number' => '4111111111111111', 'CVV' => 123],
+                'note' => str_repeat('a', 600),
+            ];
+        }
+    };
+
+    report($exception);
+    Laralyze::flush();
+
+    expect(latestDetails()['context'])->toBe([
+        'email' => 'ann@example.com',
+        'Password' => '***',
+        'request' => ['headers' => ['Authorization' => '***', 'Accept' => 'json'], 'api_key' => '***'],
+        'payment' => ['card_number' => '***', 'CVV' => '***'],
+        'note' => str_repeat('a', 500).'…',
+    ]);
+});
+
 it('won\'t let the browser point the exception card elsewhere', function () {
     Livewire::withoutLazyLoading()->test('laralyze.exception', ['name' => '["A","b.php:1"]'])->set('name', '["B","c.php:2"]');
 })->throws(CannotUpdateLockedPropertyException::class);

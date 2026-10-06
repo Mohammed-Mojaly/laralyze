@@ -91,7 +91,7 @@ final class Trace
 
             while (! $source->eof() && count($lines) < 2 * self::AROUND + 1) {
                 $current = $source->current();
-                $lines[] = Str::limit(rtrim(is_string($current) ? $current : '', "\r\n"), 300);
+                $lines[] = Str::limit(Secrets::mask(rtrim(is_string($current) ? $current : '', "\r\n")), 300);
                 $source->next();
             }
 

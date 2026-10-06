@@ -1,6 +1,6 @@
 # Customizing the dashboard
 
-The dashboard is plain Blade and Livewire: pages in a sidebar, each made of cards. Everything below is code you own; nothing is configured through a UI.
+The dashboard is Blade and Livewire: pages in a sidebar, each made of cards.
 
 ## Rearrange a page
 
@@ -69,7 +69,7 @@ Cards extend `MohammedMojaly\Laralyze\Livewire\Card` and read data for the perio
 | `values($type, $keys)` | The latest values stored with `Laralyze::set()` |
 | `counts($type)` | `[key => count]`, handy for joining columns |
 
-Aggregates are `count`, `sum`, `min`, `max`, `avg` and percentiles like `p50`, `p95`, `p99` (when recorded with `histogram()`). Percentiles are estimates: values are counted in bins 25% wide, so a p95 is within about 25% of the exact one. Results are cached for five seconds, so many people watching the dashboard share one query.
+Aggregates are `count`, `sum`, `min`, `max`, `avg` and percentiles like `p95` (estimates, when recorded with `histogram()`). Results are cached for five seconds.
 
 Building blocks for card views: `x-laralyze::card`, `x-laralyze::table`, `x-laralyze::figure`, `x-laralyze::legend`, `x-laralyze::bars`, `x-laralyze::lines`, `x-laralyze::meter`, `x-laralyze::empty`, `x-laralyze::class-name`, `x-laralyze::ago`.
 
@@ -83,7 +83,7 @@ Laralyze::record('import', $source, $milliseconds)->avg()->histogram(); // enabl
 Laralyze::set('feature_flags', 'checkout_v2', 'on');
 ```
 
-Everything is merged in memory and written once, after the response is sent.
+Then show them with a card of your own.
 
 ## Add a page
 
@@ -139,7 +139,7 @@ A recorder gets its config array in `$this->config`, plus `threshold()`, `should
 Laralyze::filter(fn (string $type, string $key) => ! str_contains($key, '@'));
 ```
 
-Rejected rows are dropped before they are written.
+Rejected rows are dropped before they are written. A request, job or command whose route, class or name is rejected loses its timelines too.
 
 ## Show users your way
 

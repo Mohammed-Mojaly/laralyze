@@ -4,6 +4,7 @@ namespace MohammedMojaly\Laralyze\Assistant;
 
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\Str;
+use MohammedMojaly\Laralyze\Support\Secrets;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
@@ -32,11 +33,6 @@ class Files
         '#(^|/)[^/]*(secret|credential|password)[^/]*$#i',
     ];
 
-    /**
-     * Assignments of literal strings to names like these are masked.
-     */
-    protected const SECRET = '/((?:["\']?)[\w.-]*(?:key|secret|password|passwd|pwd|token|dsn|credential)[\w.-]*(?:["\']?)\s*(?:=>|=|:)\s*)(["\'])([^"\'\n]{4,})\2/i';
-
     public function __construct(protected Repository $config) {}
 
     /**
@@ -50,7 +46,7 @@ class Files
             return "Can't read {$path}: {$file['error']}";
         }
 
-        $lines = preg_split('/\R/', $this->mask((string) file_get_contents($file))) ?: [];
+        $lines = preg_split('/\R/', Secrets::mask((string) file_get_contents($file))) ?: [];
         $from = max(1, $from ?? 1);
         $to = min(count($lines), $to ?? $from + self::MAX_LINES - 1, $from + self::MAX_LINES - 1);
         $out = [];
@@ -103,7 +99,7 @@ class Files
                 }
 
                 // Searched masked, so guessing a secret can't confirm it.
-                foreach (preg_split('/\R/', $this->mask((string) file_get_contents($file))) ?: [] as $i => $line) {
+                foreach (preg_split('/\R/', Secrets::mask((string) file_get_contents($file))) ?: [] as $i => $line) {
                     if (stripos($line, $text) !== false) {
                         $matches[] = $this->relative($file).':'.($i + 1).': '.Str::limit(trim($line), 200);
 
@@ -162,14 +158,6 @@ class Files
         }
 
         return $real;
-    }
-
-    /**
-     * Hide what looks like a secret value, keeping the name.
-     */
-    public function mask(string $code): string
-    {
-        return (string) preg_replace(self::SECRET, '$1$2***$2', $code);
     }
 
     /**

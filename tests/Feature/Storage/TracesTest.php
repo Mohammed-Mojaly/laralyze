@@ -109,6 +109,24 @@ it('always keeps failed, throwing and slow ones, and samples the rest', function
     $this->get('/laralyze/executions/'.kept()->firstWhere('name', 'GET /slow')->uuid)->assertSee('Kept')->assertSee('It ran longer than its slow threshold.');
 });
 
+it('keeps a filtered route\'s timelines out along with its metrics', function () {
+    test()->rebootWith(['laralyze.recorders' => [
+        Recorders\Traces::class => ['sample_rate' => 1, 'threshold' => 60_000, 'enabled' => true],
+        Recorders\Requests::class => ['enabled' => true],
+    ]]);
+    app()->detectEnvironment(fn () => 'local');
+    Laralyze::filter(fn (string $type, string $key) => $key !== 'GET /patients/{patient}');
+
+    Route::get('/patients/{patient}', fn () => 'ok');
+    Route::get('/fine', fn () => 'ok');
+    $this->get('/patients/7');
+    $this->get('/fine');
+    Laralyze::flush();
+
+    expect(kept()->pluck('name')->all())->toBe(['GET /fine'])
+        ->and(app(Storage::class)->aggregate('request', ['count'], 3_600)->pluck('key')->all())->toBe(['GET /fine']);
+});
+
 it('tells under the list that the rest are sampled, and at what rate', function () {
     traceWith(['sample_rate' => 0.1, 'threshold' => 0]);
 

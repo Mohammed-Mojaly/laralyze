@@ -28,6 +28,19 @@ use Throwable;
  */
 class Exceptions extends Recorder
 {
+    /**
+     * Context keys whose values are never stored, at any depth, in any case.
+     */
+    public const SECRET_KEYS = [
+        'password', 'passwd', 'pwd', 'secret', 'token', 'api_key', 'apikey', 'authorization',
+        'cookie', 'credit_card', 'card_number', 'cvv', 'ssn', 'private_key',
+    ];
+
+    /**
+     * Longer context strings are cut to this many characters.
+     */
+    public const CONTEXT_STRING = 500;
+
     protected array $listen = [
         MessageLogged::class,
         CommandStarting::class,
@@ -145,10 +158,30 @@ class Exceptions extends Recorder
     {
         unset($context['exception']);
 
-        $context = array_filter($context, fn ($value) => is_scalar($value) || is_null($value) || is_array($value));
+        $context = $this->masked(array_filter($context, fn ($value) => is_scalar($value) || is_null($value) || is_array($value)));
         $json = json_encode($context, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
 
         return $context === [] || $json === false || strlen($json) > 4_000 ? null : $context;
+    }
+
+    /**
+     * Secrets become "***" and long strings are shortened, keeping every key.
+     *
+     * @param  array<array-key, mixed>  $values
+     * @return array<array-key, mixed>
+     */
+    protected function masked(array $values): array
+    {
+        foreach ($values as $key => $value) {
+            $values[$key] = match (true) {
+                is_string($key) && in_array(strtolower($key), self::SECRET_KEYS, true) => '***',
+                is_array($value) => $this->masked($value),
+                is_string($value) => Str::limit($value, self::CONTEXT_STRING, '…'),
+                default => $value,
+            };
+        }
+
+        return $values;
     }
 
     /**

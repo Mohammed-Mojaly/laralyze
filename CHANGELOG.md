@@ -2,6 +2,13 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## Unreleased
+
+- **Changed:** `Laralyze::filter()` also decides which timelines are kept. A request, job or command whose route, class or name it rejects is no longer stored with its timeline, as its metrics already weren't. Check your filters if you relied on the old behaviour.
+- **Changed:** values in an exception's context are masked when their key is a name like `password`, `token`, `secret`, `api_key`, `authorization`, `cookie`, `card_number`, `cvv` or `ssn`, at any depth, and strings longer than 500 characters are shortened.
+- Secrets in the code stored around a stack frame (a literal assigned to a name like `key`, `secret` or `token`) are masked, as they already were when the assistant reads files.
+- Docs: a [Known limits](docs/limits.md) page, and a shorter README and docs.
+
 ## v0.4.2 - 2026-10-06
 
 - **Fixed:** the dashboard on phones. The sidebar is now a bar with the page you're on and a menu button that opens every page; card headers wrap their search and filters; long messages wrap inside tables, which scroll sideways. On the Assistant page the conversation list starts closed and closes again when you pick one.
