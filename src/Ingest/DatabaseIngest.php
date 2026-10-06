@@ -125,9 +125,10 @@ class DatabaseIngest implements Ingest
 
     public function trim(int $retentionDays): void
     {
-        // The digest empties the table; this only catches what it never could.
+        // The digest empties the table; this only catches what it never could,
+        // after a day, so a batch it can't store doesn't pile up for the retention period.
         $this->connection()->table(self::TABLE)
-            ->where('created_at', '<', Date::now()->getTimestamp() - $retentionDays * 86_400)
+            ->where('created_at', '<', Date::now()->getTimestamp() - min($retentionDays, 1) * 86_400)
             ->delete();
     }
 

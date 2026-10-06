@@ -66,3 +66,5 @@ The dashboard shows a warning above the cards, and `php artisan about` lists it 
 ## Turning it off
 
 `LARALYZE_ENABLED=false` stops everything.
+
+To keep it out of your app's tests, add `<env name="LARALYZE_ENABLED" value="false"/>` to `phpunit.xml`.

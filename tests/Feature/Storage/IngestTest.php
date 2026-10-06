@@ -259,15 +259,25 @@ it('writes directly until an upgraded app creates the ingest table', function ()
     }
 });
 
-it('removes batches older than the retention period when trimming', function () {
+it('drops batches that waited more than a day when trimming', function () {
     DB::table('laralyze_ingest')->insert([
-        ['created_at' => time() - 31 * 86_400, 'server' => 'web-1', 'payload' => ''],
+        ['created_at' => time() - 25 * 3_600, 'server' => 'web-1', 'payload' => ''],
+        ['created_at' => time() - 23 * 3_600, 'server' => 'web-1', 'payload' => ''],
         ['created_at' => time() - 60, 'server' => 'web-1', 'payload' => ''],
     ]);
 
     Laralyze::trim();
 
-    expect(DB::table('laralyze_ingest')->count())->toBe(1);
+    expect(DB::table('laralyze_ingest')->count())->toBe(2);
+});
+
+it('digests a batch whose key is far longer than a database column takes', function () {
+    Laralyze::record('request', 'POST livewire:'.str_repeat('a', 100_000))->count();
+    Laralyze::flush();
+
+    expect(Laralyze::digest())->toBe(1)
+        ->and(DB::table('laralyze_ingest')->count())->toBe(0)
+        ->and(Laralyze::lastFailure())->toBeNull();
 });
 
 it('schedules the digest only when writes are queued', function () {
@@ -280,4 +290,7 @@ it('schedules the digest only when writes are queued', function () {
     $this->rebootWith(['laralyze.ingest.driver' => 'database']);
 
     expect($scheduled())->toContain('laralyze:digest');
+
+    // A scheduler that dies half way through a digest blocks the next one for minutes, not a day.
+    expect(collect(app(Schedule::class)->events())->firstWhere('description', 'laralyze:digest')->expiresAt)->toBe(5);
 });

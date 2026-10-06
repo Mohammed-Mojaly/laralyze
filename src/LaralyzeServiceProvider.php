@@ -204,7 +204,8 @@ class LaralyzeServiceProvider extends ServiceProvider
                 $schedule->call(fn () => $this->app->make(Laralyze::class)->digest())
                     ->everyMinute()
                     ->name('laralyze:digest')
-                    ->withoutOverlapping();
+                    // A digest takes under a minute; a scheduler killed during one frees it in five.
+                    ->withoutOverlapping(5);
             }
 
             if ($this->app->make(Alerts\Alerts::class)->enabled()) {

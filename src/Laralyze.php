@@ -28,6 +28,17 @@ class Laralyze
     public const CONTENTION_CACHE_KEY = 'laralyze:contention';
 
     /**
+     * Bytes kept of a key or a run's name: plenty for any route, query or
+     * class, and far below what a `text` column takes.
+     */
+    public const MAX_KEY = 4_096;
+
+    /**
+     * Bytes kept of a type, its column's size.
+     */
+    public const MAX_TYPE = 64;
+
+    /**
      * How many ignore() calls are currently running.
      */
     protected int $ignoreDepth = 0;
@@ -122,7 +133,7 @@ class Laralyze
     public function record(string $type, string $key, int|float $value = 1, ?int $timestamp = null): PendingMetric
     {
         // time() instead of now(): Carbon costs ~3µs per call, too much here.
-        return new PendingMetric($this, $this->isRecording() ? $this->buffer : null, $type, $key, (float) $value, $timestamp ?? time());
+        return new PendingMetric($this, $this->isRecording() ? $this->buffer : null, self::cut($type, self::MAX_TYPE), self::cut($key, self::MAX_KEY), (float) $value, $timestamp ?? time());
     }
 
     /**
@@ -140,6 +151,7 @@ class Laralyze
         }
 
         $timestamp ??= time();
+        [$type, $key] = [self::cut($type, self::MAX_TYPE), self::cut($key, self::MAX_KEY)];
 
         foreach ($aggregates as $aggregate => $value) {
             if (! $this->buffer->add($type, $key, (string) $aggregate, (float) $value, $timestamp)) {
@@ -158,6 +170,7 @@ class Laralyze
         }
 
         $timestamp ??= time();
+        [$type, $key] = [self::cut($type, self::MAX_TYPE), self::cut($key, self::MAX_KEY)];
 
         if (! $this->buffer->set($type, $key, $value, $timestamp)) {
             $this->makeRoom(fn () => $this->buffer->set($type, $key, $value, $timestamp));
@@ -209,7 +222,20 @@ class Laralyze
             array_shift($this->executions);
         }
 
+        // To the size of their columns.
+        $execution['name'] = self::cut((string) $execution['name'], self::MAX_KEY);
+        $execution['server'] = self::cut((string) $execution['server'], 128);
+        $execution['user_id'] = $execution['user_id'] === null ? null : self::cut((string) $execution['user_id'], 64);
+
         $this->executions[] = $execution;
+    }
+
+    /**
+     * At most so many bytes, never splitting a UTF-8 character.
+     */
+    public static function cut(string $text, int $bytes): string
+    {
+        return strlen($text) > $bytes ? mb_strcut($text, 0, $bytes, 'UTF-8') : $text;
     }
 
     /**

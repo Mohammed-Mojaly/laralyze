@@ -2,6 +2,14 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## Unreleased
+
+- **Fixed:** a Livewire update is now named after the component Livewire actually loaded, never after the request body. A forged update with a huge component name could stop the digest on MySQL and MariaDB.
+- **Fixed:** keys and run names are cut to 4 KB, types to 64 bytes, servers to 128 and user ids to 64, so every database column takes them.
+- **Fixed:** batches the digest couldn't store are dropped after a day instead of after the retention period.
+- **Fixed:** a scheduler stopped during a digest no longer blocks the next one for a day; the lock expires after five minutes.
+- Docs: how to keep Laralyze out of your app's tests.
+
 ## v0.5.1 - 2026-10-07
 
 - A separate permission for Ask AI: `Gate::define('useLaralyzeAssistant', ...)` decides who may make the assistant read your code and send it to your AI provider. By default it's whoever may view the dashboard, so nothing changes unless you define it. Denied, the Ask AI button and the Assistant page are hidden, and the assistant refuses every action.

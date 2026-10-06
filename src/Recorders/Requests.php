@@ -7,8 +7,11 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Date;
+use Livewire\Component;
 use MohammedMojaly\Laralyze\Http\Middleware\Authorize;
 use Symfony\Component\HttpFoundation\Response;
+
+use function Livewire\on;
 
 /**
  * Counts every request and times it, grouped by route. Runs after the
@@ -23,6 +26,17 @@ class Requests extends Recorder
     public function register(Application $app): void
     {
         $this->afterEachRequest($app, $this->recordRequest(...));
+
+        // Livewire 3 and 4 fire it for each component of an update, after checking its checksum.
+        if (function_exists('Livewire\on')) {
+            on('hydrate', function (Component $component) use ($app) {
+                $request = $app->make('request');
+
+                if (! $request->attributes->has(self::LIVEWIRE)) {
+                    $request->attributes->set(self::LIVEWIRE, $component);
+                }
+            });
+        }
     }
 
     public function recordRequest(CarbonInterface $startedAt, Request $request, Response $response): void
@@ -67,22 +81,32 @@ class Requests extends Recorder
     }
 
     /**
-     * "livewire:counter@increment", from the first component in the update.
+     * Request attribute holding the first component Livewire hydrated.
+     */
+    public const LIVEWIRE = 'laralyze.livewire';
+
+    /**
+     * Livewire's own actions that are worth a row of their own.
+     */
+    protected const LIVEWIRE_ACTIONS = ['$refresh', '$set', '$toggle', '$sync', '$commit'];
+
+    /**
+     * "livewire:counter@increment", from the first component Livewire
+     * hydrated. Livewire only does that once the snapshot's checksum
+     * matches, so nothing here comes from a payload anyone could make up.
      */
     protected function livewireKey(Request $request): string
     {
-        $component = $request->input('components.0');
-        $snapshot = is_array($component) && is_string($component['snapshot'] ?? null)
-            ? json_decode($component['snapshot'], true)
-            : null;
+        $component = $request->attributes->get(self::LIVEWIRE);
 
-        $name = is_array($snapshot) ? ($snapshot['memo']['name'] ?? null) : null;
-        $method = is_array($component) ? ($component['calls'][0]['method'] ?? null) : null;
-
-        if (! is_string($name)) {
+        if (! $component instanceof Component) {
             return 'livewire:update';
         }
 
-        return 'livewire:'.$name.(is_string($method) ? '@'.$method : '');
+        $method = $request->input('components.0.calls.0.method');
+        $known = is_string($method) && (in_array($method, self::LIVEWIRE_ACTIONS, true)
+            || (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $method) === 1 && method_exists($component, $method)));
+
+        return 'livewire:'.$component->getName().($known ? '@'.$method : '');
     }
 }

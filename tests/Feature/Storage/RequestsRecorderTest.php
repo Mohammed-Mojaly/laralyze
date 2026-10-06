@@ -3,11 +3,14 @@
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
+use Livewire\Livewire;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Http\Middleware\Authorize;
 use MohammedMojaly\Laralyze\Recorders\Requests;
+use MohammedMojaly\Laralyze\Tests\Fixtures\CheckoutForm;
 
 /**
  * @return array<string, stdClass>
@@ -161,17 +164,41 @@ it('still records the app\'s own POST requests', function () {
     expect(stored('request'))->toHaveKey('POST /orders');
 });
 
-it('groups Livewire updates by component and method', function () {
-    $request = Request::create('/livewire/update', 'POST', [
-        'components' => [[
-            'snapshot' => json_encode(['memo' => ['name' => 'checkout-form']]),
-            'calls' => [['method' => 'placeOrder', 'params' => []]],
-        ]],
-    ]);
-    $route = (new Illuminate\Routing\Route(['POST'], '/livewire/update', fn () => null))->name('livewire.update')->bind($request);
-    $request->setRouteResolver(fn () => $route);
+/**
+ * Post a Livewire update the way the browser does, with a session token.
+ *
+ * @param  array<string, mixed>  $component
+ */
+function livewireUpdate(array $component): void
+{
+    test()->withSession(['_token' => 'laralyze-test'])
+        ->withHeaders(['X-Livewire' => '1', 'X-CSRF-TOKEN' => 'laralyze-test'])
+        ->postJson(Livewire::getUpdateUri(), ['components' => [$component]]);
 
-    finish($request);
+    Laralyze::flush();
+}
+
+it('groups Livewire updates by component and method', function () {
+    app()->detectEnvironment(fn () => 'local');
+    Livewire::component('checkout-form', CheckoutForm::class);
+    Route::get('/checkout', fn () => Blade::render('<livewire:checkout-form />'))->middleware('web');
+
+    preg_match('/wire:snapshot="([^"]+)"/', (string) $this->get('/checkout')->getContent(), $matches);
+
+    livewireUpdate(['snapshot' => html_entity_decode($matches[1]), 'updates' => [], 'calls' => [['method' => 'placeOrder', 'params' => [], 'metadata' => []]]]);
 
     expect(stored('request'))->toHaveKey('POST livewire:checkout-form@placeOrder');
+});
+
+it('never takes a Livewire component\'s name from a payload it can\'t trust', function () {
+    app()->detectEnvironment(fn () => 'local');
+
+    // Anyone can post this: a made-up name of any length, and a checksum that doesn't match.
+    livewireUpdate([
+        'snapshot' => json_encode(['data' => [], 'memo' => ['id' => 'x', 'name' => str_repeat('a', 70_000)], 'checksum' => 'forged']),
+        'updates' => [],
+        'calls' => [['method' => 'placeOrder', 'params' => [], 'metadata' => []]],
+    ]);
+
+    expect(array_keys(stored('request')))->toBe(['POST livewire:update']);
 });
