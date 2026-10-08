@@ -13,6 +13,7 @@ use Illuminate\Support\Lottery;
 use Illuminate\Support\Str;
 use MohammedMojaly\Laralyze\Contracts\Ingest;
 use MohammedMojaly\Laralyze\Contracts\Storage;
+use MohammedMojaly\Laralyze\Http\Middleware\Authorize;
 use MohammedMojaly\Laralyze\Ingest\DatabaseIngest;
 use MohammedMojaly\Laralyze\Metrics\Buffer;
 use MohammedMojaly\Laralyze\Metrics\PendingMetric;
@@ -391,10 +392,19 @@ class Laralyze
                 $this->rescue($digester);
             }
 
-            $this->write();
+            // The dashboard's own requests leave nothing behind, not even what
+            // ran before it was recognised, like Livewire's checks on an update.
+            $this->servingDashboard() ? $this->reset() : $this->write();
         } finally {
             $this->flushing = false;
         }
+    }
+
+    protected function servingDashboard(): bool
+    {
+        return ! $this->app->runningInConsole()
+            && $this->app->bound('request')
+            && $this->app->make('request')->attributes->get(Authorize::SKIP_RECORDING) === true;
     }
 
     /**

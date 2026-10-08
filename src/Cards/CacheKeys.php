@@ -5,6 +5,7 @@ namespace MohammedMojaly\Laralyze\Cards;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Lazy;
 use MohammedMojaly\Laralyze\Livewire\Card;
+use MohammedMojaly\Laralyze\Livewire\Concerns\ListsRows;
 use stdClass;
 
 /**
@@ -13,6 +14,10 @@ use stdClass;
 #[Lazy]
 class CacheKeys extends Card
 {
+    use ListsRows;
+
+    public string $sort = 'total';
+
     public int $limit = 100;
 
     public function render(): View
@@ -32,12 +37,18 @@ class CacheKeys extends Card
                     $row->{$type} = $byKey[$key] ?? 0.0;
                 }
 
-                return $row;
-            })
-            ->sortByDesc(fn (stdClass $row) => $row->hit + $row->miss)
-            ->take($this->limit)
-            ->values();
+                $row->total = $row->hit + $row->miss + $row->write + $row->delete + $row->failure;
+                // Keys that were never read sort below any ratio.
+                $row->ratio = $row->hit + $row->miss > 0 ? $row->hit / ($row->hit + $row->miss) : null;
 
-        return view('laralyze::cards.cache-keys', ['keys' => $keys]);
+                return $row;
+            });
+
+        return view('laralyze::cards.cache-keys', ['keys' => $this->arrange($keys)->take($this->limit)]);
+    }
+
+    protected function sortable(): array
+    {
+        return ['total', 'key', 'hit', 'miss', 'ratio', 'write', 'delete', 'failure'];
     }
 }

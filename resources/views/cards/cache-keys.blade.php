@@ -8,24 +8,26 @@
     @else
         <x-laralyze::table>
             <x-slot:head>
-                <th scope="col">Key</th>
-                <th scope="col" class="lz-num">Hits</th>
-                <th scope="col" class="lz-num">Misses</th>
-                <th scope="col" class="lz-num">Hit ratio</th>
-                <th scope="col" class="lz-num">Writes</th>
-                <th scope="col" class="lz-num">Deletes</th>
-                <th scope="col" class="lz-num">Failures</th>
+                <x-laralyze::sort-header :card="$this" column="key" :num="false">Key</x-laralyze::sort-header>
+                <x-laralyze::sort-header :card="$this" column="hit">Hits</x-laralyze::sort-header>
+                <x-laralyze::sort-header :card="$this" column="miss">Misses</x-laralyze::sort-header>
+                <x-laralyze::sort-header :card="$this" column="ratio">Hit ratio</x-laralyze::sort-header>
+                <x-laralyze::sort-header :card="$this" column="write">Writes</x-laralyze::sort-header>
+                <x-laralyze::sort-header :card="$this" column="delete">Deletes</x-laralyze::sort-header>
+                <x-laralyze::sort-header :card="$this" column="failure">Failures</x-laralyze::sort-header>
+                <x-laralyze::sort-header :card="$this" column="total">Total</x-laralyze::sort-header>
             </x-slot:head>
 
             @foreach ($keys as $key)
                 <tr wire:key="{{ md5($key->key) }}">
                     <td class="lz-mono">{{ $key->key }}</td>
-                    <td class="lz-num lz-strong">{{ Format::number($key->hit) }}</td>
+                    <td class="lz-num">{{ Format::number($key->hit) }}</td>
                     <td class="lz-num">{{ Format::number($key->miss) }}</td>
-                    <td class="lz-num">{{ Format::percent($key->hit, $key->hit + $key->miss) }}</td>
+                    <td class="lz-num">{{ $key->ratio === null ? '—' : Format::percent($key->hit, $key->hit + $key->miss) }}</td>
                     <td class="lz-num">{{ Format::number($key->write) }}</td>
                     <td class="lz-num">{{ Format::number($key->delete) }}</td>
                     <td @class(['lz-num', 'lz-bad' => $key->failure > 0])>{{ Format::number($key->failure) }}</td>
+                    <td class="lz-num lz-strong">{{ Format::number($key->total) }}</td>
                 </tr>
             @endforeach
         </x-laralyze::table>
