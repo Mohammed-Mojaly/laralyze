@@ -59,9 +59,16 @@ it('round-trips a flush through its payload', function () {
         'rows' => [['bucket' => 1_800_000_000, 'period' => 60, 'type' => 'query', 'aggregate' => 'sum', 'key' => "select * from \"users\" where name = 'Zoë'", 'value' => 12.0]],
         'values' => [['timestamp' => 1_800_000_000, 'type' => 'seen', 'key' => '42', 'value' => '{"a":1}']],
         'executions' => [['uuid' => '01J00000000000000000000001', 'duration' => 1.5, 'counts' => ['query' => 3], 'events' => [['type' => 'log', 'message' => 'ünïcödé']]]],
+        'logs' => [['uuid' => '01J00000000000000000000002', 'logged_at' => 1_800_000_000, 'level' => 'info', 'message' => 'Zoë signed in', 'context' => null]],
     ];
 
-    expect(Batch::decode(Batch::encode($flush['rows'], $flush['values'], $flush['executions'])))->toBe($flush);
+    expect(Batch::decode(Batch::encode($flush['rows'], $flush['values'], $flush['executions'], $flush['logs'])))->toBe($flush);
+});
+
+it('reads a payload queued before logs were added', function () {
+    $old = base64_encode((string) gzdeflate((string) json_encode(['rows' => [], 'values' => [], 'executions' => []])));
+
+    expect(Batch::decode($old)['logs'])->toBe([]);
 });
 
 it("keeps the newer value when a slow request's flush arrives after a newer one", function () {
@@ -93,7 +100,7 @@ it('writes directly to the storage bound at the time of the write', function () 
 
     // Swapped in after the ingest was resolved, like a test or an app that changes storage.
     $storage = Mockery::mock(Storage::class);
-    $storage->shouldReceive('store')->once()->with([], [['timestamp' => 1, 'type' => 't', 'key' => 'k', 'value' => 'v']], []);
+    $storage->shouldReceive('store')->once()->with([], [['timestamp' => 1, 'type' => 't', 'key' => 'k', 'value' => 'v']], [], []);
     app()->instance(Storage::class, $storage);
 
     $ingest->write([], [['timestamp' => 1, 'type' => 't', 'key' => 'k', 'value' => 'v']], []);

@@ -170,6 +170,13 @@ class Traces extends Recorder
     {
         $this->afterEachRequest($app, $this->finishRequest(...));
 
+        // Log entries link to what they were written in.
+        $this->laralyze->runningUsing(function () {
+            $execution = $this->current() ?? $this->failing[0] ?? null;
+
+            return $execution === null ? null : ['uuid' => $execution['uuid'], 'type' => $execution['type'], 'name' => $execution['name']];
+        });
+
         // Jobs carry the trace they were queued from.
         Queue::createPayloadUsing(function () {
             $current = $this->current();

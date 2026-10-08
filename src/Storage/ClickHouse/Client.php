@@ -122,6 +122,21 @@ class Client
      */
     public function insertMany(array $tables): void
     {
+        $failures = $this->tryInsertMany($tables);
+
+        if ($failures !== []) {
+            throw reset($failures);
+        }
+    }
+
+    /**
+     * Like insertMany(), but returns what failed by table instead of throwing.
+     *
+     * @param  array<string, list<array<string, mixed>>>  $tables
+     * @return array<string, Throwable>
+     */
+    public function tryInsertMany(array $tables): array
+    {
         $promises = [];
 
         foreach ($tables as $table => $rows) {
@@ -130,20 +145,18 @@ class Client
             }
         }
 
-        $failure = null;
+        $failures = [];
 
         // All requests are already in flight; waiting on one drives them all.
-        foreach ($promises as $promise) {
+        foreach ($promises as $table => $promise) {
             try {
                 $this->settle($promise->wait());
             } catch (Throwable $e) {
-                $failure ??= $e;
+                $failures[$table] = $e;
             }
         }
 
-        if ($failure !== null) {
-            throw $failure;
-        }
+        return $failures;
     }
 
     /**

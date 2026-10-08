@@ -15,10 +15,10 @@ class DirectIngest implements Ingest
 {
     public function __construct(protected Container $app) {}
 
-    public function write(array $rows, array $values, array $executions): void
+    public function write(array $rows, array $values, array $executions, array $logs = []): void
     {
         // Resolved on each write, so a storage swapped in later is the one written to.
-        $this->app->make(Storage::class)->store($rows, $values, $executions);
+        $this->app->make(Storage::class)->store($rows, $values, $executions, $logs);
     }
 
     public function digest(int $seconds = 50): int

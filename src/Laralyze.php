@@ -46,6 +46,12 @@ class Laralyze
     public const MAX_SQL_IN_KEY = 1_200;
 
     /**
+     * Log entries kept per flush: a request, a job, or a command's batch.
+     * A loop that logs thousands of lines can't flood the table.
+     */
+    public const MAX_LOGS = 200;
+
+    /**
      * How many ignore() calls are currently running.
      */
     protected int $ignoreDepth = 0;
@@ -75,6 +81,20 @@ class Laralyze
      * @var list<array<string, mixed>>
      */
     protected array $executions = [];
+
+    /**
+     * Log entries waiting to be written.
+     *
+     * @var list<array<string, mixed>>
+     */
+    protected array $logs = [];
+
+    /**
+     * Tells which request, job or command is running, when timelines are on.
+     *
+     * @var (Closure(): (array{uuid: string, type: string, name: string}|null))|null
+     */
+    protected ?Closure $running = null;
 
     /**
      * Callbacks that turn what recorders collected into metrics, run
@@ -238,6 +258,38 @@ class Laralyze
     }
 
     /**
+     * @internal Keep a log entry until the next flush.
+     *
+     * @param  array<string, mixed>  $log
+     */
+    public function addLog(array $log): void
+    {
+        if (count($this->logs) < self::MAX_LOGS) {
+            $this->logs[] = $log;
+        }
+    }
+
+    /**
+     * @internal
+     *
+     * @param  Closure(): (array{uuid: string, type: string, name: string}|null)  $resolver
+     */
+    public function runningUsing(Closure $resolver): void
+    {
+        $this->running = $resolver;
+    }
+
+    /**
+     * @internal The request, job or command running now, when timelines are on.
+     *
+     * @return array{uuid: string, type: string, name: string}|null
+     */
+    public function running(): ?array
+    {
+        return $this->running === null ? null : ($this->running)();
+    }
+
+    /**
      * At most so many bytes, never splitting a UTF-8 character.
      */
     public static function cut(string $text, int $bytes): string
@@ -252,6 +304,7 @@ class Laralyze
     {
         $this->buffer->clear();
         $this->executions = [];
+        $this->logs = [];
         $this->dropped = 0;
     }
 
@@ -343,7 +396,7 @@ class Laralyze
      */
     protected function write(): void
     {
-        if ($this->buffer->isEmpty() && $this->executions === []) {
+        if ($this->buffer->isEmpty() && $this->executions === [] && $this->logs === []) {
             return;
         }
 
@@ -363,16 +416,18 @@ class Laralyze
                 }
 
                 [$rows, $values] = $this->buffer->drain();
-                $executions = $this->executions;
-                $this->executions = [];
+                [$executions, $logs] = [$this->executions, $this->logs];
+                [$this->executions, $this->logs] = [[], []];
 
                 $ingest = $this->app->make(Ingest::class);
                 // A timeline goes with its metric: a request under its route, a job under its class.
+                // So do log entries, with what they were written in.
                 if ($this->filters !== []) {
                     $executions = array_values(array_filter($executions, fn (array $execution) => $this->accepts((string) $execution['type'], (string) $execution['name'])));
+                    $logs = array_values(array_filter($logs, fn (array $log) => $log['type'] === null || $this->accepts((string) $log['type'], (string) $log['name'])));
                 }
 
-                $ingest->write([...$this->filtered($rows), ...$this->droppedRows()], $this->filtered($values), $executions);
+                $ingest->write([...$this->filtered($rows), ...$this->droppedRows()], $this->filtered($values), $executions, $logs);
 
                 $this->trimWhenOverdue($storage);
                 $this->digestWhenOverdue($ingest);

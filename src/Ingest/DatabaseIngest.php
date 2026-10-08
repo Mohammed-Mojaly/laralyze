@@ -35,9 +35,9 @@ class DatabaseIngest implements Ingest
         return $this->storage->connection();
     }
 
-    public function write(array $rows, array $values, array $executions): void
+    public function write(array $rows, array $values, array $executions, array $logs = []): void
     {
-        if ($rows === [] && $values === [] && $executions === []) {
+        if ($rows === [] && $values === [] && $executions === [] && $logs === []) {
             return;
         }
 
@@ -45,7 +45,7 @@ class DatabaseIngest implements Ingest
             $this->connection()->table(self::TABLE)->insert([
                 'created_at' => Date::now()->getTimestamp(),
                 'server' => mb_substr((string) ($this->config->get('laralyze.recorders.'.Servers::class.'.server_name') ?? gethostname()), 0, 128),
-                'payload' => Batch::encode($rows, $values, $executions),
+                'payload' => Batch::encode($rows, $values, $executions, $logs),
             ]);
         } catch (Throwable $e) {
             // Upgraded without `laralyze:install`: write straight in until the table exists.
@@ -53,7 +53,7 @@ class DatabaseIngest implements Ingest
                 throw $e;
             }
 
-            $this->storage->store($rows, $values, $executions);
+            $this->storage->store($rows, $values, $executions, $logs);
         }
     }
 
@@ -105,7 +105,7 @@ class DatabaseIngest implements Ingest
         }
 
         $connection->transaction(function () use ($connection, $batch, $chunk) {
-            $this->storage->store($batch->rows(), $batch->values(), $batch->executions());
+            $this->storage->store($batch->rows(), $batch->values(), $batch->executions(), $batch->logs());
 
             // By id, not by range: an insert still in flight may hold a lower id.
             foreach ($chunk->pluck('id')->chunk(500) as $ids) {

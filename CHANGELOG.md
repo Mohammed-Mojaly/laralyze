@@ -2,6 +2,12 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## Unreleased
+
+- **Upgrade:** run `php artisan laralyze:install`. It adds one migration, for the new `laralyze_logs` table, and runs it. Until you do, logs are only counted, and the dashboard says so. ClickHouse creates the table by itself.
+- **Logs you can read.** The Logs page now lists entries at `info` and above: search their messages, pick levels and a user, and open one in place for its context, the request or job that wrote it, and its exception. Nothing to set up: Laralyze reads every log Laravel writes, whatever the channel. `LARALYZE_LOGS_LEVEL` sets the lowest level kept (`debug` keeps everything). Context keys like `password` or `token` are masked. At most 200 entries per request or job. See [Known limits](docs/limits.md).
+- **Changed:** `Storage::store()` and `Ingest::write()` take the log entries as a fourth argument, and `Storage` has four new methods for them. Only code that implements or extends Laralyze's storage needs to change.
+
 ## v0.5.3 - 2026-10-07
 
 - **Fixed:** a middleware alias in `laralyze.middleware` (like `'admin'`) now also runs on the cards' Livewire updates, not only on page loads. Livewire compares class names, so the alias never matched. Middleware groups like `web` are still left out.

@@ -54,6 +54,7 @@ class LaralyzeServiceProvider extends ServiceProvider
         'mail' => Cards\MailList::class,
         'notifications' => Cards\NotificationList::class,
         'logs' => Cards\LogLevels::class,
+        'log-list' => Cards\LogList::class,
         'visits' => Cards\VisitTotals::class,
         'audience' => Cards\Audience::class,
         'top-pages' => Cards\TopPages::class,

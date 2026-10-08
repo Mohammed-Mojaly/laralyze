@@ -158,7 +158,7 @@ class Exceptions extends Recorder
     {
         unset($context['exception']);
 
-        $context = $this->masked(array_filter($context, fn ($value) => is_scalar($value) || is_null($value) || is_array($value)));
+        $context = self::masked(array_filter($context, fn ($value) => is_scalar($value) || is_null($value) || is_array($value)));
         $json = json_encode($context, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
 
         return $context === [] || $json === false || strlen($json) > 4_000 ? null : $context;
@@ -170,12 +170,12 @@ class Exceptions extends Recorder
      * @param  array<array-key, mixed>  $values
      * @return array<array-key, mixed>
      */
-    protected function masked(array $values): array
+    public static function masked(array $values): array
     {
         foreach ($values as $key => $value) {
             $values[$key] = match (true) {
                 is_string($key) && in_array(strtolower($key), self::SECRET_KEYS, true) => '***',
-                is_array($value) => $this->masked($value),
+                is_array($value) => self::masked($value),
                 is_string($value) => Str::limit($value, self::CONTEXT_STRING, '…'),
                 default => $value,
             };

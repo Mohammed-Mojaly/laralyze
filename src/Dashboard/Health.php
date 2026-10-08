@@ -8,6 +8,7 @@ use MohammedMojaly\Laralyze\Contracts\Ingest;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Ingest\DatabaseIngest;
 use MohammedMojaly\Laralyze\Laralyze;
+use MohammedMojaly\Laralyze\Recorders\Logs;
 use MohammedMojaly\Laralyze\Storage\ClickHouse\Client;
 use MohammedMojaly\Laralyze\Support\Format;
 use Throwable;
@@ -122,6 +123,13 @@ final class Health
                 'Alerts couldn\'t be delivered '.now()->setTimestamp($alerts['at'])->diffForHumans().'.',
                 implode(' ', array_map(fn (string $channel, string $error) => "{$channel}: {$error}", array_keys($alerts['channels']), $alerts['channels']))
                     .' Laralyze tries again every minute; check LARALYZE_ALERTS_* in your .env.',
+            );
+        }
+
+        if ($this->config->get('laralyze.recorders.'.Logs::class.'.enabled', true) && ! $this->storage->logsInstalled()) {
+            $problems[] = $this->warn(
+                'Logs aren\'t stored yet.',
+                'Run `php artisan laralyze:install` to add the table for log entries. Until then they are only counted.',
             );
         }
 

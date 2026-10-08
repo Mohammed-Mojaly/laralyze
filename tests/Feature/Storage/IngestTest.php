@@ -4,6 +4,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use MohammedMojaly\Laralyze\Contracts\Ingest;
 use MohammedMojaly\Laralyze\Dashboard\Health;
@@ -84,6 +85,19 @@ it('merges the queue into Laralyze\'s tables and empties it', function () {
         ->and($minute['min'])->toBe(10.0)
         ->and($minute['max'])->toBe(30.0)
         ->and(app(Ingest::class)->digestedAt())->toBe(time());
+});
+
+it('queues log entries with the rest and stores them when digested', function () {
+    Log::warning('Stock is low', ['sku' => 'B-12']);
+    Laralyze::flush();
+
+    expect(DB::table('laralyze_logs')->count())->toBe(0)
+        ->and(Laralyze::digest())->toBe(1);
+
+    $log = DB::table('laralyze_logs')->sole();
+
+    expect($log->message)->toBe('Stock is low')
+        ->and(json_decode((string) $log->context, true))->toBe(['sku' => 'B-12']);
 });
 
 it('stores exactly what writing directly would have stored', function () {

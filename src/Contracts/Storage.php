@@ -24,8 +24,37 @@ interface Storage
      * @param  list<array{bucket: int, period: int, type: string, aggregate: string, key: string, value: float}>  $rows
      * @param  list<array{timestamp: int, type: string, key: string, value: string}>  $values
      * @param  list<array<string, mixed>>  $executions
+     * @param  list<array<string, mixed>>  $logs
      */
-    public function store(array $rows, array $values, array $executions = []): void;
+    public function store(array $rows, array $values, array $executions = [], array $logs = []): void;
+
+    /**
+     * Whether the table for log entries exists; an upgraded app may not have it yet.
+     */
+    public function logsInstalled(): bool;
+
+    /**
+     * Log entries, newest first.
+     *
+     * @param  array{levels?: list<string>, search?: string, user?: string}  $filters
+     * @return Collection<int, stdClass>
+     */
+    public function logs(array $filters, int $window, int $limit = 50, int $offset = 0): Collection;
+
+    /**
+     * Users who wrote log entries over the window, most recent first.
+     *
+     * @return list<string>
+     */
+    public function logUsers(int $window, int $limit = 100): array;
+
+    /**
+     * Which of these executions are still kept.
+     *
+     * @param  list<string>  $uuids
+     * @return list<string>
+     */
+    public function keptExecutions(array $uuids): array;
 
     /**
      * Single requests, jobs or commands, newest or slowest first.

@@ -11,8 +11,9 @@ interface Ingest
      * @param  list<array{bucket: int, period: int, type: string, aggregate: string, key: string, value: float}>  $rows
      * @param  list<array{timestamp: int, type: string, key: string, value: string}>  $values
      * @param  list<array<string, mixed>>  $executions
+     * @param  list<array<string, mixed>>  $logs
      */
-    public function write(array $rows, array $values, array $executions): void;
+    public function write(array $rows, array $values, array $executions, array $logs = []): void;
 
     /**
      * Merge what's waiting into storage, for up to the given seconds.

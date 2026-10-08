@@ -121,6 +121,19 @@ trait ReadsMetrics
         return Date::now()->getTimestamp();
     }
 
+    protected function castLog(stdClass $row): stdClass
+    {
+        $row->logged_at = (int) $row->logged_at;
+        $row->context = ($row->context ?? '') === '' ? null : json_decode((string) $row->context, true);
+
+        // Empty means none: ClickHouse has no NULL columns.
+        foreach (['exception', 'execution', 'type', 'name', 'user_id'] as $column) {
+            $row->{$column} = ($row->{$column} ?? '') === '' ? null : (string) $row->{$column};
+        }
+
+        return $row;
+    }
+
     protected function castExecution(stdClass $row): stdClass
     {
         $row->failed = (bool) $row->failed;

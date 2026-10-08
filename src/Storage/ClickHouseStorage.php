@@ -13,6 +13,7 @@ use MohammedMojaly\Laralyze\Storage\ClickHouse\Schema;
 use MohammedMojaly\Laralyze\Storage\Concerns\ReadsMetrics;
 use stdClass;
 use Symfony\Component\Uid\Ulid;
+use Throwable;
 
 /**
  * Laralyze's data in ClickHouse. Writes are async inserts that the server
@@ -23,6 +24,8 @@ class ClickHouseStorage implements Storage
     use ReadsMetrics;
 
     protected const EXECUTION_COLUMNS = 'uuid, trace, type, name, status, failed, duration, user_id, server, started_at, counts, meta, job_uuid';
+
+    protected const LOG_COLUMNS = 'uuid, logged_at, level, message, context, exception, execution, type, name, user_id, server';
 
     public function __construct(protected Client $client) {}
 
@@ -51,13 +54,114 @@ class ClickHouseStorage implements Storage
         return false;
     }
 
-    public function store(array $rows, array $values, array $executions = []): void
+    public function store(array $rows, array $values, array $executions = [], array $logs = []): void
     {
-        $this->client->insertMany([
+        $logRows = array_map(fn (array $log) => $this->logRow($log), $logs);
+
+        $failures = $this->client->tryInsertMany([
             DatabaseStorage::AGGREGATES => array_map(fn (array $row) => $this->aggregateRow($row), $rows),
             DatabaseStorage::VALUES => array_map(fn (array $value) => $this->valueRow($value['type'], $value['key'], $value['value'], $value['timestamp']), $values),
             DatabaseStorage::EXECUTIONS => array_map(fn (array $execution) => $this->executionRow($execution), $executions),
+            Schema::LOGS => $logRows,
         ]);
+
+        // Upgraded from a version without logs: create their table and try them again.
+        if (isset($failures[Schema::LOGS]) && $this->missingTable($failures[Schema::LOGS])) {
+            Schema::createLogs($this->client);
+            unset($failures[Schema::LOGS]);
+            $failures = [...$failures, ...$this->client->tryInsertMany([Schema::LOGS => $logRows])];
+        }
+
+        if ($failures !== []) {
+            throw reset($failures);
+        }
+    }
+
+    protected function missingTable(Throwable $e): bool
+    {
+        return str_contains($e->getMessage(), 'UNKNOWN_TABLE');
+    }
+
+    /**
+     * Created by the first write that needs it.
+     */
+    public function logsInstalled(): bool
+    {
+        return true;
+    }
+
+    public function logs(array $filters, int $window, int $limit = 50, int $offset = 0): Collection
+    {
+        $where = ['logged_at >= {since:Int64}'];
+        $params = ['since' => $this->now() - $window, 'limit' => $limit, 'offset' => $offset];
+
+        if (($filters['levels'] ?? []) !== []) {
+            $where[] = 'level IN {levels:Array(String)}';
+            $params['levels'] = $filters['levels'];
+        }
+
+        if (trim($filters['search'] ?? '') !== '') {
+            $where[] = 'positionCaseInsensitiveUTF8(message, {search:String}) > 0';
+            $params['search'] = trim($filters['search']);
+        }
+
+        if (($filters['user'] ?? '') !== '') {
+            $where[] = 'user_id = {user:String}';
+            $params['user'] = $filters['user'];
+        }
+
+        return collect($this->selectLogs(
+            'SELECT '.self::LOG_COLUMNS.' FROM laralyze_logs WHERE '.implode(' AND ', $where).' ORDER BY logged_at DESC, uuid DESC LIMIT {limit:UInt32} OFFSET {offset:UInt32}',
+            $params,
+        ))->map(fn (array $row) => $this->castLog($this->object($row)));
+    }
+
+    public function logUsers(int $window, int $limit = 100): array
+    {
+        $rows = $this->selectLogs(
+            "SELECT user_id FROM laralyze_logs WHERE logged_at >= {since:Int64} AND user_id != '' GROUP BY user_id ORDER BY max(logged_at) DESC LIMIT {limit:UInt32}",
+            ['since' => $this->now() - $window, 'limit' => $limit],
+        );
+
+        return array_map(fn (array $row) => (string) $row['user_id'], $rows);
+    }
+
+    /**
+     * Nothing to read before the first entry creates the table.
+     *
+     * @param  array<string, mixed>  $params
+     * @return list<array<string, mixed>>
+     */
+    protected function selectLogs(string $sql, array $params): array
+    {
+        try {
+            return $this->client->select($sql, $params);
+        } catch (Throwable $e) {
+            if ($this->missingTable($e)) {
+                return [];
+            }
+
+            throw $e;
+        }
+    }
+
+    public function keptExecutions(array $uuids): array
+    {
+        $uuids = array_values(array_filter($uuids, fn (string $uuid) => Ulid::isValid($uuid)));
+
+        if ($uuids === []) {
+            return [];
+        }
+
+        // ULIDs carry when they were made: look only around those days.
+        $times = array_map(fn (string $uuid) => Ulid::fromString($uuid)->getDateTime()->getTimestamp(), $uuids);
+
+        $rows = $this->client->select(
+            'SELECT uuid FROM laralyze_executions WHERE uuid IN {uuids:Array(String)} AND started_at BETWEEN {from:Int64} AND {to:Int64}',
+            ['uuids' => $uuids, 'from' => min($times) - 86_400, 'to' => max($times) + 86_400],
+        );
+
+        return array_map(fn (array $row) => (string) $row['uuid'], $rows);
     }
 
     public function executions(array $filters, int $window, string $order = 'recent', int $limit = 50, int $offset = 0): Collection
@@ -132,6 +236,7 @@ class ClickHouseStorage implements Storage
         $this->dropDaysBefore(DatabaseStorage::AGGREGATES, $now - Period::MINUTE_RETENTION, Period::MINUTE);
         $this->dropDaysBefore(DatabaseStorage::AGGREGATES, $now - $retentionDays * 86_400, Period::HOUR);
         $this->dropDaysBefore(DatabaseStorage::EXECUTIONS, $now - min($traceDays, $retentionDays) * 86_400);
+        $this->dropDaysBefore(Schema::LOGS, $now - $retentionDays * 86_400);
 
         // Values are few: one lightweight delete costs less than partitioning them.
         $this->client->statement(
@@ -508,6 +613,28 @@ class ClickHouseStorage implements Storage
             'meta' => (string) json_encode($execution['meta'] ?? [], JSON_INVALID_UTF8_SUBSTITUTE),
             'job_uuid' => isset($execution['job_uuid']) ? (string) $execution['job_uuid'] : '',
             'events' => (string) json_encode($execution['events'], JSON_INVALID_UTF8_SUBSTITUTE),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $log
+     * @return array<string, mixed>
+     */
+    protected function logRow(array $log): array
+    {
+        return [
+            'uuid' => (string) $log['uuid'],
+            'logged_at' => (int) $log['logged_at'],
+            'level' => (string) $log['level'],
+            'message' => (string) $log['message'],
+            // No NULL columns: empty means none, and reads turn it back into null.
+            'context' => (string) ($log['context'] ?? ''),
+            'exception' => (string) ($log['exception'] ?? ''),
+            'execution' => (string) ($log['execution'] ?? ''),
+            'type' => (string) ($log['type'] ?? ''),
+            'name' => (string) ($log['name'] ?? ''),
+            'user_id' => (string) ($log['user_id'] ?? ''),
+            'server' => (string) $log['server'],
         ];
     }
 

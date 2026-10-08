@@ -33,7 +33,7 @@ trait UsesStorage
             static $installed = false;
             $installed = $installed || $storage->install() !== '';
 
-            foreach (Schema::TABLES as $table) {
+            foreach ([...Schema::TABLES, Schema::LOGS] as $table) {
                 $storage->client()->statement("TRUNCATE TABLE {$table}");
             }
 
@@ -44,5 +44,6 @@ trait UsesStorage
         DB::table('laralyze_values')->truncate();
         DB::table('laralyze_executions')->truncate();
         DB::table('laralyze_ingest')->truncate();
+        DB::table('laralyze_logs')->truncate();
     }
 }

@@ -3166,3 +3166,131 @@ body.lz-root {
         padding-left: 14px;
     }
 }
+
+/* Logs: one line per entry, opened in place */
+.lz-select select {
+    height: 30px;
+    padding: 0 8px;
+    border: 1px solid var(--lz-line);
+    border-radius: 6px;
+    background: var(--lz-surface-2);
+    color: var(--lz-ink-2);
+    font: inherit;
+    font-size: 12px;
+}
+
+.lz-levels {
+    flex-wrap: wrap;
+}
+
+.lz-levels button {
+    white-space: nowrap;
+}
+
+.lz-levels .lz-swatch {
+    margin-right: 5px;
+}
+
+.lz-logs {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lz-log + .lz-log {
+    border-top: 1px solid var(--lz-line);
+}
+
+.lz-log-row {
+    display: grid;
+    grid-template-columns: 64px 72px minmax(0, 240px) minmax(0, 1fr);
+    gap: 12px;
+    align-items: baseline;
+    width: 100%;
+    padding: 8px 4px;
+    border: 0;
+    background: none;
+    color: var(--lz-ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.lz-log-row:hover,
+.lz-log.is-open .lz-log-row {
+    background: var(--lz-surface-2);
+}
+
+.lz-log-at {
+    color: var(--lz-ink-3);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.lz-log-level {
+    color: var(--lz-series);
+    font-family: var(--lz-mono);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.lz-log-source {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.lz-log-name {
+    color: var(--lz-ink-3);
+    font-family: var(--lz-mono);
+    font-size: 12px;
+}
+
+.lz-log-message {
+    overflow: hidden;
+    font-family: var(--lz-mono);
+    font-size: 12.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lz-log-detail {
+    display: grid;
+    gap: 12px;
+    padding: 4px 4px 16px;
+}
+
+.lz-log-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    margin: 0;
+    font-size: 13px;
+}
+
+.lz-log-facts dt {
+    color: var(--lz-ink-3);
+    font-size: 12px;
+}
+
+.lz-log-facts dd {
+    margin: 2px 0 0;
+}
+
+.lz-log-heading {
+    margin: 0;
+    color: var(--lz-ink-3);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .lz-log-row {
+        grid-template-columns: auto auto minmax(0, 1fr);
+    }
+
+    .lz-log-source {
+        display: none;
+    }
+}

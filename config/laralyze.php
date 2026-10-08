@@ -222,6 +222,11 @@ return [
         Recorders\Logs::class => [
             'enabled' => env('LARALYZE_LOGS_ENABLED', true),
 
+            // The lowest level kept as an entry you can search and open, with
+            // its context. Every level is counted either way. Set it to debug
+            // to keep everything, at the cost of many more rows.
+            'level' => env('LARALYZE_LOGS_LEVEL', 'info'),
+
             // Levels to leave out, e.g. '/^debug$/'.
             'ignore' => [],
         ],

@@ -46,7 +46,8 @@ Restart your queue workers (`php artisan queue:restart`) so they load Laralyze, 
 | Timelines | A single request, job or command with everything inside it, in order |
 | Queries, Cache, Outgoing Requests | Time per query, slow queries; cache hits and misses; calls to other services |
 | AI | Calls made with `laravel/ai`: tokens, estimated cost, duration and failures |
-| Mail, Notifications, Logs | Sent and failed; log levels |
+| Mail, Notifications | Sent and failed |
+| Logs | Entries by level, searchable, with their context and the request or job that wrote them |
 | Users, Visits, Servers | Signed-in users; visitors, pages, devices; CPU, memory and disk |
 
 Each page shows the last 15 minutes to 30 days. Every recorder can be turned off, and its page goes with it.

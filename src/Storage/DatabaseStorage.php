@@ -28,6 +28,8 @@ class DatabaseStorage implements Storage
 
     public const EXECUTIONS = 'laralyze_executions';
 
+    public const LOGS = 'laralyze_logs';
+
     protected const UNIQUE_AGGREGATE = ['bucket', 'period', 'type', 'aggregate', 'key_hash'];
 
     /**
@@ -39,6 +41,11 @@ class DatabaseStorage implements Storage
      * Values only needed for a day, like when each visitor was last seen.
      */
     public const SHORT_LIVED_VALUES = ['visitor_seen'];
+
+    /**
+     * Known once the logs table was found; until then each write checks again.
+     */
+    protected bool $logsInstalled = false;
 
     public function __construct(protected DatabaseManager $db, protected Repository $config) {}
 
@@ -57,6 +64,11 @@ class DatabaseStorage implements Storage
         return $schema->hasTable(self::AGGREGATES) && $schema->hasTable(self::VALUES) && $schema->hasTable(self::EXECUTIONS);
     }
 
+    public function logsInstalled(): bool
+    {
+        return $this->logsInstalled = $this->logsInstalled || $this->connection()->getSchemaBuilder()->hasTable(self::LOGS);
+    }
+
     public function inTransaction(): bool
     {
         return $this->connection()->transactionLevel() > 0;
@@ -66,10 +78,11 @@ class DatabaseStorage implements Storage
      * @param  list<array{bucket: int, period: int, type: string, aggregate: string, key: string, value: float}>  $rows
      * @param  list<array{timestamp: int, type: string, key: string, value: string}>  $values
      * @param  list<array<string, mixed>>  $executions
+     * @param  list<array<string, mixed>>  $logs
      */
-    public function store(array $rows, array $values, array $executions = []): void
+    public function store(array $rows, array $values, array $executions = [], array $logs = []): void
     {
-        if ($rows === [] && $values === [] && $executions === []) {
+        if ($rows === [] && $values === [] && $executions === [] && $logs === []) {
             return;
         }
 
@@ -93,6 +106,90 @@ class DatabaseStorage implements Storage
         foreach ($this->chunk($connection, $this->prepareExecutions($executions), 17) as $chunk) {
             $this->retrying(fn () => $connection->table(self::EXECUTIONS)->insert($chunk));
         }
+
+        // An app upgraded without `laralyze:install` has no table for them yet.
+        if ($logs !== [] && $this->logsInstalled()) {
+            foreach ($this->chunk($connection, $this->prepareLogs($logs), 11) as $chunk) {
+                $this->retrying(fn () => $connection->table(self::LOGS)->insert($chunk));
+            }
+        }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $logs
+     * @return list<array<string, int|string|null>>
+     */
+    protected function prepareLogs(array $logs): array
+    {
+        return array_map(fn (array $log) => [
+            'uuid' => (string) $log['uuid'],
+            'logged_at' => (int) $log['logged_at'],
+            'level' => (string) $log['level'],
+            'message' => (string) $log['message'],
+            'context' => $log['context'] ?? null,
+            'exception' => $log['exception'] ?? null,
+            'execution' => $log['execution'] ?? null,
+            'type' => $log['type'] ?? null,
+            'name' => $log['name'] ?? null,
+            'user_id' => $log['user_id'] ?? null,
+            'server' => (string) $log['server'],
+        ], $logs);
+    }
+
+    /**
+     * Log entries, newest first. The search looks inside messages, within
+     * the window and levels asked for.
+     *
+     * @param  array{levels?: list<string>, search?: string, user?: string}  $filters
+     * @return Collection<int, stdClass>
+     */
+    public function logs(array $filters, int $window, int $limit = 50, int $offset = 0): Collection
+    {
+        $connection = $this->connection();
+        $like = $connection->getDriverName() === 'pgsql' ? 'ilike' : 'like';
+
+        return $connection->table(self::LOGS)
+            ->select(['uuid', 'logged_at', 'level', 'message', 'context', 'exception', 'execution', 'type', 'name', 'user_id', 'server'])
+            ->where('logged_at', '>=', $this->now() - $window)
+            ->when($filters['levels'] ?? [], fn (Builder $query, array $levels) => $query->whereIn('level', $levels))
+            ->when(trim($filters['search'] ?? ''), fn (Builder $query, string $search) => $query->where('message', $like, '%'.$search.'%'))
+            ->when($filters['user'] ?? null, fn (Builder $query, string $user) => $query->where('user_id', $user))
+            ->orderByDesc('logged_at')
+            ->orderByDesc('uuid')
+            ->offset($offset)
+            ->limit($limit)
+            ->get()
+            ->map(fn (stdClass $row) => $this->castLog($row));
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function logUsers(int $window, int $limit = 100): array
+    {
+        return array_values($this->connection()->table(self::LOGS)
+            ->selectRaw('user_id, max(logged_at) as last_logged')
+            ->where('logged_at', '>=', $this->now() - $window)
+            ->whereNotNull('user_id')
+            ->groupBy('user_id')
+            ->orderByDesc('last_logged')
+            ->limit($limit)
+            ->pluck('user_id')
+            ->map(fn ($id) => (string) $id)
+            ->all());
+    }
+
+    /**
+     * @param  list<string>  $uuids
+     * @return list<string>
+     */
+    public function keptExecutions(array $uuids): array
+    {
+        return $uuids === [] ? [] : array_values($this->connection()->table(self::EXECUTIONS)
+            ->whereIn('uuid', $uuids)
+            ->pluck('uuid')
+            ->map(fn ($uuid) => (string) $uuid)
+            ->all());
     }
 
     /**
@@ -306,6 +403,12 @@ class DatabaseStorage implements Storage
         $connection->table(self::VALUES)
             ->where('timestamp', '<', $now - $retentionDays * 86_400)
             ->delete();
+
+        if ($this->logsInstalled()) {
+            $connection->table(self::LOGS)
+                ->where('logged_at', '<', $now - $retentionDays * 86_400)
+                ->delete();
+        }
 
         $connection->table(self::VALUES)
             ->where('type', Chats::TYPE)

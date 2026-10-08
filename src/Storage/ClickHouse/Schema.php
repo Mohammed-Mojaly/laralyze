@@ -11,6 +11,11 @@ class Schema
     public const TABLES = ['laralyze_aggregates', 'laralyze_values', 'laralyze_executions'];
 
     /**
+     * Added later: created on the first write that needs it, so an upgrade needs no step.
+     */
+    public const LOGS = 'laralyze_logs';
+
+    /**
      * The oldest ClickHouse Laralyze is tested with (an LTS release).
      */
     public const MINIMUM_VERSION = '24.8';
@@ -78,6 +83,33 @@ class Schema
             ) ENGINE = MergeTree
             PARTITION BY intDiv(started_at, 86400)
             ORDER BY (type, name_hash, started_at)
+            SQL);
+
+        self::createLogs($client);
+    }
+
+    /**
+     * Log entries, read newest first; old days are dropped whole.
+     */
+    public static function createLogs(Client $client): void
+    {
+        $client->statement(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS laralyze_logs (
+                uuid String,
+                logged_at Int64,
+                level LowCardinality(String),
+                message String CODEC(ZSTD(3)),
+                context String CODEC(ZSTD(3)),
+                exception String,
+                execution String,
+                type LowCardinality(String),
+                name String,
+                user_id String,
+                server LowCardinality(String),
+                INDEX user_idx user_id TYPE bloom_filter GRANULARITY 4
+            ) ENGINE = MergeTree
+            PARTITION BY intDiv(logged_at, 86400)
+            ORDER BY (logged_at, uuid)
             SQL);
     }
 

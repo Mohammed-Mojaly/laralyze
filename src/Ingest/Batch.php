@@ -7,7 +7,7 @@ use JsonException;
 /**
  * Several flushes merged into one write, by the same rules storage
  * applies: counts and sums add up, min and max keep the extreme, the
- * newest value wins, and executions are all kept.
+ * newest value wins, and executions and logs are all kept.
  */
 final class Batch
 {
@@ -27,18 +27,24 @@ final class Batch
     private array $executions = [];
 
     /**
+     * @var list<array<string, mixed>>
+     */
+    private array $logs = [];
+
+    /**
      * What one flush hands over, ready for the ingest table.
      *
      * @param  list<array{bucket: int, period: int, type: string, aggregate: string, key: string, value: float}>  $rows
      * @param  list<array{timestamp: int, type: string, key: string, value: string}>  $values
      * @param  list<array<string, mixed>>  $executions
+     * @param  list<array<string, mixed>>  $logs
      *
      * @throws JsonException
      */
-    public static function encode(array $rows, array $values, array $executions): string
+    public static function encode(array $rows, array $values, array $executions, array $logs = []): string
     {
         $json = json_encode(
-            ['rows' => $rows, 'values' => $values, 'executions' => $executions],
+            ['rows' => $rows, 'values' => $values, 'executions' => $executions, 'logs' => $logs],
             JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PRESERVE_ZERO_FRACTION | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
         );
 
@@ -47,7 +53,7 @@ final class Batch
     }
 
     /**
-     * @return array{rows: list<array{bucket: int, period: int, type: string, aggregate: string, key: string, value: float}>, values: list<array{timestamp: int, type: string, key: string, value: string}>, executions: list<array<string, mixed>>}
+     * @return array{rows: list<array{bucket: int, period: int, type: string, aggregate: string, key: string, value: float}>, values: list<array{timestamp: int, type: string, key: string, value: string}>, executions: list<array<string, mixed>>, logs: list<array<string, mixed>>}
      *
      * @throws JsonException
      */
@@ -59,18 +65,20 @@ final class Batch
             throw new JsonException('A Laralyze ingest payload is corrupt.');
         }
 
-        /** @var array{rows?: list<array{bucket: int, period: int, type: string, aggregate: string, key: string, value: float}>, values?: list<array{timestamp: int, type: string, key: string, value: string}>, executions?: list<array<string, mixed>>} $data */
+        /** @var array{rows?: list<array{bucket: int, period: int, type: string, aggregate: string, key: string, value: float}>, values?: list<array{timestamp: int, type: string, key: string, value: string}>, executions?: list<array<string, mixed>>, logs?: list<array<string, mixed>>} $data */
         $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
 
         return [
             'rows' => array_map(fn (array $row) => [...$row, 'value' => (float) $row['value']], $data['rows'] ?? []),
             'values' => $data['values'] ?? [],
             'executions' => $data['executions'] ?? [],
+            // Batches queued before an upgrade have none.
+            'logs' => $data['logs'] ?? [],
         ];
     }
 
     /**
-     * @param  array{rows: list<array{bucket: int, period: int, type: string, aggregate: string, key: string, value: float}>, values: list<array{timestamp: int, type: string, key: string, value: string}>, executions: list<array<string, mixed>>}  $flush
+     * @param  array{rows: list<array{bucket: int, period: int, type: string, aggregate: string, key: string, value: float}>, values: list<array{timestamp: int, type: string, key: string, value: string}>, executions: list<array<string, mixed>>, logs?: list<array<string, mixed>>}  $flush
      */
     public function add(array $flush): void
     {
@@ -104,6 +112,10 @@ final class Batch
         foreach ($flush['executions'] as $execution) {
             $this->executions[] = $execution;
         }
+
+        foreach ($flush['logs'] ?? [] as $log) {
+            $this->logs[] = $log;
+        }
     }
 
     /**
@@ -128,5 +140,13 @@ final class Batch
     public function executions(): array
     {
         return $this->executions;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function logs(): array
+    {
+        return $this->logs;
     }
 }
