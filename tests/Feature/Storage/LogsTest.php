@@ -289,5 +289,5 @@ it('lists logs on the logs page, filtered and expanded in place', function () {
         ->assertSee('GET /fine')
         ->assertDontSee('/laralyze/executions/'.$fine->execution, false);
 
-    $this->get('/laralyze/logs')->assertOk()->assertSee('wire:name="laralyze.log-list"', false);
+    $this->get('/laralyze/logs')->assertOk()->assertSeeLivewire('laralyze.log-list');
 });
