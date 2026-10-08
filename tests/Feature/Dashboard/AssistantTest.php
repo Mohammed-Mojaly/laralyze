@@ -331,3 +331,14 @@ it('shows no images in answers, so an answer can\'t send data anywhere by itself
         ->assertDontSee('src="https://evil.example', false)
         ->assertSee('href="https://laravel.com/docs"', false);
 });
+
+it('keeps links only to the docs and the app itself, so one click can\'t send data elsewhere', function () {
+    Assistant::fake([new TextResponse('Read [the docs](https://laravel.com/docs/queries), [PHP](https://www.php.net/json_encode), [this page](http://localhost/laralyze/requests) and [more](https://evil.test/c?d=secret).', new TextUsage(10, 10), new Meta('openai', 'gpt-4o-mini'))]);
+
+    Livewire::test('laralyze.assistant')->call('ask', 'general', '')->set('question', 'Why?')->call('send')->call('reply')
+        ->assertSee('href="https://laravel.com/docs/queries"', false)
+        ->assertSee('href="https://www.php.net/json_encode"', false)
+        ->assertSee('href="http://localhost/laralyze/requests"', false)
+        ->assertDontSee('href="https://evil.test', false)
+        ->assertSee('more');
+});

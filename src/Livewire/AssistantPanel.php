@@ -388,7 +388,28 @@ class AssistantPanel extends Component
         // An image loads by itself, so an answer could send data to any server: show its text instead.
         $html = (string) preg_replace_callback('/<img\b[^>]*>/i', fn (array $img) => preg_match('/\balt="([^"]*)"/i', $img[0], $alt) ? $alt[1] : '', $html);
 
+        // Links go only to the docs and the app itself; any other becomes its text.
+        $html = (string) preg_replace_callback('/<a\b[^>]*\bhref="([^"]*)"[^>]*>(.*?)<\/a>/is', fn (array $link) => $this->linkAllowed(html_entity_decode($link[1])) ? $link[0] : $link[2], $html);
+
         return (string) preg_replace('/<(p|li|ul|ol|h[1-6]|blockquote|td|th)>/', '<$1 dir="auto">', $html);
+    }
+
+    protected function linkAllowed(string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+
+        // A link within the page or the app, like /laralyze/requests.
+        if (! is_string($host)) {
+            return ! preg_match('/^[a-z][a-z0-9+.-]*:/i', $url) && ! str_starts_with($url, '//');
+        }
+
+        $host = strtolower($host);
+        $own = array_filter([request()->getHost(), parse_url((string) config('app.url'), PHP_URL_HOST)]);
+
+        return in_array($host, $own, true)
+            || in_array($host, ['laravel.com', 'php.net'], true)
+            || str_ends_with($host, '.laravel.com')
+            || str_ends_with($host, '.php.net');
     }
 
     protected function queue(string $question): void
