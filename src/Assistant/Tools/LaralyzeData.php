@@ -5,6 +5,7 @@ namespace MohammedMojaly\Laralyze\Assistant\Tools;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
+use MohammedMojaly\Laralyze\Assistant\Untrusted;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Dashboard\Issues;
 use MohammedMojaly\Laralyze\Dashboard\Range;
@@ -43,7 +44,7 @@ class LaralyzeData implements Tool
             default => $this->overview($window),
         };
 
-        return "## {$topic}, {$range->label()}\n\n{$data}";
+        return Untrusted::wrap("## {$topic}, {$range->label()}\n\n{$data}", 'LaralyzeData');
     }
 
     public function schema(JsonSchema $schema): array

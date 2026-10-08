@@ -6,6 +6,7 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use MohammedMojaly\Laralyze\Assistant\Files;
+use MohammedMojaly\Laralyze\Assistant\Untrusted;
 
 /**
  * Reads a file of the app, in the folders Laralyze may read.
@@ -21,7 +22,7 @@ class ReadFile implements Tool
 
     public function handle(Request $request): string
     {
-        return $this->files->read((string) $request['path'], isset($request['from']) ? (int) $request['from'] : null, isset($request['to']) ? (int) $request['to'] : null);
+        return Untrusted::wrap($this->files->read((string) $request['path'], isset($request['from']) ? (int) $request['from'] : null, isset($request['to']) ? (int) $request['to'] : null), 'ReadFile');
     }
 
     public function schema(JsonSchema $schema): array

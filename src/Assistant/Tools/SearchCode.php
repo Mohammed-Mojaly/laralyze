@@ -6,6 +6,7 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use MohammedMojaly\Laralyze\Assistant\Files;
+use MohammedMojaly\Laralyze\Assistant\Untrusted;
 
 /**
  * Finds where text appears in the app's code.
@@ -23,7 +24,7 @@ class SearchCode implements Tool
     {
         $matches = $this->files->search((string) $request['text']);
 
-        return $matches === [] ? 'No matches.' : implode("\n", $matches);
+        return Untrusted::wrap($matches === [] ? 'No matches.' : implode("\n", $matches), 'SearchCode');
     }
 
     public function schema(JsonSchema $schema): array

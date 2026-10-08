@@ -2,6 +2,10 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## Unreleased
+
+- **Security:** Ask AI no longer follows instructions hidden in what your app recorded. Anyone who could make the app throw or log a message could write text for the assistant, and it would obey it, for example greeting with given words or showing its own instructions. What the app recorded and what the tools return now reach the model as data, apart from its rules; text that talks to an AI assistant is pointed out as a possible prompt injection; and the assistant answers only questions about your app, in the language you write in. Answers no longer show images, which load by themselves and could carry data to another server. Update soon if you use Ask AI.
+
 ## v0.6.1 - 2026-10-08
 
 - **Fixed:** the dashboard's own requests no longer count toward your app's numbers. Livewire's checks on each card update ran before Laralyze knew the request was its own, so the Cache page showed a `livewire-checksum-failures:*` key that came from the dashboard polling.

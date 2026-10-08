@@ -385,6 +385,9 @@ class AssistantPanel extends Component
     {
         $html = Str::markdown($markdown, ['html_input' => 'escape', 'allow_unsafe_links' => false]);
 
+        // An image loads by itself, so an answer could send data to any server: show its text instead.
+        $html = (string) preg_replace_callback('/<img\b[^>]*>/i', fn (array $img) => preg_match('/\balt="([^"]*)"/i', $img[0], $alt) ? $alt[1] : '', $html);
+
         return (string) preg_replace('/<(p|li|ul|ol|h[1-6]|blockquote|td|th)>/', '<$1 dir="auto">', $html);
     }
 
