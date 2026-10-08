@@ -2,7 +2,7 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
-## Unreleased
+## v0.6.1 - 2026-10-08
 
 - **Fixed:** the dashboard's own requests no longer count toward your app's numbers. Livewire's checks on each card update ran before Laralyze knew the request was its own, so the Cache page showed a `livewire-checksum-failures:*` key that came from the dashboard polling.
 - The Cache keys table sorts by any column, and has a Total column, which it sorts by at first.
