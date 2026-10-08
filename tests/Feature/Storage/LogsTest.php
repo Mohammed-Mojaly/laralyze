@@ -154,18 +154,30 @@ it('keeps at most 200 per request, and counts them all', function () {
     logsWith();
 
     Route::get('/import', function () {
-        foreach (range(1, 250) as $i) {
+        foreach (range(1, 450) as $i) {
             Log::info("Row {$i} imported");
         }
 
         return 'ok';
     });
 
-    $this->get('/import');
+    asWebRequest(fn () => $this->get('/import'));
     Laralyze::flush();
 
     expect(app(Storage::class)->logs([], 3_600, 500))->toHaveCount(200)
-        ->and(app(Storage::class)->total('log', ['count'], 3_600, 'info')->count)->toEqual(250);
+        ->and(app(Storage::class)->total('log', ['count'], 3_600, 'info')->count)->toEqual(450);
+});
+
+it('writes early instead of dropping when a command logs a lot', function () {
+    logsWith();
+
+    foreach (range(1, 450) as $i) {
+        Log::info("Row {$i} imported");
+    }
+
+    Laralyze::flush();
+
+    expect(app(Storage::class)->logs([], 3_600, 500))->toHaveCount(450);
 });
 
 it('leaves out the logs of a filtered route, and ignored levels', function () {
@@ -224,14 +236,20 @@ it('keeps recording when an upgraded app has no logs table yet, and says so', fu
     }
 
     logsWith();
-    Schema::drop('laralyze_logs');
+    $migration = require __DIR__.'/../../../database/migrations/2026_10_08_000000_create_laralyze_logs_table.php';
+    $migration->down();
 
-    Log::info('Order placed');
-    Laralyze::record('checkout', 'pro')->count();
-    Laralyze::flush();
+    try {
+        Log::info('Order placed');
+        Laralyze::record('checkout', 'pro')->count();
+        Laralyze::flush();
 
-    expect(app(Storage::class)->total('checkout', ['count'], 3_600)->count)->toEqual(1)
-        ->and(collect(app(Health::class)->problems())->pluck('title')->all())->toContain('Logs aren\'t stored yet.');
+        expect(app(Storage::class)->total('checkout', ['count'], 3_600)->count)->toEqual(1)
+            ->and(collect(app(Health::class)->problems())->pluck('title')->all())->toContain('Logs aren\'t stored yet.');
+    } finally {
+        // MySQL and PostgreSQL keep the schema between tests.
+        $migration->up();
+    }
 });
 
 it('lists logs on the logs page, filtered and expanded in place', function () {

@@ -9,7 +9,7 @@ What Laralyze doesn't see, and where its numbers are estimates.
 - **p95 and p99** are estimates: values are counted in bins 25% wide.
 - **Timelines are a sample.** Slow, failed and throwing ones are always kept; the rest at `LARALYZE_TRACES_SAMPLE_RATE` (0.1). The list isn't a count of traffic; the other pages count every request.
 - **Events per timeline**: past `max_events` (500), events are counted but not listed.
-- **Log entries**: `info` and above by default (`LARALYZE_LOGS_LEVEL`). At most 200 per request or job, messages up to 4 KB, and context up to 8 KB, or it's left out; every message is still counted by level. A log entry links to its request or job only while that one's timeline is kept.
+- **Log entries**: `info` and above by default (`LARALYZE_LOGS_LEVEL`). At most 200 per web request (commands and jobs write early instead), messages up to 4 KB, and context up to 8 KB, or it's left out; every message is still counted by level. A log entry links to its request or job only while that one's timeline is kept, and with `Traces` off, entries written in jobs and commands don't say which one.
 - **Delay**: with database ingest, the dashboard is up to a minute behind.
 - **A full buffer**: a web request that records more than `LARALYZE_BUFFER` distinct metrics drops the rest, and the dashboard says so. Commands and jobs write early instead.
 - **Long-running commands** (`queue:work`, `horizon`, `octane:start`, `schedule:work`…) aren't traced themselves; their jobs are.

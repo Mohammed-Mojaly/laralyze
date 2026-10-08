@@ -1345,7 +1345,11 @@ body.lz-root {
 }
 
 .lz-search:focus-within {
-    border-color: var(--lz-line-strong);
+    border-color: var(--lz-accent);
+}
+
+.lz-root .lz-search input:focus-visible {
+    outline: 0;
 }
 
 .lz-search .lz-icon {
@@ -3168,27 +3172,98 @@ body.lz-root {
 }
 
 /* Logs: one line per entry, opened in place */
-.lz-select select {
+.lz-dropdown {
+    position: relative;
+}
+
+.lz-dropdown-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     height: 30px;
-    padding: 0 8px;
+    padding: 0 10px;
     border: 1px solid var(--lz-line);
     border-radius: 6px;
     background: var(--lz-surface-2);
-    color: var(--lz-ink-2);
+    color: var(--lz-ink);
     font: inherit;
-    font-size: 12px;
-}
-
-.lz-levels {
-    flex-wrap: wrap;
-}
-
-.lz-levels button {
+    font-size: 13px;
     white-space: nowrap;
+    cursor: pointer;
 }
 
-.lz-levels .lz-swatch {
-    margin-right: 5px;
+.lz-dropdown-button:hover,
+.lz-dropdown-button:focus-within {
+    border-color: var(--lz-line-strong);
+}
+
+.lz-dropdown-label {
+    color: var(--lz-ink-3);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.lz-dropdown-caret {
+    color: var(--lz-ink-3);
+    font-size: 10px;
+}
+
+.lz-dropdown-menu {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 6px);
+    right: 0;
+    display: grid;
+    gap: 2px;
+    min-width: 180px;
+    padding: 6px;
+    border: 1px solid var(--lz-line);
+    border-radius: 8px;
+    background: var(--lz-surface);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+}
+
+.lz-dropdown-menu .lz-button {
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.lz-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    color: var(--lz-ink);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.lz-check:hover {
+    background: var(--lz-surface-2);
+}
+
+.lz-check input {
+    margin: 0;
+    accent-color: var(--lz-accent);
+}
+
+.lz-select select {
+    max-width: 180px;
+    padding-right: 2px;
+    border: 0;
+    appearance: none;
+    background: none;
+    color: var(--lz-ink);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.lz-root .lz-select select:focus-visible {
+    outline: 0;
 }
 
 .lz-logs {
@@ -3292,5 +3367,10 @@ body.lz-root {
 
     .lz-log-source {
         display: none;
+    }
+
+    .lz-dropdown-menu {
+        right: auto;
+        left: 0;
     }
 }

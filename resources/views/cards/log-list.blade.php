@@ -2,28 +2,33 @@
     <x-slot:actions>
         <x-laralyze::search placeholder="Search messages" />
 
-        @if ($userIds !== [])
-            <label class="lz-select">
-                <span class="lz-visually-hidden">User</span>
-                <select wire:model.live="user">
-                    <option value="">All users</option>
-                    @foreach ($userIds as $id)
-                        <option value="{{ $id }}">{{ $users[$id] ?? $id }}</option>
-                    @endforeach
-                </select>
-            </label>
-        @endif
-
-        @if ($levelCounts !== [])
-            <div class="lz-segmented lz-levels" role="group" aria-label="Levels">
-                @foreach (array_keys($levelCounts) as $level)
-                    @php($on = in_array($level, $levels, true))
-                    <button type="button" wire:click="toggleLevel('{{ $level }}')" @class(['is-active' => $on]) aria-pressed="{{ $on ? 'true' : 'false' }}">
+        <div class="lz-dropdown" x-data="{ open: false }" x-on:click.outside="open = false" x-on:keydown.escape="open = false">
+            <button type="button" class="lz-dropdown-button" x-on:click="open = ! open" x-bind:aria-expanded="open">
+                <span class="lz-dropdown-label">Level</span>
+                {{ $levels === [] ? 'All' : (count($levels) === 1 ? ucfirst($levels[0]) : count($levels).' levels') }}
+                <span class="lz-dropdown-caret" aria-hidden="true">▾</span>
+            </button>
+            <div class="lz-dropdown-menu" x-show="open" x-cloak>
+                @foreach ($levelOptions as $level)
+                    <label class="lz-check">
+                        <input type="checkbox" value="{{ $level }}" wire:model.live="levels">
                         <span class="lz-swatch lz-s-{{ $level }}"></span>{{ ucfirst($level) }}
-                    </button>
+                    </label>
                 @endforeach
+                <button type="button" class="lz-button" wire:click="$set('levels', [])" @disabled($levels === [])>Clear</button>
             </div>
-        @endif
+        </div>
+
+        <label class="lz-dropdown-button lz-select">
+            <span class="lz-dropdown-label">User</span>
+            <select wire:model.live="user">
+                <option value="">All</option>
+                @foreach ($userIds as $id)
+                    <option value="{{ $id }}">{{ $users[$id] ?? $id }}</option>
+                @endforeach
+            </select>
+            <span class="lz-dropdown-caret" aria-hidden="true">▾</span>
+        </label>
     </x-slot:actions>
 
     @if ($logs->isEmpty())

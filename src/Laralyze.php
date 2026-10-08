@@ -46,8 +46,9 @@ class Laralyze
     public const MAX_SQL_IN_KEY = 1_200;
 
     /**
-     * Log entries kept per flush: a request, a job, or a command's batch.
-     * A loop that logs thousands of lines can't flood the table.
+     * Log entries held before a write. A web request keeps this many, so a
+     * loop that logs thousands of lines can't flood the table; commands and
+     * jobs write them and carry on.
      */
     public const MAX_LOGS = 200;
 
@@ -264,6 +265,11 @@ class Laralyze
      */
     public function addLog(array $log): void
     {
+        // A command or job writes what it has and carries on; a web request keeps the first ones.
+        if (count($this->logs) >= self::MAX_LOGS && $this->app->runningInConsole()) {
+            $this->write();
+        }
+
         if (count($this->logs) < self::MAX_LOGS) {
             $this->logs[] = $log;
         }

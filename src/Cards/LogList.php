@@ -41,15 +41,6 @@ class LogList extends Card
         }
     }
 
-    public function toggleLevel(string $level): void
-    {
-        $this->levels = in_array($level, $this->levels, true)
-            ? array_values(array_diff($this->levels, [$level]))
-            : [...$this->levels, $level];
-
-        $this->updated('levels');
-    }
-
     public function toggle(string $uuid): void
     {
         $this->open = $this->open === $uuid ? '' : $uuid;
@@ -89,7 +80,7 @@ class LogList extends Card
             'opened' => $opened,
             // Only a run that was kept with its timeline can be opened.
             'kept' => $opened?->execution !== null && app(Storage::class)->keptExecutions([$opened->execution]) !== [],
-            'levelCounts' => $this->levelCounts(),
+            'levelOptions' => $this->levelOptions(),
             'users' => $this->userNames([...$userIds, ...$logs->pluck('user_id')->filter()->all()]),
             'userIds' => $userIds,
             'more' => $rows->count() > $limit,
@@ -99,20 +90,15 @@ class LogList extends Card
     }
 
     /**
-     * Levels kept as entries, with how many were logged.
+     * The levels kept as entries, most severe first.
      *
-     * @return array<string, float>
+     * @return list<string>
      */
-    protected function levelCounts(): array
+    protected function levelOptions(): array
     {
-        $counts = $this->counts('log');
         $lowest = array_search(strtolower((string) config('laralyze.recorders.'.Logs::class.'.level', 'info')), Logs::LEVELS, true);
-        $kept = array_slice(Logs::LEVELS, 0, $lowest === false ? 7 : $lowest + 1);
 
-        return collect($kept)
-            ->filter(fn (string $level) => ($counts[$level] ?? 0) > 0 || in_array($level, $this->levels, true))
-            ->mapWithKeys(fn (string $level) => [$level => (float) ($counts[$level] ?? 0)])
-            ->all();
+        return array_slice(Logs::LEVELS, 0, $lowest === false ? 7 : $lowest + 1);
     }
 
     /**
