@@ -5,6 +5,7 @@ Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch 
 ## Unreleased
 
 - **Queries by connection.** Each database connection now keeps its own rows: the same SQL on two connections is two rows, not one. When your app uses more than one connection, the Queries page has a Connection menu at the top that filters the queries and slow queries, and each row shows its connection. A query's page shows its connection too. Queries recorded before the update have no connection; they show under All until they age out.
+- **Fixed:** Ask AI on a page that isn't about one issue opens a new conversation, instead of the last one about the whole app, which could be about anything. On an exception, query or route it still picks up that one's conversation. Older conversations stay on the Assistant page.
 - **Changed:** `Storage::aggregate()` takes an optional sixth argument, `$keyPrefix`, which keeps only the keys that start with it. Only code that implements Laralyze's storage needs to add it. Query keys are now `["connection","sql"]` and slow query keys `["connection","sql","file:line"]`; `Queries::parts()` and `Queries::slowParts()` read both, old and new.
 
 ## v0.6.2 - 2026-10-08

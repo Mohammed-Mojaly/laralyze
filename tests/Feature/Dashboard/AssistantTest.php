@@ -133,6 +133,20 @@ it('starts a new conversation and keeps the old one', function () {
         ->assertSee('nothing checks for stock');
 });
 
+it('opens a fresh conversation about the whole app, not the last one', function () {
+    shelfIsEmpty();
+    Assistant::fake([new TextResponse('One exception: LogicException.', new TextUsage(100, 10), new Meta('openai', 'gpt-4o-mini'))]);
+
+    // Closed and opened again on the same page: still the same conversation.
+    Livewire::test('laralyze.assistant')
+        ->call('ask')->set('question', 'What fails most?')->call('send')->call('reply')
+        ->call('close')->call('ask')
+        ->assertSee('One exception: LogicException.');
+
+    // Another page: a new one. The old one stays on the Assistant page.
+    Livewire::test('laralyze.assistant')->call('ask')->assertSet('chat', null)->assertDontSee('One exception: LogicException.');
+});
+
 it('answers questions about the whole app from what Laralyze recorded', function () {
     shelfIsEmpty();
     Assistant::fake([new TextResponse('One exception: LogicException.', new TextUsage(100, 10), new Meta('openai', 'gpt-4o-mini'))]);

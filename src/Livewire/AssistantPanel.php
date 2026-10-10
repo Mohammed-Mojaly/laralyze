@@ -117,10 +117,18 @@ class AssistantPanel extends Component
     public function ask(string $kind = 'general', string $key = ''): void
     {
         $subject = Subject::find($kind, $key, app(Storage::class)) ?? Subject::general();
+        $same = $subject->kind === $this->kind && $subject->key === $this->key;
 
         [$this->kind, $this->key, $this->open, $this->error, $this->thinking] = [$subject->kind, $subject->key, true, null, false];
-        // Nothing is asked until you pick a question or write one.
-        $this->chat = app(Chats::class)->latest($this->owner(), $subject);
+
+        // An issue picks up its latest conversation. The whole app starts a
+        // new one, unless it's already open on this page: the last one could
+        // be about anything. Nothing is asked until you pick or write a question.
+        $this->chat = match (true) {
+            $subject->kind !== 'general' => app(Chats::class)->latest($this->owner(), $subject),
+            $same => $this->chat,
+            default => null,
+        };
     }
 
     /**
