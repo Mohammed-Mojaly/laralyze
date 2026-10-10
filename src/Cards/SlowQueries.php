@@ -4,6 +4,7 @@ namespace MohammedMojaly\Laralyze\Cards;
 
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Lazy;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use MohammedMojaly\Laralyze\Livewire\Card;
 use MohammedMojaly\Laralyze\Recorders\Queries;
@@ -20,8 +21,17 @@ class SlowQueries extends Card
     /**
      * Only this connection's queries; every connection when empty.
      */
-    #[Url]
+    #[Url(except: '')]
     public string $connection = '';
+
+    /**
+     * Picked in the Queries page's top bar.
+     */
+    #[On('laralyze-connection')]
+    public function filterConnection(string $connection): void
+    {
+        $this->connection = $connection;
+    }
 
     public function render(): View
     {

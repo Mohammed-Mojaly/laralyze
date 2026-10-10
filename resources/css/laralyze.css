@@ -1652,11 +1652,18 @@ body.lz-root {
     }
 
     .lz-topbar-tools {
+        flex-wrap: wrap;
         width: 100%;
     }
 
     .lz-periods {
         flex: 1;
+    }
+
+    /* With a page's own filter, the periods get a row of their own. */
+    .lz-topbar-tools:has(.lz-connections) .lz-periods {
+        flex-basis: 100%;
+        order: 1;
     }
 
     .lz-periods a {
@@ -3248,6 +3255,39 @@ body.lz-root {
 .lz-check input {
     margin: 0;
     accent-color: var(--lz-accent);
+}
+
+.lz-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--lz-ink);
+    font-family: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.lz-option.lz-mono {
+    font-family: var(--lz-mono);
+}
+
+.lz-option:hover {
+    background: var(--lz-surface-2);
+}
+
+.lz-option.is-active {
+    color: var(--lz-accent);
+    font-weight: 600;
+}
+
+.lz-option.is-active::after {
+    content: "✓";
 }
 
 .lz-select select {

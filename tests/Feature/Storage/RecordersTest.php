@@ -139,10 +139,11 @@ it('filters queries by connection, and offers the choice once there are several'
     showCard('queries')->assertSee('books')->assertSee('sales')->assertSee('legacy')
         ->set('connection', 'reports')->assertSee('sales')->assertDontSee('books')->assertDontSee('legacy');
 
+    // Picked in the top bar.
     showCard('slow-queries')->assertSee('books')->assertSee('sales')
-        ->set('connection', 'reports')->assertSee('sales')->assertDontSee('books');
+        ->dispatch('laralyze-connection', connection: 'reports')->assertSet('connection', 'reports')->assertSee('sales')->assertDontSee('books');
 
-    $this->get('/laralyze/queries')->assertOk()->assertSee('lz-connections', false)->assertSee('reports');
+    $this->get('/laralyze/queries')->assertOk()->assertSee('class="lz-dropdown lz-connections"', false)->assertSee('reports');
 });
 
 it('offers no connection choice when the app uses one', function () {
@@ -151,7 +152,7 @@ it('offers no connection choice when the app uses one', function () {
     Laralyze::merge('query_connection', 'testing', ['count' => 1, 'sum' => 2]);
     Laralyze::flush();
 
-    $this->get('/laralyze/queries')->assertOk()->assertDontSee('lz-connections', false);
+    $this->get('/laralyze/queries')->assertOk()->assertDontSee('class="lz-dropdown lz-connections"', false);
 });
 
 it('counts cache hits, misses, writes and deletes per key group', function () {
