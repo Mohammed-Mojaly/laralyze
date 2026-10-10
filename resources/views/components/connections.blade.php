@@ -15,7 +15,7 @@
     <label class="lz-dropdown-button lz-select lz-connections">
         <span class="lz-dropdown-label">Connection</span>
         <select x-data x-on:change="window.location.href = $event.target.value">
-            <option value="{{ request()->fullUrlWithQuery(['connection' => null]) }}">All</option>
+            <option value="{{ request()->fullUrlWithoutQuery('connection') }}">All</option>
             @foreach ($names as $name)
                 <option value="{{ request()->fullUrlWithQuery(['connection' => $name]) }}" @selected($name === $current)>{{ $name }}</option>
             @endforeach
