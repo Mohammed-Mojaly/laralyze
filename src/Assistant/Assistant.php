@@ -63,7 +63,7 @@ class Assistant implements Agent, Conversational, HasTools
             Metrics and their keys:
             - request: requests, timed; key "GET /books/{book}". request_2xx, request_4xx, request_5xx: counts by status.
             - exception: count; key ["Class","file:line"] as JSON. exception_handled, exception_unhandled.
-            - query: queries, timed; key is the SQL. slow_query: key ["sql","file:line"].
+            - query: queries, timed; key ["connection","sql"]. slow_query: key ["connection","sql","file:line"].
             - job, command: runs, timed; key is the class or command. job_failed, command_failed.
             - http: outgoing requests, timed; key "GET host/path". http_failed.
             - cache_hit, cache_miss: key is the key group.

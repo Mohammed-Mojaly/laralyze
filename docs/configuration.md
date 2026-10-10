@@ -33,7 +33,7 @@ Settings live in `config/laralyze.php`, published by `php artisan laralyze:insta
 | Recorder | Records | Notes |
 |---|---|---|
 | `Requests` | Requests by route and status class, duration, slow requests | Livewire updates are grouped by component and method. Developer tools (`telescope`, `horizon`, `pulse`, `_boost`…) are ignored. |
-| `Queries` | Queries by SQL, connection, slow queries with the line that ran them | Lists and literals are folded. `location => false` skips finding the line. |
+| `Queries` | Queries by SQL and connection, slow queries with the line that ran them | Lists and literals are folded. `location => false` skips finding the line. |
 | `Exceptions` | Reported exceptions by class and line, users affected, the latest stack trace with code around app frames, and context | Handled means reported with `report()` or `rescue()`. |
 | `Jobs` | Queued, processed, released and failed per queue; wait time; duration per job | |
 | `ScheduledTasks` | Runs, failures and skips per task; last and next run | |

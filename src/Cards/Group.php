@@ -8,6 +8,7 @@ use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Locked;
 use MohammedMojaly\Laralyze\Livewire\Card;
 use MohammedMojaly\Laralyze\Recorders\Ai;
+use MohammedMojaly\Laralyze\Recorders\Queries;
 use MohammedMojaly\Laralyze\Recorders\Requests;
 use MohammedMojaly\Laralyze\Support\AiPrices;
 use MohammedMojaly\Laralyze\Support\Format;
@@ -94,6 +95,12 @@ class Group extends Card
     {
         if ($this->page === 'ai') {
             return $this->aiDetails();
+        }
+
+        if ($this->page === 'queries') {
+            $connection = Queries::parts($this->name)[0];
+
+            return $connection === '' ? [] : ['Connection' => [$connection, 'lz-mono']];
         }
 
         if ($this->page !== 'users') {

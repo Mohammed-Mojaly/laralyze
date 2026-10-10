@@ -86,11 +86,11 @@ abstract class Card extends Component
      * @param  list<string>  $aggregates  count, sum, min, max, avg, and percentiles like p95.
      * @return Collection<int, stdClass>
      */
-    protected function aggregate(string $type, array $aggregates, ?string $orderBy = null, int $limit = 100): Collection
+    protected function aggregate(string $type, array $aggregates, ?string $orderBy = null, int $limit = 100, ?string $keyPrefix = null): Collection
     {
         return $this->objects($this->remember(
-            ['aggregate', $type, $aggregates, $orderBy, $limit],
-            fn (Storage $storage, int $window) => $this->arrays($storage->aggregate($type, $aggregates, $window, $orderBy, $limit)),
+            ['aggregate', $type, $aggregates, $orderBy, $limit, $keyPrefix],
+            fn (Storage $storage, int $window) => $this->arrays($storage->aggregate($type, $aggregates, $window, $orderBy, $limit, $keyPrefix)),
         ));
     }
 

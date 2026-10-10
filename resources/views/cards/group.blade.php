@@ -61,7 +61,7 @@
 
     @if ($page === 'queries')
         <x-laralyze::card title="SQL" cols="7">
-            <pre class="lz-code"><code>{{ Sql::highlight(Sql::format($name)) }}</code></pre>
+            <pre class="lz-code"><code>{{ Sql::highlight(Sql::format(\MohammedMojaly\Laralyze\Recorders\Queries::parts($name)[1])) }}</code></pre>
         </x-laralyze::card>
     @endif
 </div>

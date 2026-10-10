@@ -96,12 +96,12 @@ interface Storage
     public function oldestBucket(): ?int;
 
     /**
-     * Per-key totals over a window.
+     * Per-key totals over a window, optionally only the keys that start with a prefix.
      *
      * @param  list<string>  $aggregates  Any of count, sum, min, max, avg, and percentiles like p95.
      * @return Collection<int, stdClass>
      */
-    public function aggregate(string $type, array $aggregates, int $window, ?string $orderBy = null, int $limit = 100): Collection;
+    public function aggregate(string $type, array $aggregates, int $window, ?string $orderBy = null, int $limit = 100, ?string $keyPrefix = null): Collection;
 
     /**
      * One set of totals across every key of a type, or for one key.

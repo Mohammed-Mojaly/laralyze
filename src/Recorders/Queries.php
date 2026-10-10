@@ -10,7 +10,7 @@ use MohammedMojaly\Laralyze\Support\Location;
 /**
  * Times every query. During the request it only adds each duration to a
  * running total per SQL string; fingerprinting and grouping happen after
- * the response is sent.
+ * the response is sent. Each connection keeps its own rows.
  */
 class Queries extends Recorder
 {
@@ -154,7 +154,7 @@ class Queries extends Recorder
                     $aggregates['h'.$bin] = $binCount;
                 }
 
-                $this->laralyze->merge('query', $key, $aggregates);
+                $this->laralyze->merge('query', self::key((string) $connection, $key), $aggregates);
                 $this->laralyze->merge('query_connection', (string) $connection, ['count' => $count, 'sum' => $sum]);
                 $this->laralyze->merge('query_kind', $this->isRead($key) ? 'read' : 'write', ['count' => $count, 'sum' => $sum]);
             }
@@ -167,8 +167,67 @@ class Queries extends Recorder
                 continue;
             }
 
-            $this->laralyze->record('slow_query', (string) json_encode([Laralyze::cut($key, Laralyze::MAX_SQL_IN_KEY), $query['location']]), $query['time'])->count()->max();
+            $this->laralyze->record('slow_query', self::slowKey($query['connection'], Laralyze::cut($key, Laralyze::MAX_SQL_IN_KEY), $query['location']), $query['time'])->count()->max();
         }
+    }
+
+    /**
+     * A query's key: ["connection","sql"].
+     */
+    public static function key(string $connection, string $sql): string
+    {
+        return self::encode([$connection, $sql]);
+    }
+
+    /**
+     * A slow query's key: ["connection","sql","file:line"].
+     */
+    public static function slowKey(string $connection, string $sql, ?string $location): string
+    {
+        return self::encode([$connection, $sql, $location]);
+    }
+
+    /**
+     * What every key of a connection starts with.
+     */
+    public static function prefix(string $connection): string
+    {
+        return substr(self::encode([$connection]), 0, -1).',';
+    }
+
+    /**
+     * [connection, sql]. Keys from before connections were kept are the
+     * SQL alone, with no connection.
+     *
+     * @return array{0: string, 1: string}
+     */
+    public static function parts(string $key): array
+    {
+        $parts = json_decode($key, true);
+
+        return is_array($parts) && count($parts) === 2 && is_string($parts[0] ?? null) && is_string($parts[1] ?? null)
+            ? [$parts[0], $parts[1]]
+            : ['', $key];
+    }
+
+    /**
+     * [connection, sql, location]. Older keys were ["sql","file:line"].
+     *
+     * @return array{0: string, 1: string, 2: string}
+     */
+    public static function slowParts(string $key): array
+    {
+        $parts = array_map(fn ($part) => (string) $part, (array) json_decode($key, true));
+
+        return count($parts) === 3 ? [$parts[0], $parts[1], $parts[2]] : ['', $parts[0] ?? $key, $parts[1] ?? ''];
+    }
+
+    /**
+     * @param  list<string|null>  $parts
+     */
+    protected static function encode(array $parts): string
+    {
+        return (string) json_encode($parts, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 
     /**

@@ -275,7 +275,7 @@ class ClickHouseStorage implements Storage
         return $bucket === null ? null : (int) $bucket;
     }
 
-    public function aggregate(string $type, array $aggregates, int $window, ?string $orderBy = null, int $limit = 100): Collection
+    public function aggregate(string $type, array $aggregates, int $window, ?string $orderBy = null, int $limit = 100, ?string $keyPrefix = null): Collection
     {
         [$plain, $percentiles] = $this->parseAggregates($aggregates);
 
@@ -283,6 +283,10 @@ class ClickHouseStorage implements Storage
         $selected = $plain === [] ? ['count'] : $plain;
         $order = $orderBy === null ? '' : ' ORDER BY '.$this->assertKnown($orderBy, $selected).' DESC';
         [$where, $params] = $this->window($type, $window);
+
+        if ($keyPrefix !== null) {
+            [$where, $params] = ["{$where} AND startsWith(key, {prefix:String})", [...$params, 'prefix' => $keyPrefix]];
+        }
 
         $rows = collect($this->client->select(
             "SELECT key_hash, any(key) AS key, {$this->columns($selected)} FROM laralyze_aggregates WHERE {$where} AND aggregate IN {stored:Array(String)} GROUP BY key_hash{$order} LIMIT {limit:UInt32}",

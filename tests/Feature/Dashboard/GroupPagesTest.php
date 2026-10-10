@@ -84,6 +84,21 @@ it('shows a query formatted and highlighted', function () {
         ->assertSeeInOrder(['Calls', '3', 'Total time', '6 ms']);
 });
 
+it('shows a query with its connection', function () {
+    $key = Recorders\Queries::key('reports', 'select * from `sales`');
+    Laralyze::merge('query', $key, ['count' => 1, 'sum' => 2, 'max' => 2, 'h4' => 1]);
+    Laralyze::flush();
+
+    listCard('queries')->assertSee(groupPath('queries', $key));
+
+    $this->get(groupPath('queries', $key))->assertOk()->assertSee('<title>select * from `sales`', false);
+
+    groupCard('queries', $key)
+        ->assertSeeInOrder(['Connection', 'reports'])
+        ->assertSee('<span class="lz-sql-id">`sales`</span>', escape: false)
+        ->assertDontSee('[&quot;reports&quot;', escape: false);
+});
+
 it('opens commands and outgoing URLs too', function () {
     Laralyze::record('command', 'migrate', 3_000)->avg()->max();
     Laralyze::record('http_failed', 'GET api.example.com/users/*')->count();

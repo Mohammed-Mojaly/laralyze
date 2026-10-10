@@ -18,9 +18,9 @@
             @foreach ($queries as $query)
                 <tr wire:key="{{ md5($query->key) }}">
                     <td class="lz-wrap">
-                        <a class="lz-row-link" href="{{ $this->groupUrl('queries', $query->sql) }}"><code class="lz-sql" title="{{ $query->sql }}">{{ Sql::highlight($query->sql) }}</code></a>
-                        @if ($query->location)
-                            <span class="lz-sub lz-mono">{{ $query->location }}</span>
+                        <a class="lz-row-link" href="{{ $this->groupUrl('queries', $query->group) }}"><code class="lz-sql" title="{{ $query->sql }}">{{ Sql::highlight($query->sql) }}</code></a>
+                        @if ($query->location || ($connections && $query->connection !== ''))
+                            <span class="lz-sub lz-mono">{{ implode(' · ', array_filter([$query->location, $connections ? $query->connection : ''])) }}</span>
                         @endif
                     </td>
                     <td class="lz-num lz-strong">{{ Format::number($query->count) }}</td>

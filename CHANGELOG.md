@@ -2,6 +2,11 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## Unreleased
+
+- **Queries by connection.** Each database connection now keeps its own rows: the same SQL on two connections is two rows, not one. When your app uses more than one connection, the Queries page has a Connection menu at the top that filters the queries and slow queries, and each row shows its connection. A query's page shows its connection too. Queries recorded before the update have no connection; they show under All until they age out.
+- **Changed:** `Storage::aggregate()` takes an optional sixth argument, `$keyPrefix`, which keeps only the keys that start with it. Only code that implements Laralyze's storage needs to add it. Query keys are now `["connection","sql"]` and slow query keys `["connection","sql","file:line"]`; `Queries::parts()` and `Queries::slowParts()` read both, old and new.
+
 ## v0.6.2 - 2026-10-08
 
 - **Security:** Ask AI no longer follows instructions hidden in what your app recorded. Anyone who could make the app throw or log a message could write text for the assistant, and it would obey it, for example greeting with given words or showing its own instructions. What the app recorded and what the tools return now reach the model as data, apart from its rules; text that talks to an AI assistant is pointed out as a possible prompt injection; and the assistant answers only questions about your app, in the language you write in. Answers no longer show images, which load by themselves and could carry data to another server, and their links go only to laravel.com, php.net or your app; others show as plain text. Update soon if you use Ask AI.

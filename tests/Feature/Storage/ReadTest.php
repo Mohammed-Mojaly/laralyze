@@ -51,6 +51,21 @@ it('orders by an aggregate and limits the result', function () {
     expect($rows->pluck('key')->all())->toBe(['GET /b', 'GET /c']);
 });
 
+it('narrows to keys that start with a prefix', function () {
+    $now = $this->now->getTimestamp();
+    foreach (['["mysql","select 1"]', '["my_ql","select 2"]', '["myXql","select 3"]', '["50%","select 4"]', '["pgsql","select 5"]'] as $key) {
+        requestAt($now - 60, $key, 10);
+    }
+    Laralyze::flush();
+
+    $keys = fn (string $prefix) => $this->storage->aggregate('request', ['count', 'p95'], 3_600, keyPrefix: $prefix)->pluck('key')->all();
+
+    expect($keys('["mysql",'))->toBe(['["mysql","select 1"]'])
+        ->and($keys('["my_ql",'))->toBe(['["my_ql","select 2"]'])
+        ->and($keys('["50%",'))->toBe(['["50%","select 4"]'])
+        ->and($keys('["none",'))->toBe([]);
+});
+
 it('estimates percentiles per key', function () {
     $now = $this->now->getTimestamp();
     foreach (range(1, 100) as $duration) {

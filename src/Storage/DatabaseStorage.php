@@ -446,7 +446,7 @@ class DatabaseStorage implements Storage
      * @param  list<string>  $aggregates  Any of count, sum, min, max, avg, and percentiles like p95.
      * @return Collection<int, stdClass>
      */
-    public function aggregate(string $type, array $aggregates, int $window, ?string $orderBy = null, int $limit = 100): Collection
+    public function aggregate(string $type, array $aggregates, int $window, ?string $orderBy = null, int $limit = 100, ?string $keyPrefix = null): Collection
     {
         [$plain, $percentiles] = $this->parseAggregates($aggregates);
 
@@ -460,6 +460,15 @@ class DatabaseStorage implements Storage
             ->selectRaw('max('.$grammar->wrap('key').') as '.$grammar->wrap('key'))
             ->groupBy('key_hash')
             ->limit($limit);
+
+        if ($keyPrefix !== null) {
+            // A plain comparison: LIKE treats _ and % (and [ on SQL Server) as wildcards.
+            $query->whereRaw(match ($this->connection()->getDriverName()) {
+                'mysql', 'mariadb' => 'substr(`key`, 1, ?) = ?',
+                'sqlsrv' => 'substring([key], 1, ?) = ?',
+                default => 'substr("key", 1, ?) = ?',
+            }, [mb_strlen($keyPrefix), $keyPrefix]);
+        }
 
         foreach ($selected as $aggregate) {
             $query->selectRaw($this->aggregateSql($aggregate).' as '.$grammar->wrap($aggregate));

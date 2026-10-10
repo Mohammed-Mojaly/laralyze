@@ -3,6 +3,7 @@
 namespace MohammedMojaly\Laralyze\Dashboard;
 
 use MohammedMojaly\Laralyze\Contracts\Storage;
+use MohammedMojaly\Laralyze\Recorders\Queries;
 
 /**
  * Pages whose rows open a page of their own: one route, job, command,
@@ -39,6 +40,7 @@ final class Groups
             'users' => (string) (json_decode((string) $storage->values('user', [$key])->first()?->value, true)['name'] ?? $key),
             'exceptions' => (string) ($storage->values('exception_message', [$key])->first()->value ?? json_decode($key, true)[0] ?? $key),
             'ai' => (string) (json_decode($key, true)[1] ?? $key),
+            'queries' => Queries::parts($key)[1],
             default => $key,
         };
     }

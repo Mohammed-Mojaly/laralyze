@@ -73,10 +73,12 @@ it('groups queries by their SQL, with lists folded together', function () {
     DB::table('widgets')->insert(['name' => 'Gear']);
     Laralyze::flush();
 
-    $sql = collect(rowsOf('query'))->keys()->first(fn (string $key) => str_contains($key, 'widgets') && str_contains($key, 'in (...)'));
+    $key = collect(rowsOf('query'))->keys()->first(fn (string $key) => str_contains($key, 'widgets') && str_contains($key, 'in (...)'));
 
-    expect($sql)->not->toBeNull()
-        ->and(countOf('query', $sql))->toBe(2.0)
+    expect($key)->not->toBeNull()
+        ->and(Recorders\Queries::parts($key)[0])->toBe('testing')
+        ->and(Recorders\Queries::parts($key)[1])->toStartWith('select * from ')
+        ->and(countOf('query', $key))->toBe(2.0)
         ->and(countOf('query_kind', 'read'))->toBeGreaterThanOrEqual(2.0)
         ->and(countOf('query_kind', 'write'))->toBeGreaterThanOrEqual(1.0)
         ->and(countOf('query_connection', 'testing'))->toBeGreaterThanOrEqual(3.0);
@@ -114,12 +116,42 @@ it('lists slow queries with the line that ran them', function () {
     DB::table('widgets')->where('id', 1)->first();
     Laralyze::flush();
 
-    $slow = collect(rowsOf('slow_query'))->keys()->map(fn (string $key) => json_decode($key, true))
-        ->first(fn (array $parts) => str_contains($parts[0], 'widgets'));
+    $slow = collect(rowsOf('slow_query'))->keys()->map(fn (string $key) => Recorders\Queries::slowParts($key))
+        ->first(fn (array $parts) => str_contains($parts[1], 'widgets'));
 
-    expect($slow[1])->toContain('RecordersTest.php:');
+    expect($slow[0])->toBe('testing')
+        ->and($slow[2])->toContain('RecordersTest.php:');
 
     showCard('slow-queries')->assertSee('widgets')->assertSee('RecordersTest.php');
+});
+
+it('filters queries by connection, and offers the choice once there are several', function () {
+    foreach (['mysql' => 'select * from books', 'reports' => 'select * from sales'] as $connection => $sql) {
+        Laralyze::merge('query', Recorders\Queries::key($connection, $sql), ['count' => 1, 'sum' => 2, 'max' => 2, 'h4' => 1]);
+        Laralyze::merge('query_connection', $connection, ['count' => 1, 'sum' => 2]);
+        Laralyze::record('slow_query', Recorders\Queries::slowKey($connection, $sql, 'app/Report.php:12'), 2)->count()->max();
+    }
+
+    // Recorded before connections were kept: the SQL alone.
+    Laralyze::merge('query', 'select * from legacy', ['count' => 1, 'sum' => 2, 'max' => 2, 'h4' => 1]);
+    Laralyze::flush();
+
+    showCard('queries')->assertSee('books')->assertSee('sales')->assertSee('legacy')
+        ->set('connection', 'reports')->assertSee('sales')->assertDontSee('books')->assertDontSee('legacy');
+
+    showCard('slow-queries')->assertSee('books')->assertSee('sales')
+        ->set('connection', 'reports')->assertSee('sales')->assertDontSee('books');
+
+    $this->get('/laralyze/queries')->assertOk()->assertSee('lz-connections', false)->assertSee('reports');
+});
+
+it('offers no connection choice when the app uses one', function () {
+    // The test database's own connection.
+    Laralyze::merge('query', Recorders\Queries::key('testing', 'select * from books'), ['count' => 1, 'sum' => 2, 'max' => 2, 'h4' => 1]);
+    Laralyze::merge('query_connection', 'testing', ['count' => 1, 'sum' => 2]);
+    Laralyze::flush();
+
+    $this->get('/laralyze/queries')->assertOk()->assertDontSee('lz-connections', false);
 });
 
 it('counts cache hits, misses, writes and deletes per key group', function () {

@@ -1,6 +1,7 @@
 {{-- A dashboard page. A group page passes its own title, and links back to its list. --}}
 {{-- "ask" is what Ask AI is about here: [kind, key]; the whole app when not given. --}}
 {{-- "tools" off gives the whole area to the page, without the heading, periods or Ask AI. --}}
+{{-- A "filters" slot adds the page's own choices to the top bar, like the Queries page's connection. --}}
 @props(['title' => null, 'mono' => false, 'page' => null, 'ask' => null, 'tools' => true])
 @inject('pages', 'MohammedMojaly\Laralyze\Dashboard\Pages')
 @inject('health', 'MohammedMojaly\Laralyze\Dashboard\Health')
@@ -26,6 +27,7 @@
                     </div>
 
                     <div class="lz-topbar-tools">
+                        {{ $filters ?? '' }}
                         @unless ($health->blocking())
                             <x-laralyze::ask :kind="$ask[0] ?? 'general'" :key="$ask[1] ?? ''" />
                         @endunless

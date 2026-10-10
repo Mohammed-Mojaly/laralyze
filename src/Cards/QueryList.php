@@ -4,8 +4,11 @@ namespace MohammedMojaly\Laralyze\Cards;
 
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Lazy;
+use Livewire\Attributes\Url;
 use MohammedMojaly\Laralyze\Livewire\Card;
 use MohammedMojaly\Laralyze\Livewire\Concerns\ListsRows;
+use MohammedMojaly\Laralyze\Recorders\Queries;
+use stdClass;
 
 /**
  * Queries grouped by their SQL, the most expensive first.
@@ -19,15 +22,35 @@ class QueryList extends Card
 
     public int $limit = 100;
 
+    /**
+     * Only this connection's queries; every connection when empty.
+     */
+    #[Url]
+    public string $connection = '';
+
     public function render(): View
     {
-        $queries = $this->aggregate('query', ['count', 'sum', 'avg', 'p95', 'max'], orderBy: 'sum', limit: $this->limit);
+        $queries = $this->aggregate('query', ['count', 'sum', 'avg', 'p95', 'max'], orderBy: 'sum', limit: $this->limit, keyPrefix: $this->connection === '' ? null : Queries::prefix($this->connection))
+            ->each(function (stdClass $query) {
+                [$query->connection, $query->sql] = Queries::parts((string) $query->key);
+            });
 
-        return view('laralyze::cards.query-list', ['queries' => $this->arrange($queries)]);
+        return view('laralyze::cards.query-list', [
+            'queries' => $this->arrange($queries, 'sql'),
+            'connections' => $queries->pluck('connection')->unique()->count() > 1,
+        ]);
     }
 
     protected function sortable(): array
     {
-        return ['sum', 'key', 'count', 'avg', 'p95', 'max'];
+        return ['sum', 'sql', 'count', 'avg', 'p95', 'max'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function textColumns(): array
+    {
+        return ['sql'];
     }
 }

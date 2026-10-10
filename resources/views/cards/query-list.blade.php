@@ -13,7 +13,7 @@
     @else
         <x-laralyze::table class="lz-table-links">
             <x-slot:head>
-                <x-laralyze::sort-header :card="$this" column="key" :num="false">Query</x-laralyze::sort-header>
+                <x-laralyze::sort-header :card="$this" column="sql" :num="false">Query</x-laralyze::sort-header>
                 <x-laralyze::sort-header :card="$this" column="count">Calls</x-laralyze::sort-header>
                 <x-laralyze::sort-header :card="$this" column="sum">Total</x-laralyze::sort-header>
                 <x-laralyze::sort-header :card="$this" column="avg">Avg</x-laralyze::sort-header>
@@ -24,7 +24,10 @@
             @foreach ($queries as $query)
                 <tr wire:key="{{ md5($query->key) }}">
                     <td class="lz-wrap">
-                        <a class="lz-row-link" href="{{ $this->groupUrl('queries', $query->key) }}"><code class="lz-sql" title="{{ $query->key }}">{{ Sql::highlight($query->key) }}</code></a>
+                        <a class="lz-row-link" href="{{ $this->groupUrl('queries', $query->key) }}"><code class="lz-sql" title="{{ $query->sql }}">{{ Sql::highlight($query->sql) }}</code></a>
+                        @if ($connections && $query->connection !== '')
+                            <span class="lz-sub lz-mono">{{ $query->connection }}</span>
+                        @endif
                     </td>
                     <td class="lz-num">{{ Format::number($query->count) }}</td>
                     <td class="lz-num lz-strong">{{ Format::duration($query->sum) }}</td>

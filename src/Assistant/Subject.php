@@ -5,6 +5,7 @@ namespace MohammedMojaly\Laralyze\Assistant;
 use MohammedMojaly\Laralyze\Cards\ExceptionDetail;
 use MohammedMojaly\Laralyze\Cards\Findings;
 use MohammedMojaly\Laralyze\Contracts\Storage;
+use MohammedMojaly\Laralyze\Recorders\Queries;
 use MohammedMojaly\Laralyze\Support\Format;
 use stdClass;
 
@@ -42,7 +43,7 @@ final class Subject
             'exception' => 'Exception · '.class_basename($first).($second !== '' ? ' · '.$second : ''),
             'n_plus_one' => 'N+1 · '.($second !== '' ? $second : 'query'),
             'duplicate_query' => 'Duplicate query · '.($second !== '' ? $second : 'query'),
-            'query' => 'Query · '.mb_strimwidth($key, 0, 60, '…'),
+            'query' => 'Query · '.mb_strimwidth(Queries::parts($key)[1], 0, 60, '…'),
             'request' => 'Route · '.$key,
             'execution' => self::executionLabel($storage->execution($key)),
             default => null,
@@ -143,21 +144,23 @@ final class Subject
     protected function query(Storage $storage, Files $files): string
     {
         $totals = $storage->total('query', ['count', 'avg', 'p95', 'max'], self::WEEK, $this->key);
+        [$connection, $sql] = Queries::parts($this->key);
 
         $lines = [
             '## A query',
             '',
             '```sql',
-            $this->key,
+            $sql,
             '```',
             '',
+            ...($connection === '' ? [] : ["- **Connection:** {$connection}"]),
             '- **Last 7 days:** '.Format::number($totals->count ?? 0).' runs, average '.Format::duration($totals->avg ?? null).', p95 '.Format::duration($totals->p95 ?? null).', slowest '.Format::duration($totals->max ?? null),
         ];
 
         foreach ($storage->aggregate('slow_query', ['count', 'max'], self::WEEK, 'count', 1_000) as $row) {
-            [$sql, $location] = array_pad(array_map('strval', (array) json_decode((string) $row->key, true)), 2, '');
+            [$slowConnection, $slowSql, $location] = Queries::slowParts((string) $row->key);
 
-            if ($sql === $this->key && $location !== '') {
+            if ($slowSql === $sql && $slowConnection === $connection && $location !== '') {
                 $lines[] = "- **Slow {$row->count} times at** `{$location}`, slowest ".Format::duration($row->max);
 
                 if (preg_match('/^(.+):(\d+)$/', $location, $match)) {
