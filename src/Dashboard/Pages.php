@@ -15,7 +15,7 @@ class Pages
     public const HOME = 'dashboard';
 
     // System sits at the foot of the sidebar.
-    protected const SECTIONS = ['Issues', 'Activity', 'Inside', 'Audience', 'System'];
+    protected const SECTIONS = ['Issues', 'Activity', 'Inside', 'Database', 'Audience', 'System'];
 
     /**
      * @var array<string, Page>|null
@@ -116,8 +116,8 @@ class Pages
             'findings' => $page('Findings', 'Issues', Recorders\Traces::class, 'findings'),
             // Only for apps that use laravel/ai.
             ...(interface_exists('Laravel\Ai\Contracts\Agent') ? ['ai' => $page('AI', 'Inside', Recorders\Ai::class, 'ai')] : []),
-            'queries' => $page('Queries', 'Inside', Recorders\Queries::class, 'queries'),
-            'database' => $page('Database', 'Inside', Recorders\Database::class, 'database'),
+            'queries' => $page('Queries', 'Database', Recorders\Queries::class, 'queries'),
+            'database' => $page('Database', 'Database', Recorders\Database::class, 'database'),
             'cache' => $page('Cache', 'Inside', Recorders\Cache::class, 'cache'),
             'outgoing-requests' => $page('Outgoing Requests', 'Inside', Recorders\OutgoingRequests::class, 'outgoing-requests'),
             'mail' => $page('Mail', 'Inside', Recorders\Mail::class, 'mail'),

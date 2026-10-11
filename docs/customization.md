@@ -165,7 +165,7 @@ On Livewire 3, `make-card` creates a class and a view instead: return the same a
 ],
 ```
 
-Built-in pages sit under Issues, Activity, Inside and Audience, with System (Servers) at the foot of the sidebar. Use one of those as `section`, or a new name to add a section before System. `icon` takes a built-in page's name (`requests`, `queries`, `ai`, `users`…), `folder`, `monitor` or `page`, the default.
+Built-in pages sit under Issues, Activity, Inside, Database and Audience, with System (Servers) at the foot of the sidebar. Use one of those as `section`, or a new name to add a section before System. `icon` takes a built-in page's name (`requests`, `queries`, `ai`, `users`…), `folder`, `monitor` or `page`, the default.
 
 ```blade
 {{-- resources/views/laralyze/checkout.blade.php --}}
