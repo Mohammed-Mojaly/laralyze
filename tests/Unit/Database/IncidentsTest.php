@@ -97,6 +97,11 @@ it('says nothing about deadlocks and restarts on the first look', function () {
     expect(Incidents::found(lookWith(extra: ['deadlock' => ['at' => 'old', 'transactions' => []], 'deadlocks' => 9]), []))->toBe([]);
 });
 
+it('says nothing about a deadlock it has no count to compare with', function () {
+    // The first count only notes the last deadlock there was.
+    expect(Incidents::found(lookWith(extra: ['deadlock' => ['at' => 'old', 'transactions' => []], 'deadlocks' => 9]), ['started_at' => 1_000]))->toBe([]);
+});
+
 it('notes a restart', function () {
     expect(Incidents::found(lookWith(extra: ['started_at' => 5_000]), ['started_at' => 1_000, 'deadlocks' => 4]))
         ->toHaveKey('restart:5000');

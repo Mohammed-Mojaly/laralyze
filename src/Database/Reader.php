@@ -23,6 +23,7 @@ class Reader
         return match ($db->getDriverName()) {
             'mysql', 'mariadb' => new Readers\MySql($db, $longRunning),
             'pgsql' => new Readers\Postgres($db, $longRunning),
+            'sqlsrv' => new Readers\SqlServer($db, $longRunning),
             default => new self($db, $longRunning),
         };
     }
@@ -47,6 +48,17 @@ class Reader
     public function look(): array
     {
         return ['checks' => [], 'sessions' => [], 'deadlocks' => null, 'deadlock' => null];
+    }
+
+    /**
+     * The last deadlock's details, for an engine that keeps them somewhere
+     * costlier to read than a look: read only when the count goes up.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function latestDeadlock(): ?array
+    {
+        return null;
     }
 
     /**

@@ -132,7 +132,7 @@ class Database extends Recorder
             $previous = $this->storage->values('database_size', [$name])->first();
             $size = $this->due($name, (int) ($previous->timestamp ?? 0)) ? $this->measure($db, $reader, json_decode((string) ($previous->value ?? ''), true)) : null;
 
-            return [$now, $this->incidents($name, [...$look, 'started_at' => $now['started_at']], $at), $size];
+            return [$now, $this->incidents($name, [...$look, 'started_at' => $now['started_at']], $at, $reader), $size];
         });
 
         foreach ($now['checks'] as $check) {
@@ -174,7 +174,7 @@ class Database extends Recorder
      * @param  array<string, mixed>  $look
      * @return array{0: list<array<string, mixed>>, 1: list<array<string, mixed>>, 2: int}
      */
-    protected function incidents(string $name, array $look, int $at): array
+    protected function incidents(string $name, array $look, int $at, ?Reader $reader = null): array
     {
         // A cache that forgets between runs of the scheduler would start every incident anew.
         if ($this->laralyze->rescue(fn () => in_array(Cache::getStore()::class, [ArrayStore::class, NullStore::class], true), true)) {
@@ -185,6 +185,8 @@ class Database extends Recorder
         $before = (array) $this->laralyze->rescue(fn () => Cache::get($key, []), []);
         $today = now()->toDateString();
         $kept = ($before['day'] ?? null) === $today ? (int) ($before['kept'] ?? 0) : 0;
+
+        [$look, $waiting] = $this->deadlockDetails($look, $before, $at, $reader);
 
         [$open, $save, $new] = Incidents::track((array) ($before['open'] ?? []), Incidents::found($look, $before), $at, max(0, Incidents::PER_DAY - $kept));
 
@@ -197,10 +199,48 @@ class Database extends Recorder
             'open' => $open,
             'deadlocks' => $deadlocks ?? $counted,
             'deadlock_at' => $look['deadlock']['at'] ?? $before['deadlock_at'] ?? null,
+            'deadlocks_waiting' => $waiting,
             'started_at' => $look['started_at'] ?? $before['started_at'] ?? null,
         ], 86_400));
 
         return [$save, $new, $deadlocks !== null && $counted !== null ? max(0, $deadlocks - $counted) : 0];
+    }
+
+    /**
+     * Some engines keep a deadlock's details where they cost more to read
+     * than a look, and write them a minute or two after counting it. They're
+     * read only when the count goes up, and waited for up to three minutes;
+     * meanwhile the new deadlocks aren't counted yet. Returns the look, and
+     * since when its deadlocks wait for their details.
+     *
+     * @param  array<string, mixed>  $look
+     * @param  array<string, mixed>  $before
+     * @return array{0: array<string, mixed>, 1: int|null}
+     */
+    protected function deadlockDetails(array $look, array $before, int $at, ?Reader $reader): array
+    {
+        if ($reader === null || ($look['deadlock'] ?? null) !== null || ! isset($look['deadlocks'])) {
+            return [$look, null];
+        }
+
+        // The first count notes the last deadlock there is, to tell a new one from it.
+        if (! isset($before['deadlocks'])) {
+            return [[...$look, 'deadlock' => $this->laralyze->rescue(fn () => $reader->latestDeadlock())], null];
+        }
+
+        if ($look['deadlocks'] <= $before['deadlocks']) {
+            return [$look, null];
+        }
+
+        $deadlock = $this->laralyze->rescue(fn () => $reader->latestDeadlock());
+
+        if (is_array($deadlock) && $deadlock['at'] !== ($before['deadlock_at'] ?? null)) {
+            return [[...$look, 'deadlock' => $deadlock], null];
+        }
+
+        $since = (int) ($before['deadlocks_waiting'] ?? $at);
+
+        return $at - $since < 180 ? [[...$look, 'deadlocks' => $before['deadlocks']], $since] : [$look, null];
     }
 
     /**

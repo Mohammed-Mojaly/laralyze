@@ -320,7 +320,7 @@ class MySql extends Reader
      *
      * @return array<string, mixed>|null
      */
-    protected function latestDeadlock(): ?array
+    public function latestDeadlock(): ?array
     {
         try {
             $status = (string) ($this->db->selectOne('show engine innodb status')->Status ?? '');

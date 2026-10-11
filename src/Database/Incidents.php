@@ -80,7 +80,8 @@ final class Incidents
         if ($before !== []) {
             $deadlock = $look['deadlock'] ?? null;
 
-            if (is_array($deadlock) && $deadlock['at'] !== ($before['deadlock_at'] ?? null)) {
+            // Without a count before, a deadlock's details are only noted, to tell the next one from it.
+            if (is_array($deadlock) && isset($before['deadlocks']) && $deadlock['at'] !== ($before['deadlock_at'] ?? null)) {
                 $tables = array_unique(array_filter(array_map(fn (array $transaction) => explode(' ', (string) $transaction['holds'])[0], $deadlock['transactions'])));
                 $victim = null;
 
@@ -89,7 +90,7 @@ final class Incidents
                 }
 
                 // The count says how many happened since the last look; only the last one has details.
-                $count = ($look['deadlocks'] ?? null) !== null && ($before['deadlocks'] ?? null) !== null ? (int) $look['deadlocks'] - (int) $before['deadlocks'] : 1;
+                $count = ($look['deadlocks'] ?? null) !== null ? (int) $look['deadlocks'] - (int) $before['deadlocks'] : 1;
                 $where = ($tables === [] ? '' : ' on '.implode(', ', $tables)).($victim === null ? '' : ": transaction {$victim['number']} was rolled back");
 
                 $found["deadlock:{$deadlock['at']}"] = [

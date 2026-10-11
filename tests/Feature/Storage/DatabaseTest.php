@@ -11,6 +11,7 @@ use MohammedMojaly\Laralyze\Database\Errors;
 use MohammedMojaly\Laralyze\Database\Reader;
 use MohammedMojaly\Laralyze\Database\Readers\MySql;
 use MohammedMojaly\Laralyze\Database\Readers\Postgres;
+use MohammedMojaly\Laralyze\Database\Readers\SqlServer;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Recorders;
 use MohammedMojaly\Laralyze\Support\Format;
@@ -92,6 +93,49 @@ it('keeps no incidents with a cache that forgets between runs', function () {
 
     expect((fn () => $this->incidents('testing', ['checks' => [Check::make('connections', 'Connections', Check::PROBLEM, '95 / 100', percent: 95.0)]], time()))->call($recorder))
         ->toBe([[], [], 0]);
+});
+
+it('waits up to three minutes for a deadlock\'s details written after its count', function () {
+    config(['cache.default' => 'file']);
+    Cache::forget('laralyze:database:state:testing');
+
+    $recorder = app(Recorders\Database::class, ['config' => []]);
+    $reader = new class(DB::connection()) extends Reader
+    {
+        public array $reports = [];
+
+        public function latestDeadlock(): ?array
+        {
+            return array_shift($this->reports);
+        }
+    };
+    $look = fn (int $deadlocks, int $at) => (fn () => $this->incidents('testing', ['checks' => [], 'deadlocks' => $deadlocks, 'deadlock' => null], $at, $reader))->call($recorder);
+
+    $old = ['at' => '2026-10-11 09:00:00 UTC', 'transactions' => []];
+    $new = ['at' => '2026-10-11 09:15:02 UTC', 'transactions' => [['number' => 1, 'session' => 61, 'query' => '', 'holds' => 'orders (PK_orders): X', 'waits' => '', 'rolled_back' => true]]];
+
+    // The first count notes the last deadlock; the next one's details come a minute after its count.
+    $reader->reports = [$old, $old, $new];
+    $look(3, 1_000);
+    [$waiting, , $counted] = $look(4, 1_060);
+    [$saved, , $countedLater] = $look(4, 1_120);
+
+    expect($waiting)->toBe([])
+        ->and($counted)->toBe(0)
+        ->and($saved[0]['summary'])->toBe('Deadlock on orders: transaction 1 was rolled back')
+        ->and($saved[0]['deadlock'])->toBe($new)
+        ->and($countedLater)->toBe(1);
+
+    // Without them for three minutes, it's counted without details.
+    $reader->reports = [$new, $new, $new, $new];
+    foreach ([1_180, 1_240, 1_300] as $at) {
+        [$waiting] = $look(5, $at);
+        expect($waiting)->toBe([]);
+    }
+    [$saved, , $counted] = $look(5, 1_360);
+
+    expect($saved[0]['summary'])->toBe('A deadlock')
+        ->and($counted)->toBe(1);
 });
 
 it('keeps going when a connection fails', function () {
@@ -324,4 +368,204 @@ it('reads PostgreSQL sessions: running, waiting and idle in a transaction', func
         ->and(array_column($sessions, 'state'))->toBe(['idle, transaction open', 'active', 'waiting for a lock'])
         ->and(array_column($sessions, 'blocked_by'))->toBe([null, null, 13])
         ->and($sessions[0]['query'])->toBe('update orders set paid = ? where id = ?');
+});
+
+function onSqlServer(): bool
+{
+    return DB::connection()->getDriverName() === 'sqlsrv';
+}
+
+/**
+ * Runs SQL on the test database from another process, which may wait.
+ *
+ * @return resource
+ */
+function sqlServerProcess(string $sql)
+{
+    $config = config('database.connections.testing');
+    $dsn = "sqlsrv:Server={$config['host']},{$config['port']};Database={$config['database']};TrustServerCertificate=1";
+
+    return proc_open([PHP_BINARY, '-r', sprintf(
+        '$pdo = new PDO(%s, %s, %s, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]); try { $pdo->exec(%s); } catch (PDOException) {}',
+        var_export($dsn, true), var_export($config['username'] ?: null, true), var_export($config['password'] ?: null, true), var_export($sql, true),
+    )], [], $pipes);
+}
+
+it('reads connections, uptime and ids on SQL Server', function () {
+    Schema::create('tiny_ids', fn ($table) => $table->tinyIncrements('id'));
+    DB::unprepared('declare @i int = 0; while @i < 240 begin insert into tiny_ids default values; set @i += 1; end');
+
+    try {
+        lookAtDatabase();
+    } finally {
+        Schema::drop('tiny_ids');
+    }
+
+    $now = databaseValue('database');
+    $checks = collect($now['checks'])->keyBy('key');
+    $tiny = collect(databaseValue('database_size')['ids'])->firstWhere('table', 'tiny_ids');
+
+    expect($now['engine'])->toMatch('/^SQL Server 20\d\d \(\d+\.\d+\.\d+\)$/')
+        ->and($checks->keys()->all())->toBe(['connections', 'long_running', 'blocking', 'open_transactions'])
+        ->and($checks['connections']['percent'])->toBeGreaterThan(0)
+        ->and($now['started_at'])->toBeLessThanOrEqual(time())
+        ->and($tiny['max'])->toEqual(255)
+        ->and($tiny['status'])->toBe('problem');
+})->skip(fn () => ! onSqlServer(), 'SQL Server only');
+
+it('finds a transaction left open, and who it blocks, on SQL Server', function () {
+    config(['cache.default' => 'file']);
+    Cache::forget('laralyze:database:state:testing');
+
+    config(['database.connections.second' => config('database.connections.testing')]);
+    Schema::create('held_rows', fn ($table) => $table->integer('id')->primary());
+    DB::table('held_rows')->insert(['id' => 1]);
+
+    $second = DB::connection('second');
+    $second->beginTransaction();
+    $second->update('update held_rows set id = 1 where id = 1');
+    $holder = (int) $second->scalar('select @@spid');
+
+    $waiter = sqlServerProcess('set lock_timeout 20000; update held_rows set id = 1 where id = 1');
+    sleep(2);
+
+    try {
+        lookAtDatabase(['long_running' => 1]);
+    } finally {
+        $second->rollBack();
+        proc_close($waiter);
+        Schema::drop('held_rows');
+    }
+
+    $now = databaseValue('database');
+    $checks = collect($now['checks'])->keyBy('key');
+    $incidents = app(Storage::class)->values('db_incident')->map(fn ($row) => json_decode((string) $row->value, true))->keyBy('kind');
+
+    expect($checks['open_transactions']['status'])->toBe('warning')
+        ->and($checks['open_transactions']['rows'][0]['id'])->toBe($holder)
+        ->and($checks['blocking']['status'])->toBe('problem')
+        ->and($checks['blocking']['rows'][0]['blocking'])->toBe($holder)
+        // SQL Server puts its own parameters in place of the values: UPDATE [held_rows] set [id] = @1 WHERE [id]=@2.
+        ->and($checks['blocking']['rows'][0]['query'])->toMatch('/^update \[?held_rows\]? set \[?id\]? ?= ?\? where \[?id\]? ?= ?\?$/i')
+        ->and(collect($now['sessions'])->firstWhere('id', $holder)['state'])->toBe('idle, transaction open')
+        ->and(collect($now['sessions'])->firstWhere('blocked_by', $holder)['state'])->toBe('waiting for a lock')
+        ->and($incidents->keys()->sort()->values()->all())->toBe(['blocking', 'long_running', 'open_transaction']);
+})->skip(fn () => ! onSqlServer(), 'SQL Server only');
+
+it('keeps a deadlock with both transactions on SQL Server', function () {
+    config(['cache.default' => 'file']);
+    Cache::forget('laralyze:database:state:testing');
+
+    Schema::create('crossed_rows', fn ($table) => $table->integer('id')->primary());
+    DB::table('crossed_rows')->insert([['id' => 1], ['id' => 2]]);
+    lookAtDatabase();
+
+    // Each takes one row, then waits for the other's.
+    $first = sqlServerProcess("begin tran; update crossed_rows set id = 1 where id = 1; waitfor delay '00:00:01'; update crossed_rows set id = 2 where id = 2; commit");
+    $second = sqlServerProcess("begin tran; update crossed_rows set id = 2 where id = 2; waitfor delay '00:00:01'; update crossed_rows set id = 1 where id = 1; commit");
+    proc_close($first);
+    proc_close($second);
+    Schema::drop('crossed_rows');
+
+    // SQL Server writes the details a minute or two after counting the deadlock.
+    $deadlock = null;
+
+    for ($tries = 0; $deadlock === null && $tries < 30; $tries++) {
+        sleep(5);
+        lookAtDatabase();
+        $deadlock = app(Storage::class)->values('db_incident')->map(fn ($row) => json_decode((string) $row->value, true))->firstWhere('kind', 'deadlock');
+    }
+
+    expect($deadlock['summary'])->toContain('crossed_rows')
+        ->and($deadlock['deadlock']['transactions'])->toHaveCount(2)
+        ->and(collect($deadlock['deadlock']['transactions'])->where('rolled_back', true))->toHaveCount(1)
+        ->and($deadlock['deadlock']['transactions'][0]['query'])->toContain('update crossed_rows set id = ? where id = ?');
+})->skip(fn () => ! onSqlServer(), 'SQL Server only');
+
+it('reads SQL Server sessions: running, waiting and idle in a transaction', function () {
+    $reader = new class(DB::connection(), 30) extends SqlServer
+    {
+        public function read(array $processes): array
+        {
+            return [$this->longRunning($processes), $this->blocking($processes), $this->openTransactions($processes), $this->sessions($processes)];
+        }
+    };
+
+    $process = fn (int $id, ?string $status, int $running, int $idle, int $transactions = 0, int $blocking = 0, ?string $wait = null, ?string $query = null) => (object) [
+        'id' => $id, 'user' => 'app', 'host' => 'web-1', 'database' => 'shop', 'status' => $status, 'wait_type' => $wait,
+        'blocking' => $blocking, 'running' => $running, 'idle' => $idle, 'open_transactions' => $transactions, 'query' => $query,
+    ];
+
+    [$long, $blocking, $open, $sessions] = $reader->read([
+        $process(51, 'running', 45, 0, query: "(@P1 nvarchar(4000),@P2 decimal(10,2))select * from users where email = 'sara@example.com'"),
+        $process(52, 'suspended', 40, 0, 1, 53, 'LCK_M_U', 'update orders set paid = 1 where id = 7'),
+        $process(53, null, 0, 50, 1, query: 'update orders set paid = 0 where id = 7'),
+        $process(54, null, 0, 900, query: 'select 1'),
+        $process(55, 'suspended', 600, 0, wait: 'WAITFOR', query: "waitfor delay '00:10:00'"),
+    ]);
+
+    expect($long['rows'])->toBe([
+        ['id' => 51, 'user' => 'app', 'seconds' => 45, 'query' => 'select * from users where email = ?'],
+        ['id' => 52, 'user' => 'app', 'seconds' => 40, 'query' => 'update orders set paid = ? where id = ?'],
+    ])
+        ->and($blocking['rows'])->toBe([['waiting' => 52, 'blocking' => 53, 'blocker' => 'app', 'seconds' => 40, 'query' => 'update orders set paid = ? where id = ?']])
+        ->and($open['rows'])->toBe([['id' => 53, 'user' => 'app', 'seconds' => 50]])
+        ->and(array_column($sessions, 'id'))->toBe([55, 53, 51, 52])
+        ->and(array_column($sessions, 'state'))->toBe(['suspended', 'idle, transaction open', 'running', 'waiting for a lock'])
+        ->and(array_column($sessions, 'blocked_by'))->toBe([null, null, null, 53]);
+});
+
+it('says SQL Server needs VIEW SERVER STATE to see the sessions', function () {
+    $reader = new class(DB::connection(), 30) extends SqlServer
+    {
+        protected function allowed(): bool
+        {
+            return false;
+        }
+    };
+
+    expect($reader->look())->toBe([
+        'checks' => [
+            Check::needs('connections', 'VIEW SERVER STATE'),
+            Check::needs('long_running', 'VIEW SERVER STATE'),
+            Check::needs('blocking', 'VIEW SERVER STATE'),
+            Check::needs('open_transactions', 'VIEW SERVER STATE'),
+            Check::needs('deadlocks', 'VIEW SERVER STATE'),
+        ],
+        'sessions' => [],
+        'deadlocks' => null,
+        'deadlock' => null,
+    ]);
+});
+
+it('reads a SQL Server deadlock report', function () {
+    $report = <<<'XML'
+        <event name="xml_deadlock_report" package="sqlserver" timestamp="2026-10-11T09:15:02.123Z">
+          <data name="xml_report"><type name="xml" package="package0" /><value>
+            <deadlock>
+              <victim-list><victimProcess id="process2" /></victim-list>
+              <process-list>
+                <process id="process1" spid="61" loginname="app"><inputbuf>(@P1 int)update orders set paid = 1 where id = @P1</inputbuf></process>
+                <process id="process2" spid="62" loginname="app"><inputbuf>update invoices set total = 99 where order_id = 7</inputbuf></process>
+              </process-list>
+              <resource-list>
+                <keylock objectname="shop.dbo.orders" indexname="PK_orders" mode="X">
+                  <owner-list><owner id="process1" mode="X" /></owner-list>
+                  <waiter-list><waiter id="process2" mode="U" requestType="wait" /></waiter-list>
+                </keylock>
+                <keylock objectname="shop.dbo.invoices" indexname="PK_invoices" mode="X">
+                  <owner-list><owner id="process2" mode="X" /></owner-list>
+                  <waiter-list><waiter id="process1" mode="U" requestType="wait" /></waiter-list>
+                </keylock>
+              </resource-list>
+            </deadlock>
+          </value></data>
+        </event>
+        XML;
+
+    expect(SqlServer::deadlock($report))->toBe(['at' => '2026-10-11 09:15:02 UTC', 'transactions' => [
+        ['number' => 1, 'session' => 61, 'query' => 'update orders set paid = ? where id = ?', 'holds' => 'orders (PK_orders): X', 'waits' => 'invoices (PK_invoices): U', 'rolled_back' => false],
+        ['number' => 2, 'session' => 62, 'query' => 'update invoices set total = ? where order_id = ?', 'holds' => 'invoices (PK_invoices): X', 'waits' => 'orders (PK_orders): U', 'rolled_back' => true],
+    ]])
+        ->and(SqlServer::deadlock(''))->toBeNull();
 });
