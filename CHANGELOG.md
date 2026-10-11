@@ -2,7 +2,7 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
-## Unreleased
+## v0.7.0 - 2026-10-11
 
 - **Database page.** How the database itself is doing: connections in use against the limit, queries running over 30 seconds, who waits for whose lock, transactions left open, restarts, errors by kind (deadlocks, lock timeouts, refused and lost connections), size and growth, the largest tables, and auto-increment ids running out. The sessions at work are listed live, longest first, with who each one waits for. Every problem is kept as an incident after it's over, with the sessions at its worst moment; a deadlock keeps both transactions' queries and locks. Deadlocks are counted as the database counts them, including the ones Laravel retried. It only reads, and needs nothing installed on the database; a check your app's user may not run is left out, and the page says which privilege it needs. Errors, size and growth work on every database; the live checks on MySQL and MariaDB for now. Problems show in Needs attention. It sits in a new Database section of the sidebar, with Queries. See [Database](docs/database.md).
 - **Queries by connection.** Each database connection now keeps its own rows: the same SQL on two connections is two rows, not one. When your app uses more than one connection, the Queries page has a Connection menu at the top that filters the queries and slow queries, and each row shows its connection. A query's page shows its connection too. Queries recorded before the update have no connection; they show under All until they age out.
