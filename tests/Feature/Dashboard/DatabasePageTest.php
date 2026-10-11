@@ -30,7 +30,7 @@ function lookedAt(string $connection, array $checks, array $size = [], ?int $sta
 }
 
 it('waits for the scheduler before it has anything to show', function () {
-    $this->get('/laralyze/database')->assertOk()->assertSee('Database');
+    $this->get('/laralyze/database')->assertOk()->assertSee('<h1>Database health</h1>', false);
 
     databaseCard('database-incidents')->assertSee('No incidents in the last hour.');
 
@@ -45,14 +45,19 @@ it('shows each check with what to do about it, and what a missing privilege hide
         Check::make('long_running', 'Long-running queries', Check::WARNING, '1 over 30 s', 'Check what they wait for.', rows: [
             ['id' => 41, 'user' => 'app', 'seconds' => 45, 'query' => 'select * from orders where id = ?'],
         ]),
-        Check::needs('blocking', 'PROCESS'),
+        Check::make('blocking', 'Blocking', Check::PROBLEM, '1 waiting for a lock', 'A query waits.', rows: [
+            ['waiting' => 14_861, 'blocking' => 14_860, 'blocker' => 'worker', 'seconds' => 5, 'query' => 'update orders set paid = ?'],
+        ]),
         Check::needs('open_transactions', 'PROCESS'),
+        Check::needs('deadlocks', 'PROCESS'),
     ]);
 
     databaseCard('database-now')
         ->assertSee('MySQL 8.4.2')
         ->assertSeeInOrder(['Problem', 'Connections', '93 / 100', 'Nearly every connection is in use.'])
         ->assertSeeInOrder(['Warning', 'Long-running queries', 'select * from orders where id = ?'])
+        ->assertSeeInOrder(['Session', 'Blocked by session', 'Its user', '14861', '14860', 'worker'])
+        ->assertDontSee('14.9K')
         ->assertSee('2 checks need the PROCESS privilege.')
         ->assertDontSee('Restarted');
 

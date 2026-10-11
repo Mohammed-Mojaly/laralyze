@@ -21,7 +21,7 @@ function lookWith(array $waits = [], array $extra = []): array
 }
 
 it('turns a blocking session into one incident, kept at its worst, until it ends', function () {
-    $wait = fn (int $seconds) => ['waiting' => 41, 'blocking' => 37, 'user' => 'app', 'seconds' => $seconds, 'query' => 'update orders set paid = ?'];
+    $wait = fn (int $seconds) => ['waiting' => 41, 'blocking' => 37, 'blocker' => 'app', 'seconds' => $seconds, 'query' => 'update orders set paid = ?'];
 
     [$open, $save, $new] = Incidents::track([], Incidents::found(lookWith([$wait(40)]), []), 100);
 
@@ -79,7 +79,7 @@ it('says how many deadlocks there were when only the last has details', function
 });
 
 it('keeps the details of only so many incidents a day, and counts the rest', function () {
-    $wait = fn (int $blocker) => ['waiting' => 41, 'blocking' => $blocker, 'user' => 'app', 'seconds' => 40, 'query' => 'select ?'];
+    $wait = fn (int $blocker) => ['waiting' => 41, 'blocking' => $blocker, 'blocker' => 'app', 'seconds' => 40, 'query' => 'select ?'];
 
     [$open, $save, $new] = Incidents::track([], Incidents::found(lookWith([$wait(1), $wait(2)]), []), 100, room: 1);
 

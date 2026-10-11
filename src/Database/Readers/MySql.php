@@ -248,7 +248,7 @@ class MySql extends Reader
 
         foreach (array_slice($waits, 0, 10, true) as $waiting => $blocking) {
             $process = $processes[$waiting] ?? null;
-            $rows[] = ['waiting' => $waiting, 'blocking' => $blocking, 'user' => (string) ($processes[$blocking]->User ?? ''), 'seconds' => (int) ($process->Time ?? 0), 'query' => self::text($process->Info ?? null)];
+            $rows[] = ['waiting' => $waiting, 'blocking' => $blocking, 'blocker' => (string) ($processes[$blocking]->User ?? ''), 'seconds' => (int) ($process->Time ?? 0), 'query' => self::text($process->Info ?? null)];
         }
 
         return Check::make(

@@ -48,7 +48,7 @@ final class Incidents
         $blockers = [];
 
         foreach ((array) ($checks['blocking']['rows'] ?? []) as $row) {
-            $blockers[$row['blocking']] ??= ['user' => $row['user'] ?? '', 'waiting' => 0, 'seconds' => 0];
+            $blockers[$row['blocking']] ??= ['user' => $row['blocker'] ?? '', 'waiting' => 0, 'seconds' => 0];
             $blockers[$row['blocking']]['waiting']++;
             $blockers[$row['blocking']]['seconds'] = max($blockers[$row['blocking']]['seconds'], (int) $row['seconds']);
         }

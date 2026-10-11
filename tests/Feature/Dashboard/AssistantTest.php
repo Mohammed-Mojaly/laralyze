@@ -66,6 +66,18 @@ function promptedWith(): array
     return $given;
 }
 
+it('asks for a prompt for a coding agent only when the answer changes code', function () {
+    shelfIsEmpty();
+    Assistant::fake([fixAnswer()]);
+
+    Livewire::test('laralyze.assistant')->call('ask')->set('question', 'How many requests failed?')->call('send')->call('reply');
+
+    [$instructions] = promptedWith();
+
+    expect($instructions)->toContain('only when your answer asks the developer to change code')
+        ->toContain('A question about what happened, numbers, trends, or how something works gets none.');
+});
+
 it('explains an exception, with a prompt for a coding agent kept apart', function () {
     $key = shelfIsEmpty();
     Assistant::fake([fixAnswer()]);

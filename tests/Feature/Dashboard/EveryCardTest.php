@@ -20,7 +20,7 @@ it('lists every page in the sidebar, grouped by section', function () {
         'Issues', 'Exceptions', 'Findings',
         'Activity', 'Requests', 'Jobs', 'Commands', 'Scheduled Tasks',
         'Inside', 'AI', 'Cache', 'Outgoing Requests', 'Mail', 'Notifications', 'Logs',
-        'Database', 'Queries', 'Database',
+        'Database', 'Queries', 'Database health',
         'Audience', 'Users', 'Visits',
         'Servers', 'Recording',
     ]);

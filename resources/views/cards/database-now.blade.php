@@ -1,7 +1,9 @@
 @use('MohammedMojaly\Laralyze\Support\Format')
 @php
     $badges = ['ok' => ['OK', ''], 'warning' => ['Warning', 'lz-badge-warn'], 'problem' => ['Problem', 'lz-badge-bad']];
-    $columns = ['id' => 'Session', 'waiting' => 'Waiting', 'blocking' => 'Blocked by', 'user' => 'User', 'seconds' => 'For', 'rows_locked' => 'Rows locked', 'query' => 'Query'];
+    $columns = ['id' => 'Session', 'waiting' => 'Session', 'blocking' => 'Blocked by session', 'blocker' => "Its user", 'user' => 'User', 'seconds' => 'For', 'rows_locked' => 'Rows locked', 'query' => 'Query'];
+    // Session ids are names, not amounts: never shortened to 14.9K.
+    $ids = ['id', 'waiting', 'blocking'];
 @endphp
 <x-laralyze::card :card="$this" title="Right now">
     @if ($snapshot === null)
@@ -43,7 +45,7 @@
                         <x-laralyze::table>
                             <x-slot:head>
                                 @foreach (array_keys($check['rows'][0]) as $column)
-                                    <th scope="col" @class(['lz-num' => ! in_array($column, ['user', 'query'], true)])>{{ $columns[$column] ?? $column }}</th>
+                                    <th scope="col" @class(['lz-num' => ! in_array($column, ['user', 'blocker', 'query'], true)])>{{ $columns[$column] ?? $column }}</th>
                                 @endforeach
                             </x-slot:head>
 
@@ -52,8 +54,10 @@
                                     @foreach ($row as $column => $value)
                                         @if ($column === 'query')
                                             <td class="lz-wrap"><code class="lz-sql">{{ $value }}</code></td>
-                                        @elseif ($column === 'user')
+                                        @elseif (in_array($column, ['user', 'blocker'], true))
                                             <td class="lz-mono">{{ $value }}</td>
+                                        @elseif (in_array($column, $ids, true))
+                                            <td class="lz-num">{{ $value }}</td>
                                         @else
                                             <td class="lz-num">{{ $column === 'seconds' ? Format::duration($value * 1_000) : Format::number($value) }}</td>
                                         @endif

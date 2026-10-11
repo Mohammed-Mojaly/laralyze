@@ -1,6 +1,6 @@
-# Database
+# Database health
 
-The Database page shows how the database itself is doing. A task Laralyze adds to your schedule looks at it once a minute, from one server, and measures its size once an hour. It needs your cron entry, like the Servers page.
+The Database health page shows how the database itself is doing. A task Laralyze adds to your schedule looks at it once a minute, from one server, and measures its size once an hour. It needs your cron entry, like the Servers page.
 
 It only reads. It never changes a setting, ends a query or cleans a table; when something needs doing, the page says what, and you decide.
 
