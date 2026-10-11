@@ -2,7 +2,7 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
-## Unreleased
+## v0.7.1 - 2026-10-11
 
 - **Database health on PostgreSQL.** The live checks, the sessions at work, incidents and ids running out now work on PostgreSQL too: connections against the ones the app may open, queries running long, who waits for whose lock, transactions left idle and open, restarts, and deadlocks as PostgreSQL counts them. PostgreSQL writes a deadlock's details only to its log, so deadlocks come without details. Nothing to install; with `pg_read_all_stats` the page also sees other users' sessions. See [Database health](docs/database.md).
 
