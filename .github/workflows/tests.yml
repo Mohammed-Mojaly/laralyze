@@ -212,6 +212,8 @@ jobs:
           composer config repositories.laralyze path ../package
           composer require "mohammed-mojaly/laralyze:@dev" --no-interaction
           php artisan laralyze:install --no-interaction
+          # The migrations run from the package: nothing is copied into the app.
+          ! ls database/migrations | grep -q laralyze
 
       - name: Record requests and open the dashboard
         working-directory: app

@@ -3,7 +3,6 @@
 namespace MohammedMojaly\Laralyze\Console;
 
 use Illuminate\Console\Command;
-use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Env;
 use MohammedMojaly\Laralyze\Storage\ClickHouse\Schema;
 use MohammedMojaly\Laralyze\Storage\ClickHouseStorage;
@@ -17,7 +16,7 @@ class InstallCommand extends Command
 
     protected $description = 'Install Laralyze into your application';
 
-    public function handle(Filesystem $files): int
+    public function handle(): int
     {
         $this->call('vendor:publish', array_filter([
             '--tag' => 'laralyze-config',
@@ -48,8 +47,7 @@ class InstallCommand extends Command
 
             $this->components->info('Laralyze\'s tables are ready in ClickHouse at '.$storage->client()->url().'.');
         } else {
-            $this->publishMissingMigrations($files);
-
+            // The migrations run from the package: upgrades need only php artisan migrate.
             $this->call('migrate');
         }
 
@@ -64,28 +62,5 @@ class InstallCommand extends Command
         ]);
 
         return self::SUCCESS;
-    }
-
-    /**
-     * Published migrations carry the date they were published, so match them
-     * by name: an upgrade gets only the ones it doesn't have yet.
-     */
-    protected function publishMissingMigrations(Filesystem $files): void
-    {
-        $publishedAt = now();
-
-        foreach ($files->glob(__DIR__.'/../../database/migrations/*.php') as $migration) {
-            $name = (string) preg_replace('/^\d{4}_\d{2}_\d{2}_\d{6}_/', '', basename($migration));
-
-            if ($files->glob(database_path('migrations/*_'.$name)) !== []) {
-                continue;
-            }
-
-            $files->ensureDirectoryExists(database_path('migrations'));
-            $files->copy($migration, database_path('migrations/'.$publishedAt->format('Y_m_d_His').'_'.$name));
-            $publishedAt = $publishedAt->addSecond();
-
-            $this->components->task("Publishing migration {$name}");
-        }
     }
 }

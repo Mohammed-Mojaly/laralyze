@@ -107,7 +107,7 @@ class DatabaseStorage implements Storage
             $this->retrying(fn () => $connection->table(self::EXECUTIONS)->insert($chunk));
         }
 
-        // An app upgraded without `laralyze:install` has no table for them yet.
+        // An app upgraded without running migrate has no table for them yet.
         if ($logs !== [] && $this->logsInstalled()) {
             foreach ($this->chunk($connection, $this->prepareLogs($logs), 11) as $chunk) {
                 $this->retrying(fn () => $connection->table(self::LOGS)->insert($chunk));

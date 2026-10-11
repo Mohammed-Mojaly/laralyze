@@ -48,7 +48,7 @@ class DatabaseIngest implements Ingest
                 'payload' => Batch::encode($rows, $values, $executions, $logs),
             ]);
         } catch (Throwable $e) {
-            // Upgraded without `laralyze:install`: write straight in until the table exists.
+            // Upgraded without running migrate: write straight in until the table exists.
             if ($this->installed()) {
                 throw $e;
             }

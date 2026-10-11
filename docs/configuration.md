@@ -101,7 +101,7 @@ LARALYZE_CLICKHOUSE_USERNAME=laralyze
 LARALYZE_CLICKHOUSE_PASSWORD=secret
 ```
 
-- Create the database (`CREATE DATABASE laralyze`), then run `php artisan laralyze:install`. Run it again after upgrading Laralyze.
+- Create the database (`CREATE DATABASE laralyze`), then run `php artisan migrate`: Laralyze creates its tables there, and none in your app's database. After an upgrade, `php artisan migrate` adds any new ones.
 - Every page works the same. Switching starts with empty tables; existing data isn't copied.
 - Credentials go in request headers, never in the URL.
 - `LARALYZE_CLICKHOUSE_TIMEOUT` (3 s) and `LARALYZE_CLICKHOUSE_CONNECT_TIMEOUT` (1 s) limit each write. `LARALYZE_CLICKHOUSE_WAIT` (on) waits until each write is saved, so failures show on the dashboard.

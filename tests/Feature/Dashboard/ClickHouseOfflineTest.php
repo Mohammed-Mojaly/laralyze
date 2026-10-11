@@ -23,7 +23,7 @@ it('pauses recording and says so when ClickHouse is unreachable', function () {
     $this->get('/laralyze')->assertSee("Laralyze can't reach ClickHouse at http://127.0.0.1:9.")->assertDontSee('secret-pw')->assertDontSee('url-pw');
 });
 
-it('asks to run laralyze:install when the ClickHouse tables are missing', function () {
+it('asks to run migrate when the ClickHouse tables are missing', function () {
     config(['laralyze.storage.driver' => 'clickhouse']);
     $storage = Mockery::mock(ClickHouseStorage::class);
     $storage->shouldReceive('installed')->andReturn(false);
@@ -32,7 +32,7 @@ it('asks to run laralyze:install when the ClickHouse tables are missing', functi
     app()->forgetInstance(Health::class);
     app()->detectEnvironment(fn () => 'local');
 
-    $this->get('/laralyze')->assertSee('Run `php artisan laralyze:install`.', false);
+    $this->get('/laralyze')->assertSee('Run `php artisan migrate`.', false);
 });
 
 it('gives up within the timeout when ClickHouse accepts connections but never answers', function () {

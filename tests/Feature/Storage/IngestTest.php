@@ -267,7 +267,8 @@ it('writes directly until an upgraded app creates the ingest table', function ()
 
         expect(DB::table('laralyze_aggregates')->where('type', 'checkout')->count())->toBeGreaterThan(0)
             ->and(Laralyze::lastFailure())->toBeNull()
-            ->and(collect(app(Health::class)->problems())->pluck('title'))->toContain("Laralyze's ingest table is missing.");
+            ->and(collect(app(Health::class)->problems())->pluck('title'))->toContain("Laralyze's ingest table is missing.")
+            ->and(collect(app(Health::class)->problems())->pluck('hint')->implode(' '))->toContain('Run `php artisan migrate` to create it.');
     } finally {
         (include __DIR__.'/../../../database/migrations/2026_10_06_000000_create_laralyze_ingest_table.php')->up();
     }

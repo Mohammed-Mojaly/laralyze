@@ -32,6 +32,8 @@ php artisan laralyze:install
 
 Then open `/laralyze`.
 
+To upgrade, update the package and run `php artisan migrate`, as you do on each deploy. Laralyze's migrations run from the package, so there's nothing to copy into your app. If you'd rather keep them with your own (to run them on each tenant's database, for example), publish them with `php artisan vendor:publish --tag=laralyze-migrations`.
+
 Restart your queue workers (`php artisan queue:restart`) so they load Laralyze, and make sure Laravel's scheduler runs. If something is off, the dashboard and `php artisan about` say what ([details](docs/runtime.md#when-something-is-wrong)).
 
 ## What you get

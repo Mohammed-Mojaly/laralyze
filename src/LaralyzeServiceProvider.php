@@ -2,6 +2,7 @@
 
 namespace MohammedMojaly\Laralyze;
 
+use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskSkipped;
@@ -11,6 +12,7 @@ use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\CachesConfiguration;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
@@ -22,6 +24,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Livewire\LivewireManager;
+use Throwable;
 
 class LaralyzeServiceProvider extends ServiceProvider
 {
@@ -124,6 +127,7 @@ class LaralyzeServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->registerPublishing();
+            $this->registerMigrations();
             $this->registerAboutSection();
 
             $this->commands([
@@ -266,6 +270,49 @@ class LaralyzeServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../resources/views/cards' => resource_path('views/vendor/laralyze/cards'),
         ], 'laralyze-cards');
+    }
+
+    /**
+     * php artisan migrate runs Laralyze's migrations from the package, so an
+     * upgrade needs nothing more. A migration an older install copied into
+     * the app runs from there instead, never twice. On ClickHouse the app's
+     * database gets no tables: Laralyze makes its own there after migrate.
+     */
+    protected function registerMigrations(): void
+    {
+        $this->callAfterResolving('migrator', function (Migrator $migrator) {
+            if ($this->usesClickHouse()) {
+                return;
+            }
+
+            foreach (glob(__DIR__.'/../database/migrations/*.php') ?: [] as $migration) {
+                $name = (string) preg_replace('/^\d{4}_\d{2}_\d{2}_\d{6}_/', '', basename($migration));
+
+                if ((glob(database_path('migrations/*_'.$name)) ?: []) === []) {
+                    $migrator->path($migration);
+                }
+            }
+        });
+
+        $this->app->make(Dispatcher::class)->listen(CommandFinished::class, function (CommandFinished $event) {
+            if ($event->exitCode !== 0 || ! in_array($event->command, ['migrate', 'migrate:fresh', 'migrate:refresh'], true) || ! $this->usesClickHouse()) {
+                return;
+            }
+
+            try {
+                $storage = $this->app->make(Storage\ClickHouseStorage::class);
+                $storage->install();
+
+                $event->output->writeln("  Laralyze's tables are ready in ClickHouse at {$storage->client()->url()}.");
+            } catch (Throwable $e) {
+                $event->output->writeln("  <comment>Laralyze couldn't create its tables in ClickHouse: {$e->getMessage()}</comment>");
+            }
+        });
+    }
+
+    protected function usesClickHouse(): bool
+    {
+        return $this->app->make('config')->get('laralyze.storage.driver', 'database') === 'clickhouse';
     }
 
     protected function registerAboutSection(): void

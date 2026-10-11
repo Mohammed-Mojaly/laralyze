@@ -61,7 +61,7 @@ final class Health
             if (! $this->storage->installed()) {
                 $this->blocking = true;
 
-                return [$this->bad("Laralyze's tables are missing.", $clickhouse ? 'Run `php artisan laralyze:install`.' : 'Run `php artisan migrate`.')];
+                return [$this->bad("Laralyze's tables are missing.", 'Run `php artisan migrate`.')];
             }
         } catch (Throwable $e) {
             $this->blocking = true;
@@ -129,7 +129,7 @@ final class Health
         if ($this->config->get('laralyze.recorders.'.Logs::class.'.enabled', true) && ! $this->storage->logsInstalled()) {
             $problems[] = $this->warn(
                 'Logs aren\'t stored yet.',
-                'Run `php artisan laralyze:install` to add the table for log entries. Until then they are only counted.',
+                'Run `php artisan migrate` to add the table for log entries. Until then they are only counted.',
             );
         }
 
@@ -151,7 +151,7 @@ final class Health
         if (! $ingest->installed()) {
             return [$this->warn(
                 "Laralyze's ingest table is missing.",
-                "Run `php artisan laralyze:install` to create it. Until then, each request, job and command writes to Laralyze's tables itself.",
+                "Run `php artisan migrate` to create it. Until then, each request, job and command writes to Laralyze's tables itself.",
             )];
         }
 

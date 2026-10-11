@@ -1,8 +1,12 @@
 <?php
 
+use Illuminate\Foundation\Testing\WithConsoleEvents;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use MohammedMojaly\Laralyze\Storage\ClickHouseStorage;
+
+// php artisan migrate is followed by its CommandFinished event, as outside tests.
+uses(WithConsoleEvents::class);
 
 function publishedMigrations(): array
 {
@@ -15,14 +19,69 @@ function cleanUpInstall(): void
     File::delete(publishedMigrations());
 }
 
+/**
+ * The migrator as php artisan migrate would make it, with the config as it is now.
+ */
+function freshMigrator(): void
+{
+    app()->forgetInstance('migrator');
+}
+
+function laralyzeTables(): array
+{
+    return array_values(array_filter(['laralyze_aggregates', 'laralyze_values', 'laralyze_executions', 'laralyze_ingest', 'laralyze_logs'], fn (string $table) => Schema::hasTable($table)));
+}
+
 beforeEach(function () {
     cleanUpInstall();
 
     // Installing runs real migrations, so keep them away from the shared test database.
     config(['database.connections.install' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '']]);
     config(['database.default' => 'install']);
+    freshMigrator();
 });
 afterEach(fn () => cleanUpInstall());
+
+it('creates the tables with php artisan migrate, without copying anything into the app', function () {
+    $this->artisan('migrate')->assertSuccessful();
+
+    expect(laralyzeTables())->toHaveCount(5)
+        ->and(publishedMigrations())->toBe([]);
+});
+
+it('runs only the migrations an older install didn\'t copy into the app', function () {
+    // A 0.3 install: the first migration, published under the date it was installed.
+    File::copy(__DIR__.'/../../database/migrations/2026_09_30_000000_create_laralyze_tables.php', database_path('migrations/2026_10_04_101500_create_laralyze_tables.php'));
+
+    $this->artisan('migrate')->assertSuccessful();
+    $this->artisan('migrate')->assertSuccessful();
+
+    expect(laralyzeTables())->toHaveCount(5)
+        ->and(publishedMigrations())->toBe([database_path('migrations/2026_10_04_101500_create_laralyze_tables.php')]);
+});
+
+it('leaves the app\'s database alone on ClickHouse, and creates the ClickHouse tables after migrate', function () {
+    config(['laralyze.storage.driver' => 'clickhouse']);
+    freshMigrator();
+    $storage = Mockery::mock(ClickHouseStorage::class);
+    $storage->shouldReceive('install')->once()->andReturn('26.9.1');
+    $storage->shouldReceive('client->url')->andReturn('http://ch.test:8123');
+    app()->instance(ClickHouseStorage::class, $storage);
+
+    $this->artisan('migrate')->assertSuccessful()->expectsOutputToContain('ClickHouse at http://ch.test:8123');
+
+    expect(laralyzeTables())->toBe([]);
+});
+
+it('says so when ClickHouse can\'t be reached after migrate, and migrate still succeeds', function () {
+    config(['laralyze.storage.driver' => 'clickhouse']);
+    freshMigrator();
+    $storage = Mockery::mock(ClickHouseStorage::class);
+    $storage->shouldReceive('install')->once()->andThrow(new RuntimeException('Connection refused'));
+    app()->instance(ClickHouseStorage::class, $storage);
+
+    $this->artisan('migrate')->assertSuccessful()->expectsOutputToContain("Laralyze couldn't create its tables in ClickHouse: Connection refused");
+});
 
 it('publishes the config file', function () {
     $this->artisan('laralyze:install')->assertSuccessful();
@@ -31,35 +90,21 @@ it('publishes the config file', function () {
         ->and(File::get(config_path('laralyze.php')))->toContain('LARALYZE_ENABLED');
 });
 
-it('publishes the migrations and creates the tables', function () {
+it('creates the tables on install, without copying the migrations', function () {
     $this->artisan('laralyze:install')->assertSuccessful();
 
-    expect(publishedMigrations())->toHaveCount(3)
-        ->and(Schema::hasTable('laralyze_aggregates'))->toBeTrue()
-        ->and(Schema::hasTable('laralyze_values'))->toBeTrue()
-        ->and(Schema::hasTable('laralyze_executions'))->toBeTrue()
-        ->and(Schema::hasTable('laralyze_ingest'))->toBeTrue()
-        ->and(Schema::hasTable('laralyze_logs'))->toBeTrue();
+    expect(laralyzeTables())->toHaveCount(5)
+        ->and(publishedMigrations())->toBe([]);
 });
 
-it('does not publish the migrations twice', function () {
-    $this->artisan('laralyze:install')->assertSuccessful();
-    $this->artisan('laralyze:install')->assertSuccessful();
+it('still copies the migrations for apps that want them', function () {
+    $this->artisan('vendor:publish', ['--tag' => 'laralyze-migrations'])->assertSuccessful();
+    freshMigrator();
 
-    expect(publishedMigrations())->toHaveCount(3);
-});
-
-it('adds only the new migrations to an app installed before them', function () {
-    // A 0.3 install: the first migration, published under the date it was installed.
-    File::copy(__DIR__.'/../../database/migrations/2026_09_30_000000_create_laralyze_tables.php', database_path('migrations/2026_10_04_101500_create_laralyze_tables.php'));
     $this->artisan('migrate')->assertSuccessful();
 
-    $this->artisan('laralyze:install')->assertSuccessful();
-
     expect(publishedMigrations())->toHaveCount(3)
-        ->and(File::glob(database_path('migrations/*_create_laralyze_tables.php')))->toBe([database_path('migrations/2026_10_04_101500_create_laralyze_tables.php')])
-        ->and(Schema::hasTable('laralyze_ingest'))->toBeTrue()
-        ->and(Schema::hasTable('laralyze_logs'))->toBeTrue();
+        ->and(laralyzeTables())->toHaveCount(5);
 });
 
 it('keeps an edited config file when run again', function () {
@@ -78,8 +123,9 @@ it('overwrites the config file when forced', function () {
     expect(File::get(config_path('laralyze.php')))->not->toContain('edited');
 });
 
-it('creates ClickHouse tables instead of publishing the migration', function () {
+it('creates ClickHouse tables on install', function () {
     config(['laralyze.storage.driver' => 'clickhouse']);
+    freshMigrator();
     $storage = Mockery::mock(ClickHouseStorage::class);
     $storage->shouldReceive('install')->once()->andReturn('26.9.1');
     $storage->shouldReceive('client->url')->andReturn('http://ch.test:8123');
@@ -92,6 +138,7 @@ it('creates ClickHouse tables instead of publishing the migration', function () 
 
 it('warns when ClickHouse is older than supported', function () {
     config(['laralyze.storage.driver' => 'clickhouse']);
+    freshMigrator();
     $storage = Mockery::mock(ClickHouseStorage::class);
     $storage->shouldReceive('install')->once()->andReturn('23.8.2');
     $storage->shouldReceive('client->url')->andReturn('http://ch.test:8123');
