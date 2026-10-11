@@ -13,6 +13,11 @@ return new class extends Migration
 
     public function up(): void
     {
+        // Made by an earlier copy of this migration, which the app may have pruned.
+        if (Schema::connection($this->getConnection())->hasTable('laralyze_ingest')) {
+            return;
+        }
+
         // What each request, job and command recorded, waiting for the digest
         // to merge it into Laralyze's tables. Plain inserts: no locks to fight over.
         Schema::connection($this->getConnection())->create('laralyze_ingest', function (Blueprint $table) {

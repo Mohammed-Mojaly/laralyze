@@ -1,6 +1,9 @@
 <?php
 
+use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
+use Illuminate\Database\Console\Migrations\MigrateCommand;
 use Illuminate\Foundation\Testing\WithConsoleEvents;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use MohammedMojaly\Laralyze\Storage\ClickHouseStorage;
@@ -20,11 +23,14 @@ function cleanUpInstall(): void
 }
 
 /**
- * The migrator as php artisan migrate would make it, with the config as it is now.
+ * Artisan and its migrator as a new php artisan migrate would make them,
+ * with the config and files as they are now.
  */
 function freshMigrator(): void
 {
     app()->forgetInstance('migrator');
+    app()->forgetInstance(MigrateCommand::class);
+    app(ConsoleKernel::class)->setArtisan(null);
 }
 
 function laralyzeTables(): array
@@ -58,6 +64,30 @@ it('runs only the migrations an older install didn\'t copy into the app', functi
 
     expect(laralyzeTables())->toHaveCount(5)
         ->and(publishedMigrations())->toBe([database_path('migrations/2026_10_04_101500_create_laralyze_tables.php')]);
+});
+
+it('leaves tables alone that an older install made, after its copies were pruned', function () {
+    // A file, so the tables outlive the first migrate.
+    $database = (string) tempnam(sys_get_temp_dir(), 'laralyze');
+    config(['database.connections.install.database' => $database]);
+    DB::purge('install');
+
+    try {
+        // laralyze:install copied the migrations under the date it ran, then schema:dump --prune deleted them.
+        foreach (File::glob(__DIR__.'/../../database/migrations/*.php') as $index => $migration) {
+            File::copy($migration, database_path('migrations/2026_10_0'.($index + 4).'_101500_'.substr(basename($migration), 18)));
+        }
+        $this->artisan('migrate')->assertSuccessful();
+        cleanUpInstall();
+        freshMigrator();
+
+        $this->artisan('migrate')->assertSuccessful();
+
+        expect(laralyzeTables())->toHaveCount(5);
+    } finally {
+        DB::purge('install');
+        File::delete($database);
+    }
 });
 
 it('leaves the app\'s database alone on ClickHouse, and creates the ClickHouse tables after migrate', function () {

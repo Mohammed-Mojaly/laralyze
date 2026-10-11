@@ -13,6 +13,11 @@ return new class extends Migration
 
     public function up(): void
     {
+        // Made by an earlier copy of this migration, which the app may have pruned.
+        if (Schema::connection($this->getConnection())->hasTable('laralyze_logs')) {
+            return;
+        }
+
         // Log entries at or above the configured level, with where they were written.
         Schema::connection($this->getConnection())->create('laralyze_logs', function (Blueprint $table) {
             $table->id();

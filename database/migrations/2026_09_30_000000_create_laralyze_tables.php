@@ -15,7 +15,15 @@ return new class extends Migration
     {
         $schema = Schema::connection($this->getConnection());
 
-        $schema->create('laralyze_aggregates', function (Blueprint $table) {
+        // A table an earlier copy of this migration made is left as it is: an
+        // app may have pruned that copy, so its name isn't in the migrations table.
+        $create = function (string $name, Closure $columns) use ($schema) {
+            if (! $schema->hasTable($name)) {
+                $schema->create($name, $columns);
+            }
+        };
+
+        $create('laralyze_aggregates', function (Blueprint $table) {
             $table->id();
             $table->bigInteger('bucket');
             $table->integer('period');
@@ -30,7 +38,7 @@ return new class extends Migration
             $table->index(['period', 'bucket']);
         });
 
-        $schema->create('laralyze_values', function (Blueprint $table) {
+        $create('laralyze_values', function (Blueprint $table) {
             $table->id();
             $table->bigInteger('timestamp');
             $table->string('type', 64);
@@ -42,7 +50,7 @@ return new class extends Migration
         });
 
         // Single requests, jobs and commands, with what happened inside them.
-        $schema->create('laralyze_executions', function (Blueprint $table) {
+        $create('laralyze_executions', function (Blueprint $table) {
             $table->id();
             $table->char('uuid', 26)->unique();
             $table->char('trace', 26)->index();
