@@ -2,7 +2,7 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
-## Unreleased
+## v0.7.2 - 2026-10-12
 
 - **Database health on SQL Server.** The live checks, the sessions at work, incidents and ids running out now work on SQL Server too: connections, queries running long, who waits for whose lock, transactions left open, restarts, and every deadlock with both sides, their queries and locks, and which was rolled back, read from the `system_health` session SQL Server keeps by default. SQL Server writes a deadlock's details a minute or two after counting it, so its deadlocks show two to three minutes late. The live checks need `VIEW SERVER STATE` (or `VIEW SERVER PERFORMANCE STATE` on 2022); without it the page says so. On Azure SQL Database the page shows errors, size and ids. Nothing to install. See [Database health](docs/database.md).
 - **Fixed:** SQL Server's Unicode literals (`N'…'`) are taken out of queries like any other value, instead of showing as `N?`.
