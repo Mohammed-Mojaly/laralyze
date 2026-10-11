@@ -2,9 +2,11 @@
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use MohammedMojaly\Laralyze\Contracts\Storage;
+use MohammedMojaly\Laralyze\Database\Check;
 use MohammedMojaly\Laralyze\Database\Errors;
 use MohammedMojaly\Laralyze\Database\Reader;
 use MohammedMojaly\Laralyze\Database\Readers\MySql;
@@ -81,6 +83,15 @@ it('measures once an hour even before the last measure is saved', function () {
     expect($sizes)->toBe(1);
 });
 
+it('keeps no incidents with a cache that forgets between runs', function () {
+    config(['cache.default' => 'array']);
+
+    $recorder = app(Recorders\Database::class, ['config' => []]);
+
+    expect((fn () => $this->incidents('testing', ['checks' => [Check::make('connections', 'Connections', Check::PROBLEM, '95 / 100', percent: 95.0)]], time()))->call($recorder))
+        ->toBe([[], [], 0]);
+});
+
 it('keeps going when a connection fails', function () {
     config(['database.connections.broken' => ['driver' => 'mysql', 'host' => '127.0.0.1', 'port' => 1, 'database' => 'none']]);
 
@@ -135,6 +146,10 @@ it('reads connections, uptime and ids on MySQL and MariaDB', function () {
 })->skip(fn () => ! onMySql(), 'MySQL and MariaDB only');
 
 it('finds a transaction left open on MySQL and MariaDB', function () {
+    // Incidents need a cache that outlives one run of the scheduler.
+    config(['cache.default' => 'file']);
+    Cache::forget('laralyze:database:state:testing');
+
     config(['database.connections.second' => config('database.connections.testing')]);
     Schema::create('held_rows', fn ($table) => $table->id());
 

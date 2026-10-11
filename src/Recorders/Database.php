@@ -2,6 +2,8 @@
 
 namespace MohammedMojaly\Laralyze\Recorders;
 
+use Illuminate\Cache\ArrayStore;
+use Illuminate\Cache\NullStore;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Foundation\Application;
@@ -174,15 +176,24 @@ class Database extends Recorder
      */
     protected function incidents(string $name, array $look, int $at): array
     {
+        // A cache that forgets between runs of the scheduler would start every incident anew.
+        if ($this->laralyze->rescue(fn () => in_array(Cache::getStore()::class, [ArrayStore::class, NullStore::class], true), true)) {
+            return [[], [], 0];
+        }
+
         $key = "laralyze:database:state:{$name}";
         $before = (array) $this->laralyze->rescue(fn () => Cache::get($key, []), []);
+        $today = now()->toDateString();
+        $kept = ($before['day'] ?? null) === $today ? (int) ($before['kept'] ?? 0) : 0;
 
-        [$open, $save, $new] = Incidents::track((array) ($before['open'] ?? []), Incidents::found($look, $before), $at);
+        [$open, $save, $new] = Incidents::track((array) ($before['open'] ?? []), Incidents::found($look, $before), $at, max(0, Incidents::PER_DAY - $kept));
 
         $deadlocks = isset($look['deadlocks']) ? (int) $look['deadlocks'] : null;
         $counted = isset($before['deadlocks']) ? (int) $before['deadlocks'] : null;
 
         $this->laralyze->rescue(fn () => Cache::put($key, [
+            'day' => $today,
+            'kept' => $kept + count(array_filter($new, fn (array $incident) => $incident['kept'])),
             'open' => $open,
             'deadlocks' => $deadlocks ?? $counted,
             'deadlock_at' => $look['deadlock']['at'] ?? $before['deadlock_at'] ?? null,

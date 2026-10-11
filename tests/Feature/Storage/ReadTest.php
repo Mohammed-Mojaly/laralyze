@@ -141,6 +141,17 @@ it('reads the latest values', function () {
         ->and($this->storage->values('server', ['web-2'])->pluck('key')->all())->toBe(['web-2']);
 });
 
+it('reads the last few values whose keys start the same', function () {
+    foreach (['mysql|100:a', 'mysql|300:c', 'mysql|200:b', 'my_ql|400:d', 'pgsql|500:e'] as $key) {
+        Laralyze::set('incident', $key, $key);
+    }
+    Laralyze::flush();
+
+    expect($this->storage->values('incident', keyPrefix: 'mysql|', limit: 2)->pluck('key')->all())->toBe(['mysql|300:c', 'mysql|200:b'])
+        ->and($this->storage->values('incident', keyPrefix: 'mysql|')->pluck('key')->all())->toBe(['mysql|100:a', 'mysql|200:b', 'mysql|300:c'])
+        ->and($this->storage->values('incident', limit: 1)->pluck('key')->all())->toBe(['pgsql|500:e']);
+});
+
 it('rejects aggregates it does not know', function () {
     $this->storage->aggregate('request', ['median'], 3_600);
 })->throws(InvalidArgumentException::class);

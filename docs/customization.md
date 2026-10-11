@@ -68,7 +68,7 @@ Cards extend `MohammedMojaly\Laralyze\Livewire\Card` and read data for the perio
 | `aggregate($type, ['count', 'avg', 'p95'], orderBy: 'count', limit: 100, keyPrefix: null)` | One row per key, or only the keys that start with `keyPrefix` |
 | `total($type, ['count', 'max'])` | One row for all keys together |
 | `graph($type, 'count', key: null)` | About 60 points over the period |
-| `values($type, $keys)` | The latest values stored with `Laralyze::set()` |
+| `values($type, $keys, keyPrefix: null, limit: null)` | The latest values stored with `Laralyze::set()`; with a limit, the last keys first |
 | `counts($type)` | `[key => count]`, handy for joining columns |
 
 Aggregates are `count`, `sum`, `min`, `max`, `avg` and percentiles like `p95` (estimates, when recorded with `histogram()`). Results are cached for five seconds.

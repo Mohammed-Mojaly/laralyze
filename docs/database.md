@@ -48,7 +48,8 @@ GRANT SELECT ON performance_schema.* TO 'app'@'%';
 ## Limits
 
 - It looks once a minute, so a lock that comes and goes between two looks isn't seen. Errors are counted every time, and so are deadlocks; only the last one's details are kept, so of several in one minute, one has its details.
-- Incidents are kept for the retention period, like the rest of Laralyze's data.
+- Incidents are kept for the retention period, like the rest of Laralyze's data. The first 50 each day keep their details; past that they're only counted.
+- Incidents need a cache that keeps its data between runs of the scheduler. With the `array` or `null` cache store there are none, though the checks still show. With several servers running the scheduler, use a shared cache (Redis, the database, Memcached), so one server looks and the incidents aren't counted twice.
 - Growth needs a day of measuring before it shows.
 - MySQL keeps table statistics for up to a day (`information_schema_stats_expiry`), so sizes and ids can be that old.
 - On SQLite there are no connections or locks to look at; the page shows errors and size.

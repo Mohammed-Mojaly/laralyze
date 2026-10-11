@@ -15,6 +15,10 @@
         </p>
     @endif
 
+    @if (array_sum($counts) > $incidents->count())
+        <p class="lz-note">Details are kept for the latest {{ \MohammedMojaly\Laralyze\Cards\DatabaseIncidents::LIMIT }} here, and for the first {{ \MohammedMojaly\Laralyze\Database\Incidents::PER_DAY }} each day; the others are counted above.</p>
+    @endif
+
     @if ($incidents->isEmpty())
         <x-laralyze::empty
             :title="'No incidents in the '.$this->range()->label().'.'"

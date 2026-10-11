@@ -68,6 +68,31 @@ it('notes each new deadlock with its details, or counts them when there are none
         ->and(Incidents::found(lookWith(extra: ['deadlocks' => 7]), ['deadlocks' => 4])['deadlocks:7']['summary'])->toBe('3 deadlocks');
 });
 
+it('says how many deadlocks there were when only the last has details', function () {
+    $deadlock = ['at' => '2026-10-11 01:23:45', 'transactions' => [
+        ['number' => 1, 'session' => 12, 'query' => 'update orders set paid = ?', 'holds' => 'orders (PRIMARY): X', 'waits' => '', 'rolled_back' => true],
+    ]];
+
+    $found = Incidents::found(lookWith(extra: ['deadlock' => $deadlock, 'deadlocks' => 6]), ['deadlocks' => 4, 'deadlock_at' => 'earlier']);
+
+    expect($found['deadlock:2026-10-11 01:23:45']['summary'])->toBe('2 deadlocks, the last on orders: transaction 1 was rolled back');
+});
+
+it('keeps the details of only so many incidents a day, and counts the rest', function () {
+    $wait = fn (int $blocker) => ['waiting' => 41, 'blocking' => $blocker, 'user' => 'app', 'seconds' => 40, 'query' => 'select ?'];
+
+    [$open, $save, $new] = Incidents::track([], Incidents::found(lookWith([$wait(1), $wait(2)]), []), 100, room: 1);
+
+    expect($new)->toHaveCount(2)
+        ->and($save)->toHaveCount(1)
+        ->and($save[0]['id'])->toBe('100:blocking:1');
+
+    // The one without room stays without details while it lasts.
+    [, $save] = Incidents::track($open, Incidents::found(lookWith([$wait(1), $wait(2)]), ['deadlocks' => 4]), 160, room: 5);
+
+    expect(array_column($save, 'id'))->toBe(['100:blocking:1']);
+});
+
 it('says nothing about deadlocks and restarts on the first look', function () {
     expect(Incidents::found(lookWith(extra: ['deadlock' => ['at' => 'old', 'transactions' => []], 'deadlocks' => 9]), []))->toBe([]);
 });

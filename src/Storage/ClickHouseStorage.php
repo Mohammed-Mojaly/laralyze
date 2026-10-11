@@ -419,7 +419,7 @@ class ClickHouseStorage implements Storage
         )[0]['found'] ?? 0);
     }
 
-    public function values(string $type, ?array $keys = null): Collection
+    public function values(string $type, ?array $keys = null, ?string $keyPrefix = null, ?int $limit = null): Collection
     {
         $sql = 'SELECT key, value, timestamp FROM laralyze_values FINAL WHERE type = {type:String} AND deleted = 0';
         $params = ['type' => $type];
@@ -429,7 +429,14 @@ class ClickHouseStorage implements Storage
             $params['hashes'] = array_map(fn (string $key) => hash('xxh128', $key), $keys);
         }
 
-        return collect($this->client->select($sql.' ORDER BY key', $params))->map(function (array $row): stdClass {
+        if ($keyPrefix !== null) {
+            $sql .= ' AND startsWith(key, {prefix:String})';
+            $params['prefix'] = $keyPrefix;
+        }
+
+        $sql .= $limit === null ? ' ORDER BY key' : ' ORDER BY key DESC LIMIT {limit:UInt32}';
+
+        return collect($this->client->select($sql, [...$params, ...($limit === null ? [] : ['limit' => $limit])]))->map(function (array $row): stdClass {
             $value = new stdClass;
             $value->key = (string) $row['key'];
             $value->value = (string) $row['value'];

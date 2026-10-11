@@ -32,11 +32,10 @@ class DatabaseIncidents extends DatabaseCard
         $name = $this->database();
         $since = now()->getTimestamp() - $this->range()->seconds();
 
-        $incidents = $this->values('db_incident')
+        // Keys are "{connection}|{started at}:…", so the last ones are the newest.
+        $incidents = $this->values('db_incident', keyPrefix: "{$name}|", limit: self::LIMIT)
             ->map(fn ($row) => json_decode((string) $row->value, true))
-            ->filter(fn ($incident) => is_array($incident) && ($incident['connection'] ?? null) === $name && (int) ($incident['last_seen'] ?? 0) >= $since)
-            ->sortByDesc('started_at')
-            ->take(self::LIMIT)
+            ->filter(fn ($incident) => is_array($incident) && (int) ($incident['last_seen'] ?? 0) >= $since)
             ->values();
 
         $counts = [];

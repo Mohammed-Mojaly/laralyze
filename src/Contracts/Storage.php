@@ -137,10 +137,13 @@ interface Storage
     public function countKeys(string $type, int $window): int;
 
     /**
+     * The latest values, by key: these keys, or the ones that start with a
+     * prefix. With a limit, the last keys come first.
+     *
      * @param  list<string>|null  $keys
      * @return Collection<int, stdClass> Rows with key, value and timestamp.
      */
-    public function values(string $type, ?array $keys = null): Collection;
+    public function values(string $type, ?array $keys = null, ?string $keyPrefix = null, ?int $limit = null): Collection;
 
     /**
      * Write one value straight away, e.g. a choice made on the dashboard.

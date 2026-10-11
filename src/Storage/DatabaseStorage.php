@@ -462,12 +462,7 @@ class DatabaseStorage implements Storage
             ->limit($limit);
 
         if ($keyPrefix !== null) {
-            // A plain comparison: LIKE treats _ and % (and [ on SQL Server) as wildcards.
-            $query->whereRaw(match ($this->connection()->getDriverName()) {
-                'mysql', 'mariadb' => 'substr(`key`, 1, ?) = ?',
-                'sqlsrv' => 'substring([key], 1, ?) = ?',
-                default => 'substr("key", 1, ?) = ?',
-            }, [mb_strlen($keyPrefix), $keyPrefix]);
+            $this->startingWith($query, $keyPrefix);
         }
 
         foreach ($selected as $aggregate) {
@@ -620,12 +615,13 @@ class DatabaseStorage implements Storage
      * @param  list<string>|null  $keys
      * @return Collection<int, stdClass> Rows with key, value and timestamp.
      */
-    public function values(string $type, ?array $keys = null): Collection
+    public function values(string $type, ?array $keys = null, ?string $keyPrefix = null, ?int $limit = null): Collection
     {
         return $this->connection()->table(self::VALUES)
             ->where('type', $type)
             ->when($keys !== null, fn ($query) => $query->whereIn('key_hash', array_map(fn (string $key) => hash('xxh128', $key), (array) $keys)))
-            ->orderBy('key')
+            ->when($keyPrefix !== null, fn ($query) => $this->startingWith($query, (string) $keyPrefix))
+            ->when($limit !== null, fn ($query) => $query->orderByDesc('key')->limit((int) $limit), fn ($query) => $query->orderBy('key'))
             ->get(['key', 'value', 'timestamp'])
             ->map(function (stdClass $row) {
                 $row->timestamp = (int) $row->timestamp;
@@ -694,6 +690,19 @@ class DatabaseStorage implements Storage
             ->groupBy('key_hash')
             ->map(fn (Collection $bins) => $this->binCounts($bins->pluck('value', 'aggregate')->all()))
             ->all();
+    }
+
+    /**
+     * Keys that start with the prefix. A plain comparison: LIKE treats _ and %
+     * (and [ on SQL Server) as wildcards.
+     */
+    protected function startingWith(Builder $query, string $prefix): Builder
+    {
+        return $query->whereRaw(match ($this->connection()->getDriverName()) {
+            'mysql', 'mariadb' => 'substr(`key`, 1, ?) = ?',
+            'sqlsrv' => 'substring([key], 1, ?) = ?',
+            default => 'substr("key", 1, ?) = ?',
+        }, [mb_strlen($prefix), $prefix]);
     }
 
     protected function aggregateSql(string $aggregate): string

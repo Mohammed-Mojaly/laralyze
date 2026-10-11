@@ -73,7 +73,7 @@ it('lists the sessions at work, like who is active', function () {
 });
 
 it('keeps each incident, opened in place for the sessions at its worst or the deadlock', function () {
-    $incident = fn (string $id, string $kind, string $status, string $summary, array $extra = []) => Laralyze::set('db_incident', "testing|{$id}", json_encode([
+    $incident = fn (string $id, string $kind, string $status, string $summary, array $extra = []) => Laralyze::set('db_incident', ($extra['connection'] ?? 'testing')."|{$id}", json_encode([
         'connection' => 'testing', 'id' => $id, 'kind' => $kind, 'status' => $status, 'summary' => $summary, 'peak' => 100,
         'started_at' => time() - 600, 'last_seen' => time() - 360, 'sessions' => [], ...$extra,
     ]));

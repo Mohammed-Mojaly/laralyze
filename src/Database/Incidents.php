@@ -26,6 +26,12 @@ final class Incidents
     public const SESSIONS = 15;
 
     /**
+     * Incidents kept with their details per connection each day. Past
+     * that, new ones are only counted.
+     */
+    public const PER_DAY = 50;
+
+    /**
      * The problems in one look, keyed by what makes them the same problem
      * from one minute to the next.
      *
@@ -82,8 +88,12 @@ final class Incidents
                     $victim = $transaction['rolled_back'] ? $transaction : $victim;
                 }
 
+                // The count says how many happened since the last look; only the last one has details.
+                $count = ($look['deadlocks'] ?? null) !== null && ($before['deadlocks'] ?? null) !== null ? (int) $look['deadlocks'] - (int) $before['deadlocks'] : 1;
+                $where = ($tables === [] ? '' : ' on '.implode(', ', $tables)).($victim === null ? '' : ": transaction {$victim['number']} was rolled back");
+
                 $found["deadlock:{$deadlock['at']}"] = [
-                    ...self::make('deadlock', Check::PROBLEM, 1, 'Deadlock'.($tables === [] ? '' : ' on '.implode(', ', $tables)).($victim === null ? '' : ": transaction {$victim['number']} was rolled back"), []),
+                    ...self::make('deadlock', Check::PROBLEM, max(1, $count), $count > 1 ? "{$count} deadlocks, the last{$where}" : "Deadlock{$where}", []),
                     'deadlock' => $deadlock,
                 ];
             } elseif (($look['deadlocks'] ?? null) !== null && ($before['deadlocks'] ?? null) !== null && $look['deadlocks'] > $before['deadlocks']) {
@@ -104,14 +114,16 @@ final class Incidents
     /**
      * Carry the open incidents forward with what this look found: a new one
      * starts, one still there is seen again and kept at its worst, and one
-     * no longer there is over. Returns the incidents open now, the ones to
-     * save, and the new ones among them.
+     * no longer there is over. Only `$room` new ones are kept with their
+     * details; the rest are counted, and stay without details while they
+     * last. Returns the incidents open now, the ones to save, and the new
+     * ones among them.
      *
      * @param  array<string, array<string, mixed>>  $open
      * @param  array<string, array<string, mixed>>  $found
      * @return array{0: array<string, array<string, mixed>>, 1: list<array<string, mixed>>, 2: list<array<string, mixed>>}
      */
-    public static function track(array $open, array $found, int $at): array
+    public static function track(array $open, array $found, int $at, int $room = self::PER_DAY): array
     {
         [$now, $save, $new] = [[], [], []];
 
@@ -119,16 +131,19 @@ final class Incidents
             $before = $open[$key] ?? null;
 
             if ($before === null) {
-                $incident = [...$incident, 'id' => "{$at}:{$key}", 'started_at' => $at, 'last_seen' => $at];
+                $incident = [...$incident, 'id' => "{$at}:{$key}", 'started_at' => $at, 'last_seen' => $at, 'kept' => count($new) < $room];
                 $new[] = $incident;
             } else {
                 $incident = $incident['peak'] > $before['peak']
-                    ? [...$incident, 'id' => $before['id'], 'started_at' => $before['started_at'], 'last_seen' => $at]
+                    ? [...$incident, 'id' => $before['id'], 'started_at' => $before['started_at'], 'last_seen' => $at, 'kept' => $before['kept'] ?? true]
                     : [...$before, 'last_seen' => $at];
             }
 
             $now[$key] = $incident;
-            $save[] = $incident;
+
+            if ($incident['kept']) {
+                $save[] = $incident;
+            }
         }
 
         return [$now, $save, $new];

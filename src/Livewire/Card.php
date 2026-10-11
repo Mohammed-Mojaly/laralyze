@@ -145,16 +145,17 @@ abstract class Card extends Component
     }
 
     /**
-     * The latest values set with Laralyze::set().
+     * The latest values set with Laralyze::set(): all, these keys, or the
+     * ones that start with a prefix. With a limit, the last keys first.
      *
      * @param  list<string>|null  $keys
      * @return Collection<int, stdClass>
      */
-    protected function values(string $type, ?array $keys = null): Collection
+    protected function values(string $type, ?array $keys = null, ?string $keyPrefix = null, ?int $limit = null): Collection
     {
         return $this->objects($this->remember(
-            ['values', $type, $keys],
-            fn (Storage $storage) => $this->arrays($storage->values($type, $keys)),
+            ['values', $type, $keys, $keyPrefix, $limit],
+            fn (Storage $storage) => $this->arrays($storage->values($type, $keys, $keyPrefix, $limit)),
         ));
     }
 
