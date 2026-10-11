@@ -15,7 +15,7 @@
             @if ($startedAt)
                 <span>· started <x-laralyze::ago :at="$startedAt" /></span>
             @endif
-            <span @class(['lz-warn' => $stale])>· {{ $stale ? 'last looked' : 'looked' }} <x-laralyze::ago :at="$snapshot['at']" />{{ $stale ? '. Is the scheduler running?' : '' }}</span>
+            <span @class(['lz-warn' => $stale])>· {{ $stale ? 'Is the scheduler running? Last looked' : 'looked' }} <x-laralyze::ago :at="$snapshot['at']" /></span>
         </p>
 
         @if ($checks === [] && $needs === [])
