@@ -44,7 +44,7 @@ final class Errors
             // 1205 is a deadlock on SQL Server and a lock wait timeout on MySQL.
             in_array($state, ['40001', '40P01'], true), $code === 1213, $driver === 'sqlsrv' && $code === 1205 => 'deadlock',
             $state === '55P03', $code === 1205, str_contains($e->getMessage(), 'database is locked') => 'lock_timeout',
-            $state === '53300', $code === 1040 => 'too_many_connections',
+            $state === '53300', $code === 1040, str_contains($e->getMessage(), 'too many clients'), str_contains($e->getMessage(), 'connection slots are reserved') => 'too_many_connections',
             (new self)->causedByLostConnection($e) => 'connection_lost',
             default => null,
         };

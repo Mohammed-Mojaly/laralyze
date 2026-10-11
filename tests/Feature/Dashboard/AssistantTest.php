@@ -15,6 +15,7 @@ use MohammedMojaly\Laralyze\Assistant\Tools\LaralyzeData;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Livewire\AssistantPanel;
+use MohammedMojaly\Laralyze\Recorders;
 
 beforeEach(function () {
     // Laralyze's assistant needs laravel/ai 1.0; CI also runs 0.x.
@@ -145,6 +146,21 @@ it('opens a fresh conversation about the whole app, not the last one', function 
 
     // Another page: a new one. The old one stays on the Assistant page.
     Livewire::test('laralyze.assistant')->call('ask')->assertSet('chat', null)->assertDontSee('One exception: LogicException.');
+});
+
+it('gives the assistant each query\'s SQL, with its connection once there are several', function () {
+    Laralyze::merge('query', Recorders\Queries::key('testing', 'select * from books'), ['count' => 2, 'sum' => 4, 'max' => 2, 'h4' => 2]);
+    Laralyze::flush();
+
+    $one = app(LaralyzeData::class)->handle(new Request(['topic' => 'queries', 'period' => '1h']));
+
+    Laralyze::merge('query', Recorders\Queries::key('reports', 'select * from sales'), ['count' => 1, 'sum' => 2, 'max' => 2, 'h4' => 1]);
+    Laralyze::flush();
+
+    $two = app(LaralyzeData::class)->handle(new Request(['topic' => 'queries', 'period' => '1h']));
+
+    expect($one)->toContain('| select * from books |')->not->toContain('| Connection |')->not->toContain('["testing"')
+        ->and($two)->toContain('| Connection |')->toContain('| reports | select * from sales |');
 });
 
 it('answers questions about the whole app from what Laralyze recorded', function () {

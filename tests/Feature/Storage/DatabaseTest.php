@@ -68,6 +68,19 @@ it('measures size once an hour, and looks at the rest every minute', function ()
     expect(databaseValue('database_size')['at'])->toBeGreaterThan($first);
 });
 
+it('measures once an hour even before the last measure is saved', function () {
+    // With database ingest, a measure is only readable after the next digest.
+    $sizes = 0;
+    DB::listen(function ($query) use (&$sizes) {
+        $sizes += (int) preg_match('/pragma_table_list|data_length/i', $query->sql);
+    });
+
+    app(Recorders\Database::class, ['config' => []])->snapshot();
+    app(Recorders\Database::class, ['config' => []])->snapshot();
+
+    expect($sizes)->toBe(1);
+});
+
 it('keeps going when a connection fails', function () {
     config(['database.connections.broken' => ['driver' => 'mysql', 'host' => '127.0.0.1', 'port' => 1, 'database' => 'none']]);
 

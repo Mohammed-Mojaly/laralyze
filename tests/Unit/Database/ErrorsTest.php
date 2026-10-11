@@ -24,6 +24,8 @@ it('tells database errors apart by kind', function (string $driver, string $stat
     'SQLite busy' => ['sqlite', 'HY000', 5, 'lock_timeout', 'SQLSTATE[HY000]: General error: 5 database is locked'],
     'MySQL too many connections' => ['mysql', '08004', 1040, 'too_many_connections'],
     'PostgreSQL too many connections' => ['pgsql', '53300', 7, 'too_many_connections'],
+    'PostgreSQL refusing to connect' => ['pgsql', '08006', 7, 'too_many_connections', 'SQLSTATE[08006] [7] FATAL:  sorry, too many clients already'],
+    'PostgreSQL slots reserved' => ['pgsql', '08006', 7, 'too_many_connections', 'SQLSTATE[08006] [7] FATAL:  remaining connection slots are reserved for roles with the SUPERUSER attribute'],
     'lost connection' => ['mysql', 'HY000', 2006, 'connection_lost', 'SQLSTATE[HY000]: General error: 2006 MySQL server has gone away'],
     'a duplicate key is not one of them' => ['mysql', '23000', 1062, null],
 ]);

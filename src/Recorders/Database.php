@@ -7,6 +7,7 @@ use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Facades\Cache;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Database\Check;
 use MohammedMojaly\Laralyze\Database\Reader;
@@ -122,8 +123,7 @@ class Database extends Recorder
 
             $previous = $this->storage->values('database_size', [$name])->first();
 
-            // A minute early, so the scheduler's own timing doesn't skip an hour.
-            return [$now, (int) ($previous->timestamp ?? 0) <= now()->getTimestamp() - self::MEASURE_EVERY + 60 ? $this->measure($db, $reader, json_decode((string) ($previous->value ?? ''), true)) : null];
+            return [$now, $this->due($name, (int) ($previous->timestamp ?? 0)) ? $this->measure($db, $reader, json_decode((string) ($previous->value ?? ''), true)) : null];
         });
 
         foreach ($now['checks'] as $check) {
@@ -141,6 +141,20 @@ class Database extends Recorder
             $this->laralyze->record('db_size', $name, (float) $size['total'])->max();
             $this->laralyze->set('database_size', $name, (string) json_encode($size, JSON_INVALID_UTF8_SUBSTITUTE), $size['at']);
         }
+    }
+
+    /**
+     * Whether the hourly measure is due. A minute early, so the scheduler's
+     * own timing doesn't skip an hour. With database ingest the last measure
+     * is only readable after the next digest, so the cache remembers it too.
+     */
+    protected function due(string $name, int $measuredAt): bool
+    {
+        if ($measuredAt > now()->getTimestamp() - self::MEASURE_EVERY + 60) {
+            return false;
+        }
+
+        return (bool) $this->laralyze->rescue(fn () => Cache::add("laralyze:database:measured:{$name}", true, self::MEASURE_EVERY - 60), true);
     }
 
     /**

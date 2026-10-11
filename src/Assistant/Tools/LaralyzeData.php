@@ -10,6 +10,7 @@ use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Dashboard\Issues;
 use MohammedMojaly\Laralyze\Dashboard\Range;
 use MohammedMojaly\Laralyze\Recorders\Ai;
+use MohammedMojaly\Laralyze\Recorders\Queries;
 use MohammedMojaly\Laralyze\Support\Format;
 
 /**
@@ -36,7 +37,7 @@ class LaralyzeData implements Tool
             'routes' => $this->routes($window),
             'exceptions' => $this->exceptions($window),
             'findings' => $this->findings($window),
-            'queries' => $this->table('query', ['count', 'sum', 'avg', 'p95'], $window, 'sum', ['SQL', 'Runs', 'Total', 'Avg', 'p95'], [null, 'number', 'duration', 'duration', 'duration']),
+            'queries' => $this->queries($window),
             'jobs' => $this->jobs($window),
             'outgoing_requests' => $this->table('http', ['count', 'avg', 'p95'], $window, 'count', ['URL', 'Calls', 'Avg', 'p95'], [null, 'number', 'duration', 'duration']),
             'cache' => $this->cache($window),
@@ -170,6 +171,25 @@ class LaralyzeData implements Tool
 
             return $cells;
         })->all());
+    }
+
+    protected function queries(int $window): string
+    {
+        $rows = $this->storage->aggregate('query', ['count', 'sum', 'avg', 'p95'], $window, 'sum', 30)
+            ->map(fn ($row) => [...Queries::parts((string) $row->key), $row]);
+        $several = $rows->pluck(0)->unique()->count() > 1;
+
+        return $this->rows(
+            [...($several ? ['Connection'] : []), 'SQL', 'Runs', 'Total', 'Avg', 'p95'],
+            $rows->map(fn (array $row) => [
+                ...($several ? [$row[0]] : []),
+                mb_strimwidth($row[1], 0, 300, '…'),
+                Format::number($row[2]->count),
+                Format::duration($row[2]->sum),
+                Format::duration($row[2]->avg),
+                Format::duration($row[2]->p95),
+            ])->all(),
+        );
     }
 
     /**
