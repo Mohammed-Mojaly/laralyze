@@ -229,10 +229,14 @@ it('reads connections, uptime, deadlocks and ids on PostgreSQL', function () {
     $now = databaseValue('database');
     $checks = collect($now['checks'])->keyBy('key');
     $tiny = collect(databaseValue('database_size')['ids'])->firstWhere('table', 'tiny_ids');
+    // The app is refused before max_connections: some slots are kept for superusers.
+    $setting = fn (string $name) => (int) DB::scalar("select coalesce(current_setting('{$name}', true), '0')");
+    $usable = $setting('max_connections') - $setting('superuser_reserved_connections') - $setting('reserved_connections');
 
     expect($now['engine'])->toMatch('/^PostgreSQL \d+\.\d+$/')
         ->and($checks->keys()->all())->toBe(['connections', 'long_running', 'blocking', 'open_transactions'])
         ->and($checks['connections']['percent'])->toBeGreaterThan(0)
+        ->and($checks['connections']['value'])->toEndWith(" / {$usable}")
         ->and($checks['blocking']['status'])->toBe('ok')
         ->and($now['started_at'])->toBeLessThanOrEqual(time())
         ->and($tiny['column'])->toBe('id')

@@ -80,10 +80,11 @@ class Postgres extends Reader
      */
     protected function processes(): array
     {
+        // pg_blocking_pids() briefly takes the lock manager for itself: asked only of sessions waiting for a lock.
         return array_values($this->db->select("select pid, usename, host(client_addr) as host, datname, state, wait_event_type, query,
             greatest(0, extract(epoch from clock_timestamp() - query_start))::int as running,
             greatest(0, extract(epoch from clock_timestamp() - state_change))::int as idle,
-            pg_blocking_pids(pid)::text as blocking
+            case when wait_event_type = 'Lock' then pg_blocking_pids(pid)::text end as blocking
             from pg_stat_activity
             where backend_type = 'client backend' and pid <> pg_backend_pid()"));
     }
@@ -128,7 +129,8 @@ class Postgres extends Reader
     protected function connections(): ?array
     {
         $used = (int) $this->db->scalar("select count(*) from pg_stat_activity where backend_type = 'client backend'");
-        $max = (int) $this->db->scalar("select current_setting('max_connections')::int");
+        // The app is refused before max_connections: some slots are kept for superusers, and on 16+ for reserved roles.
+        $max = (int) $this->db->scalar("select current_setting('max_connections')::int - current_setting('superuser_reserved_connections')::int - coalesce(current_setting('reserved_connections', true)::int, 0)");
 
         if ($max <= 0) {
             return null;

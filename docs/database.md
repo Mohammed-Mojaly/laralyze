@@ -57,4 +57,6 @@ GRANT pg_read_all_stats TO app;
 - Growth needs a day of measuring before it shows.
 - MySQL keeps table statistics for up to a day (`information_schema_stats_expiry`), so sizes and ids can be that old.
 - On PostgreSQL, ids are read from the sequences of serial and identity columns in the schemas on the search path.
+- On PostgreSQL, connections are measured against the ones the app may open: `max_connections` less the slots kept for superusers.
+- On PostgreSQL, a crash that only restarts the server's processes, like the out-of-memory killer ending one of them, isn't a restart; it shows as lost connections in the errors.
 - On SQLite there are no connections or locks to look at; the page shows errors and size.
