@@ -1,6 +1,7 @@
 {{-- The database's sessions at work, longest first: what each runs, for how long, and who it waits for. --}}
 @props(['sessions'])
 @use('MohammedMojaly\Laralyze\Support\Format')
+@php($locks = collect($sessions)->contains(fn (array $session) => isset($session['rows_locked'])))
 <x-laralyze::table>
     <x-slot:head>
         <th scope="col" class="lz-num">Session</th>
@@ -9,7 +10,9 @@
         <th scope="col" class="lz-num">For</th>
         <th scope="col">State</th>
         <th scope="col" class="lz-num">Blocked by</th>
-        <th scope="col" class="lz-num">Rows locked</th>
+        @if ($locks)
+            <th scope="col" class="lz-num">Rows locked</th>
+        @endif
         <th scope="col">Query</th>
     </x-slot:head>
 
@@ -21,7 +24,9 @@
             <td class="lz-num lz-nowrap">{{ Format::duration(($session['seconds'] ?? 0) * 1_000) }}</td>
             <td>{{ $session['state'] ?? '' }}</td>
             <td @class(['lz-num', 'lz-bad' => ($session['blocked_by'] ?? null) !== null])>{{ $session['blocked_by'] ?? '' }}</td>
-            <td class="lz-num">{{ isset($session['rows_locked']) ? Format::number($session['rows_locked']) : '' }}</td>
+            @if ($locks)
+                <td class="lz-num">{{ isset($session['rows_locked']) ? Format::number($session['rows_locked']) : '' }}</td>
+            @endif
             <td class="lz-wrap">@if (($session['query'] ?? '') !== '')<code class="lz-sql">{{ $session['query'] }}</code>@endif</td>
         </tr>
     @endforeach

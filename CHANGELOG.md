@@ -2,6 +2,10 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## Unreleased
+
+- **Database health on PostgreSQL.** The live checks, the sessions at work, incidents and ids running out now work on PostgreSQL too: connections against `max_connections`, queries running long, who waits for whose lock, transactions left idle and open, restarts, and deadlocks as PostgreSQL counts them. PostgreSQL writes a deadlock's details only to its log, so deadlocks come without details. Nothing to install; with `pg_read_all_stats` the page also sees other users' sessions. See [Database health](docs/database.md).
+
 ## v0.7.0 - 2026-10-11
 
 - **Database health page.** How the database itself is doing: connections in use against the limit, queries running over 30 seconds, who waits for whose lock, transactions left open, restarts, errors by kind (deadlocks, lock timeouts, refused and lost connections), size and growth, the largest tables, and auto-increment ids running out. The sessions at work are listed live, longest first, with who each one waits for. Every problem is kept as an incident after it's over, with the sessions at its worst moment; a deadlock keeps both transactions' queries and locks. Deadlocks are counted as the database counts them, including the ones Laravel retried. It only reads, and needs nothing installed on the database; a check your app's user may not run is left out, and the page says which privilege it needs. Errors, size and growth work on every database; the live checks on MySQL and MariaDB for now. Problems show in Needs attention. It sits in a new Database section of the sidebar, with Queries. See [Database health](docs/database.md).

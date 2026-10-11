@@ -7,11 +7,11 @@ It only reads. It never changes a setting, ends a query or cleans a table; when 
 ## What it shows
 
 - **Right now**: connections in use against the limit, queries running longer than 30 seconds, queries waiting for another one's lock, transactions left open with nothing running, and a restart in the last day. Below them, the sessions at work, longest first: what each runs, for how long, and who it waits for.
-- **Incidents**: every problem a look found, kept after it's over. Blocking, long-running queries, transactions left open, connections near the limit, deadlocks and restarts. One that lasts several minutes is one incident, kept at its worst moment with the sessions at work then. A deadlock keeps both transactions: their queries, the lock each held and the one it waited for, and which was rolled back. Deadlocks are counted as the database counts them, so the ones Laravel retried, and the ones between other apps, show too.
+- **Incidents**: every problem a look found, kept after it's over. Blocking, long-running queries, transactions left open, connections near the limit, deadlocks and restarts. One that lasts several minutes is one incident, kept at its worst moment with the sessions at work then. On MySQL and MariaDB, a deadlock keeps both transactions: their queries, the lock each held and the one it waited for, and which was rolled back. Deadlocks are counted as the database counts them, so the ones Laravel retried, and the ones between other apps, show too.
 - **Slowing down**: connections in use over the period, and database errors by kind: deadlocks, lock timeouts, refused connections and lost ones.
 - **Later**: the size and how fast it grows, the largest and fastest growing tables (Laralyze's own are marked), and auto-increment ids getting close to the largest value their column holds.
 
-Errors, size and growth work on every database. The live checks, sessions, incidents and ids work on MySQL and MariaDB for now; PostgreSQL and SQL Server come next.
+Errors, size and growth work on every database. The live checks, sessions, incidents and ids work on MySQL, MariaDB and PostgreSQL; SQL Server comes next. PostgreSQL writes a deadlock's details only to its log, so there they are counted without details.
 
 Queries running in the database are shown without their values, like on the Queries page.
 
@@ -39,10 +39,14 @@ Most apps' users can already see enough. To see more, give the user one of these
 | MySQL | `PROCESS` | Other users' sessions, open transactions, and deadlocks: how many, and the last one's details |
 | MySQL | `SELECT` on `performance_schema` | Who blocks whom |
 | MariaDB | `PROCESS` | Other users' sessions, open transactions, who blocks whom, and the last deadlock's details |
+| PostgreSQL | `pg_read_all_stats` | Other users' sessions and their queries |
 
 ```sql
 GRANT PROCESS ON *.* TO 'app'@'%';
 GRANT SELECT ON performance_schema.* TO 'app'@'%';
+
+-- PostgreSQL
+GRANT pg_read_all_stats TO app;
 ```
 
 ## Limits
@@ -52,4 +56,5 @@ GRANT SELECT ON performance_schema.* TO 'app'@'%';
 - Incidents need a cache that keeps its data between runs of the scheduler. With the `array` or `null` cache store there are none, though the checks still show. With several servers running the scheduler, use a shared cache (Redis, the database, Memcached), so one server looks and the incidents aren't counted twice.
 - Growth needs a day of measuring before it shows.
 - MySQL keeps table statistics for up to a day (`information_schema_stats_expiry`), so sizes and ids can be that old.
+- On PostgreSQL, ids are read from the sequences of serial and identity columns in the schemas on the search path.
 - On SQLite there are no connections or locks to look at; the page shows errors and size.

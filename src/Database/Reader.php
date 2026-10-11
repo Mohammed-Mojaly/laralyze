@@ -22,6 +22,7 @@ class Reader
     {
         return match ($db->getDriverName()) {
             'mysql', 'mariadb' => new Readers\MySql($db, $longRunning),
+            'pgsql' => new Readers\Postgres($db, $longRunning),
             default => new self($db, $longRunning),
         };
     }

@@ -67,7 +67,7 @@ final class Incidents
 
         foreach ((array) ($checks['open_transactions']['rows'] ?? []) as $row) {
             $found['open_transaction:'.$row['id']] = self::make('open_transaction', Check::WARNING, (int) $row['seconds'],
-                "Session {$row['id']}".(($row['user'] ?? '') !== '' ? " ({$row['user']})" : '').' kept a transaction open, idle for '.self::seconds((int) $row['seconds']).', '.Format::number($row['rows_locked']).' rows locked',
+                "Session {$row['id']}".(($row['user'] ?? '') !== '' ? " ({$row['user']})" : '').' kept a transaction open, idle for '.self::seconds((int) $row['seconds']).(isset($row['rows_locked']) ? ', '.Format::number($row['rows_locked']).' rows locked' : ''),
                 $sessions);
         }
 

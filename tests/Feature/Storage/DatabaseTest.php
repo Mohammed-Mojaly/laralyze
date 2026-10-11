@@ -10,8 +10,10 @@ use MohammedMojaly\Laralyze\Database\Check;
 use MohammedMojaly\Laralyze\Database\Errors;
 use MohammedMojaly\Laralyze\Database\Reader;
 use MohammedMojaly\Laralyze\Database\Readers\MySql;
+use MohammedMojaly\Laralyze\Database\Readers\Postgres;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Recorders;
+use MohammedMojaly\Laralyze\Support\Format;
 
 function lookAtDatabase(array $config = []): void
 {
@@ -104,7 +106,7 @@ it('keeps going when a connection fails', function () {
 it('records none of its own queries as the app\'s', function () {
     lookAtDatabase();
 
-    $own = fn (string $key) => preg_match('/processlist|innodb_trx|@@max_connections|global status|c\.extra like/i', $key);
+    $own = fn (string $key) => preg_match('/processlist|innodb_trx|@@max_connections|global status|c\.extra like|pg_stat_activity|pg_sequences|pg_postmaster_start_time/i', $key);
 
     expect(app(Storage::class)->aggregate('query', ['count'], 3_600)->pluck('key')->filter($own))->toBeEmpty();
 });
@@ -207,4 +209,115 @@ it('knows the largest id of each column type', function () {
         ->and(Reader::maxId('INT', true))->toBe(4_294_967_295.0)
         ->and(Reader::maxId('bigint', false))->toBe(9.223372036854775807E18)
         ->and(Reader::maxId('varchar', false))->toBeNull();
+});
+
+function onPostgres(): bool
+{
+    return DB::connection()->getDriverName() === 'pgsql';
+}
+
+it('reads connections, uptime, deadlocks and ids on PostgreSQL', function () {
+    Schema::create('tiny_ids', fn ($table) => $table->smallIncrements('id'));
+    DB::statement("select setval(pg_get_serial_sequence('tiny_ids', 'id'), 30000)");
+
+    try {
+        lookAtDatabase();
+    } finally {
+        Schema::drop('tiny_ids');
+    }
+
+    $now = databaseValue('database');
+    $checks = collect($now['checks'])->keyBy('key');
+    $tiny = collect(databaseValue('database_size')['ids'])->firstWhere('table', 'tiny_ids');
+
+    expect($now['engine'])->toMatch('/^PostgreSQL \d+\.\d+$/')
+        ->and($checks->keys()->all())->toBe(['connections', 'long_running', 'blocking', 'open_transactions'])
+        ->and($checks['connections']['percent'])->toBeGreaterThan(0)
+        ->and($checks['blocking']['status'])->toBe('ok')
+        ->and($now['started_at'])->toBeLessThanOrEqual(time())
+        ->and($tiny['column'])->toBe('id')
+        ->and($tiny['max'])->toEqual(32_767)
+        ->and($tiny['status'])->toBe('problem');
+})->skip(fn () => ! onPostgres(), 'PostgreSQL only');
+
+it('finds a transaction left open, and who it blocks, on PostgreSQL', function () {
+    config(['cache.default' => 'file']);
+    Cache::forget('laralyze:database:state:testing');
+
+    config(['database.connections.second' => config('database.connections.testing')]);
+    Schema::create('held_rows', fn ($table) => $table->id());
+    DB::table('held_rows')->insert(['id' => 1]);
+
+    $second = DB::connection('second');
+    $second->beginTransaction();
+    $second->update('update held_rows set id = 1 where id = 1');
+    $holder = (int) $second->scalar('select pg_backend_pid()');
+
+    // A third session waits for the row, from another process.
+    $config = config('database.connections.testing');
+    $waiter = proc_open([PHP_BINARY, '-r', sprintf(
+        '$pdo = new PDO(%s, %s, %s); $pdo->exec("update held_rows set id = 1 where id = 1");',
+        var_export("pgsql:host={$config['host']};port={$config['port']};dbname={$config['database']}", true),
+        var_export($config['username'], true),
+        var_export($config['password'], true),
+    )], [], $pipes);
+    sleep(2);
+
+    try {
+        lookAtDatabase(['long_running' => 1]);
+    } finally {
+        $second->rollBack();
+        proc_close($waiter);
+        Schema::drop('held_rows');
+    }
+
+    $now = databaseValue('database');
+    $checks = collect($now['checks'])->keyBy('key');
+    $incidents = app(Storage::class)->values('db_incident')->map(fn ($row) => json_decode((string) $row->value, true))->keyBy('kind');
+
+    expect($checks['open_transactions']['status'])->toBe('warning')
+        ->and($checks['open_transactions']['rows'][0]['id'])->toBe($holder)
+        ->and($checks['blocking']['status'])->toBe('problem')
+        ->and($checks['blocking']['rows'][0]['blocking'])->toBe($holder)
+        ->and($checks['blocking']['rows'][0]['query'])->toBe('update held_rows set id = ? where id = ?')
+        ->and(collect($now['sessions'])->firstWhere('id', $holder)['state'])->toBe('idle, transaction open')
+        ->and(collect($now['sessions'])->firstWhere('blocked_by', $holder)['state'])->toBe('waiting for a lock')
+        ->and($incidents->keys()->sort()->values()->all())->toBe(['blocking', 'long_running', 'open_transaction'])
+        ->and($incidents['blocking']['summary'])->toStartWith("Session {$holder} ({$config['username']}) blocked 1 session")
+        ->and($incidents['open_transaction']['summary'])->toEndWith('kept a transaction open, idle for '.Format::duration($checks['open_transactions']['rows'][0]['seconds'] * 1_000));
+})->skip(fn () => ! onPostgres(), 'PostgreSQL only');
+
+it('reads PostgreSQL sessions: running, waiting and idle in a transaction', function () {
+    $reader = new class(DB::connection(), 30) extends Postgres
+    {
+        public function read(array $processes): array
+        {
+            return [$this->longRunning($processes), $this->blocking($processes), $this->openTransactions($processes), $this->sessions($processes)];
+        }
+    };
+
+    $process = fn (int $pid, ?string $state, int $running, int $idle, string $blocking = '{}', ?string $wait = null, ?string $query = null) => (object) [
+        'pid' => $pid, 'usename' => 'app', 'host' => '10.0.0.5', 'datname' => 'shop', 'state' => $state,
+        'running' => $running, 'idle' => $idle, 'wait_event_type' => $wait, 'blocking' => $blocking, 'query' => $query,
+    ];
+
+    [$long, $blocking, $open, $sessions] = $reader->read([
+        $process(11, 'active', 45, 45, query: "select * from users where email = 'sara@example.com'"),
+        $process(12, 'active', 40, 40, '{13}', 'Lock', 'update orders set paid = 1 where id = 7'),
+        $process(13, 'idle in transaction', 60, 50, query: 'update orders set paid = 0 where id = 7'),
+        $process(14, 'idle', 900, 900, query: 'select 1'),
+        // Another user's session, without pg_read_all_stats.
+        $process(15, null, 0, 0, query: '<insufficient privilege>'),
+    ]);
+
+    expect($long['rows'])->toBe([
+        ['id' => 11, 'user' => 'app', 'seconds' => 45, 'query' => 'select * from users where email = ?'],
+        ['id' => 12, 'user' => 'app', 'seconds' => 40, 'query' => 'update orders set paid = ? where id = ?'],
+    ])
+        ->and($blocking['rows'])->toBe([['waiting' => 12, 'blocking' => 13, 'blocker' => 'app', 'seconds' => 40, 'query' => 'update orders set paid = ? where id = ?']])
+        ->and($open['rows'])->toBe([['id' => 13, 'user' => 'app', 'seconds' => 50]])
+        ->and(array_column($sessions, 'id'))->toBe([13, 11, 12])
+        ->and(array_column($sessions, 'state'))->toBe(['idle, transaction open', 'active', 'waiting for a lock'])
+        ->and(array_column($sessions, 'blocked_by'))->toBe([null, null, 13])
+        ->and($sessions[0]['query'])->toBe('update orders set paid = ? where id = ?');
 });

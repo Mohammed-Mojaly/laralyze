@@ -45,7 +45,7 @@ Restart your queue workers (`php artisan queue:restart`) so they load Laralyze, 
 | Findings | Possible N+1 and duplicate queries, with the line in your code |
 | Timelines | A single request, job or command with everything inside it, in order |
 | Queries, Cache, Outgoing Requests | Time per query, slow queries; cache hits and misses; calls to other services |
-| Database health | Connections, long-running queries, locks, errors by kind, size and growth, ids running out. See [Database](docs/database.md) |
+| Database health | Connections, long-running queries, locks, errors by kind, size and growth, ids running out. See [Database health](docs/database.md) |
 | AI | Calls made with `laravel/ai`: tokens, estimated cost, duration and failures |
 | Mail, Notifications | Sent and failed |
 | Logs | Entries by level, searchable, with their context and the request or job that wrote them |

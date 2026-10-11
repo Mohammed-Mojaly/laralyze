@@ -74,7 +74,19 @@ it('lists the sessions at work, like who is active', function () {
     databaseCard('database-now')
         ->assertSeeInOrder(['Active sessions', 'Session', 'Blocked by', 'Query'])
         ->assertSeeInOrder(['41', 'app', 'web-1 · shop', '2.2 min', 'updating', '37', 'update orders set paid = ? where id = ?'])
-        ->assertSee('idle, transaction open');
+        ->assertSee('idle, transaction open')
+        ->assertSee('Rows locked');
+});
+
+it('leaves out rows locked where the database doesn\'t count them', function () {
+    Laralyze::set('database', 'testing', json_encode(['at' => time(), 'engine' => 'PostgreSQL 17.4', 'started_at' => null, 'checks' => [], 'sessions' => [
+        ['id' => 6316, 'user' => 'app', 'host' => '10.0.0.5', 'database' => 'shop', 'seconds' => 50, 'state' => 'idle, transaction open', 'blocked_by' => null, 'query' => 'update orders set paid = ? where id = ?'],
+    ]]));
+    Laralyze::flush();
+
+    databaseCard('database-now')
+        ->assertSeeInOrder(['Active sessions', '6316', 'idle, transaction open', 'update orders set paid = ? where id = ?'])
+        ->assertDontSee('Rows locked');
 });
 
 it('keeps each incident, opened in place for the sessions at its worst or the deadlock', function () {
