@@ -245,7 +245,7 @@ class Queries extends Recorder
     public static function withoutValues(string $sql): string
     {
         return (string) preg_replace(
-            ['/\s+/', "/'(?:[^'\\\\]|\\\\.)*'/", '/\b\d+(?:\.\d+)?\b/', '/\bin\s*\(\s*\?(?:\s*,\s*\?)*\s*\)/i', '/\bvalues\s*\([^)]*\)(?:\s*,\s*\([^)]*\))*/i'],
+            ['/\s+/', "/(?:\\bN)?'(?:[^'\\\\]|\\\\.)*'/", '/\b\d+(?:\.\d+)?\b/', '/\bin\s*\(\s*\?(?:\s*,\s*\?)*\s*\)/i', '/\bvalues\s*\([^)]*\)(?:\s*,\s*\([^)]*\))*/i'],
             [' ', '?', '?', 'in (...)', 'values (...)'],
             trim($sql),
         );

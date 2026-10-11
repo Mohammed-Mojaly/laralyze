@@ -207,11 +207,11 @@ class Database extends Recorder
     }
 
     /**
-     * Some engines keep a deadlock's details where they cost more to read
-     * than a look, and write them a minute or two after counting it. They're
-     * read only when the count goes up, and waited for up to three minutes;
-     * meanwhile the new deadlocks aren't counted yet. Returns the look, and
-     * since when its deadlocks wait for their details.
+     * Some engines write a deadlock's details a minute or two after counting
+     * it, somewhere that costs more to read than a look. There, the new
+     * deadlocks wait two minutes before they're counted, and the details
+     * are read once then. Returns the look, and since when its deadlocks
+     * wait.
      *
      * @param  array<string, mixed>  $look
      * @param  array<string, mixed>  $before
@@ -219,7 +219,7 @@ class Database extends Recorder
      */
     protected function deadlockDetails(array $look, array $before, int $at, ?Reader $reader): array
     {
-        if ($reader === null || ($look['deadlock'] ?? null) !== null || ! isset($look['deadlocks'])) {
+        if ($reader === null || ! $reader->deadlocksLate() || ($look['deadlock'] ?? null) !== null || ! isset($look['deadlocks'])) {
             return [$look, null];
         }
 
@@ -232,15 +232,16 @@ class Database extends Recorder
             return [$look, null];
         }
 
-        $deadlock = $this->laralyze->rescue(fn () => $reader->latestDeadlock());
-
-        if (is_array($deadlock) && $deadlock['at'] !== ($before['deadlock_at'] ?? null)) {
-            return [[...$look, 'deadlock' => $deadlock], null];
-        }
-
         $since = (int) ($before['deadlocks_waiting'] ?? $at);
 
-        return $at - $since < 180 ? [[...$look, 'deadlocks' => $before['deadlocks']], $since] : [$look, null];
+        if ($at - $since < 120) {
+            return [[...$look, 'deadlocks' => $before['deadlocks']], $since];
+        }
+
+        // Details the engine hasn't written by now are left out: the deadlocks are counted without them.
+        $deadlock = $this->laralyze->rescue(fn () => $reader->latestDeadlock());
+
+        return [is_array($deadlock) && $deadlock['at'] !== ($before['deadlock_at'] ?? null) ? [...$look, 'deadlock' => $deadlock] : $look, null];
     }
 
     /**

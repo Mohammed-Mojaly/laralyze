@@ -11,7 +11,8 @@ use stdClass;
 /**
  * SQL Server. Without VIEW SERVER STATE a user sees only its own session,
  * so the live checks need it, and the page says so. Restarts and ids need
- * nothing more.
+ * nothing more. Azure SQL Database has no server of its own to look at:
+ * there, only errors, size and ids.
  */
 class SqlServer extends Reader
 {
@@ -37,6 +38,10 @@ class SqlServer extends Reader
 
     public function look(): array
     {
+        if ($this->azure()) {
+            return parent::look();
+        }
+
         if (! $this->allowed()) {
             return [
                 'checks' => array_map(fn (string $key) => Check::needs($key, self::PERMISSION), ['connections', 'long_running', 'blocking', 'open_transactions', 'deadlocks']),
@@ -57,7 +62,7 @@ class SqlServer extends Reader
             ])),
             'sessions' => $this->sessions($processes),
             'deadlocks' => $this->deadlocks(),
-            // Read only when the count goes up: see latestDeadlock().
+            // Written a minute or two later: see latestDeadlock().
             'deadlock' => null,
         ];
     }
@@ -92,17 +97,24 @@ class SqlServer extends Reader
         return $ids;
     }
 
+    public function deadlocksLate(): bool
+    {
+        return true;
+    }
+
     /**
      * The last deadlock the system_health session kept: SQL Server writes
-     * each one there, with both sides. Reading it costs more than a look,
-     * so it's read only when the deadlock count goes up.
+     * each one there, with both sides, up to two minutes after counting
+     * it. Only the file it writes to now is read; the older ones can hold
+     * many megabytes.
      */
     public function latestDeadlock(): ?array
     {
-        $report = $this->db->scalar("select top 1 cast(event_data as nvarchar(max))
-            from sys.fn_xe_file_target_read_file('system_health*.xel', null, null, null)
-            where object_name = 'xml_deadlock_report'
-            order by file_name desc, file_offset desc");
+        $report = $this->db->scalar("declare @file nvarchar(260) = (select cast(t.target_data as xml).value('(EventFileTarget/File/@name)[1]', 'nvarchar(260)')
+            from sys.dm_xe_session_targets t join sys.dm_xe_sessions s on s.address = t.event_session_address
+            where s.name = 'system_health' and t.target_name = 'event_file');
+            select top 1 cast(event_data as nvarchar(max)) from sys.fn_xe_file_target_read_file(@file, null, null, null)
+            where object_name = 'xml_deadlock_report' order by file_offset desc, timestamp_utc desc");
 
         return $report === null ? null : self::deadlock((string) $report);
     }
@@ -301,6 +313,11 @@ class SqlServer extends Reader
         $count = $this->db->scalar("select cntr_value from sys.dm_os_performance_counters where counter_name = 'Number of Deadlocks/sec' and instance_name = '_Total'");
 
         return $count === null ? null : (int) $count;
+    }
+
+    protected function azure(): bool
+    {
+        return (int) $this->db->scalar("select cast(serverproperty('EngineEdition') as int)") === 5;
     }
 
     /**

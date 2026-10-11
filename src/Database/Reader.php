@@ -51,8 +51,17 @@ class Reader
     }
 
     /**
-     * The last deadlock's details, for an engine that keeps them somewhere
-     * costlier to read than a look: read only when the count goes up.
+     * Whether the engine writes a deadlock's details a while after counting
+     * it, so the look can't bring them: they're read with latestDeadlock()
+     * once they're there.
+     */
+    public function deadlocksLate(): bool
+    {
+        return false;
+    }
+
+    /**
+     * The last deadlock's details, where the engine writes them late.
      *
      * @return array<string, mixed>|null
      */

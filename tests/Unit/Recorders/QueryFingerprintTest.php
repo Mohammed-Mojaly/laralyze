@@ -17,4 +17,6 @@ it('folds lists and literals so similar queries share a row', function (string $
     ['insert into logs (a, b) values (?, ?), (?, ?), (?, ?)', 'insert into logs (a, b) values (...)'],
     ["select   *\n  from posts\n where id = 42", 'select * from posts where id = ?'],
     ['select * from table1 limit 10', 'select * from table1 limit ?'],
+    // A Unicode literal on SQL Server, beside a column that ends in N.
+    ["select * from users where name = N'سارة' and isn = 'x'", 'select * from users where name = ? and isn = ?'],
 ]);

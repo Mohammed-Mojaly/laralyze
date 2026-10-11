@@ -95,7 +95,23 @@ it('keeps no incidents with a cache that forgets between runs', function () {
         ->toBe([[], [], 0]);
 });
 
-it('waits up to three minutes for a deadlock\'s details written after its count', function () {
+it('counts deadlocks in the same look on engines that keep no details, or keep them in the look', function () {
+    config(['cache.default' => 'file']);
+    Cache::forget('laralyze:database:state:testing');
+
+    // Like PostgreSQL, or MariaDB without PROCESS: a count, and no details.
+    $recorder = app(Recorders\Database::class, ['config' => []]);
+    $reader = new Reader(DB::connection());
+    $look = fn (int $deadlocks, int $at) => (fn () => $this->incidents('testing', ['checks' => [], 'deadlocks' => $deadlocks, 'deadlock' => null], $at, $reader))->call($recorder);
+
+    $look(3, 1_000);
+    [$saved, , $counted] = $look(5, 1_060);
+
+    expect($saved[0]['summary'])->toBe('2 deadlocks')
+        ->and($counted)->toBe(2);
+});
+
+it('reads a deadlock\'s details once, two minutes after its count, where they are written late', function () {
     config(['cache.default' => 'file']);
     Cache::forget('laralyze:database:state:testing');
 
@@ -104,8 +120,17 @@ it('waits up to three minutes for a deadlock\'s details written after its count'
     {
         public array $reports = [];
 
+        public int $reads = 0;
+
+        public function deadlocksLate(): bool
+        {
+            return true;
+        }
+
         public function latestDeadlock(): ?array
         {
+            $this->reads++;
+
             return array_shift($this->reports);
         }
     };
@@ -114,27 +139,32 @@ it('waits up to three minutes for a deadlock\'s details written after its count'
     $old = ['at' => '2026-10-11 09:00:00 UTC', 'transactions' => []];
     $new = ['at' => '2026-10-11 09:15:02 UTC', 'transactions' => [['number' => 1, 'session' => 61, 'query' => '', 'holds' => 'orders (PK_orders): X', 'waits' => '', 'rolled_back' => true]]];
 
-    // The first count notes the last deadlock; the next one's details come a minute after its count.
-    $reader->reports = [$old, $old, $new];
+    // The first count notes the last deadlock there is, to tell the next one from it.
+    $reader->reports = [$old, $new];
     $look(3, 1_000);
     [$waiting, , $counted] = $look(4, 1_060);
-    [$saved, , $countedLater] = $look(4, 1_120);
+    [$stillWaiting] = $look(4, 1_120);
 
-    expect($waiting)->toBe([])
+    expect($reader->reads)->toBe(1)
+        ->and($waiting)->toBe([])
         ->and($counted)->toBe(0)
+        ->and($stillWaiting)->toBe([]);
+
+    [$saved, , $counted] = $look(4, 1_180);
+
+    expect($reader->reads)->toBe(2)
         ->and($saved[0]['summary'])->toBe('Deadlock on orders: transaction 1 was rolled back')
         ->and($saved[0]['deadlock'])->toBe($new)
-        ->and($countedLater)->toBe(1);
+        ->and($counted)->toBe(1);
 
-    // Without them for three minutes, it's counted without details.
-    $reader->reports = [$new, $new, $new, $new];
-    foreach ([1_180, 1_240, 1_300] as $at) {
-        [$waiting] = $look(5, $at);
-        expect($waiting)->toBe([]);
-    }
+    // Not written by then: counted without details.
+    $reader->reports = [$new];
+    $look(5, 1_240);
+    $look(5, 1_300);
     [$saved, , $counted] = $look(5, 1_360);
 
-    expect($saved[0]['summary'])->toBe('A deadlock')
+    expect($reader->reads)->toBe(3)
+        ->and($saved[0]['summary'])->toBe('A deadlock')
         ->and($counted)->toBe(1);
 });
 
@@ -459,6 +489,8 @@ it('keeps a deadlock with both transactions on SQL Server', function () {
     Schema::create('crossed_rows', fn ($table) => $table->integer('id')->primary());
     DB::table('crossed_rows')->insert([['id' => 1], ['id' => 2]]);
     lookAtDatabase();
+    $reader = Reader::for(DB::connection());
+    $last = $reader->latestDeadlock()['at'] ?? null;
 
     // Each takes one row, then waits for the other's.
     $first = sqlServerProcess("begin tran; update crossed_rows set id = 1 where id = 1; waitfor delay '00:00:01'; update crossed_rows set id = 2 where id = 2; commit");
@@ -466,15 +498,16 @@ it('keeps a deadlock with both transactions on SQL Server', function () {
     proc_close($first);
     proc_close($second);
     Schema::drop('crossed_rows');
+    lookAtDatabase();
 
-    // SQL Server writes the details a minute or two after counting the deadlock.
-    $deadlock = null;
-
-    for ($tries = 0; $deadlock === null && $tries < 30; $tries++) {
+    // SQL Server writes the details a minute or two after counting the deadlock; the look waits two minutes for them.
+    for ($tries = 0; ($reader->latestDeadlock()['at'] ?? null) === $last && $tries < 30; $tries++) {
         sleep(5);
-        lookAtDatabase();
-        $deadlock = app(Storage::class)->values('db_incident')->map(fn ($row) => json_decode((string) $row->value, true))->firstWhere('kind', 'deadlock');
     }
+
+    $this->travel(2)->minutes();
+    lookAtDatabase();
+    $deadlock = app(Storage::class)->values('db_incident')->map(fn ($row) => json_decode((string) $row->value, true))->firstWhere('kind', 'deadlock');
 
     expect($deadlock['summary'])->toContain('crossed_rows')
         ->and($deadlock['deadlock']['transactions'])->toHaveCount(2)
@@ -515,9 +548,26 @@ it('reads SQL Server sessions: running, waiting and idle in a transaction', func
         ->and(array_column($sessions, 'blocked_by'))->toBe([null, null, null, 53]);
 });
 
+it('looks at nothing live on Azure SQL Database, which has no server of its own', function () {
+    $reader = new class(DB::connection(), 30) extends SqlServer
+    {
+        protected function azure(): bool
+        {
+            return true;
+        }
+    };
+
+    expect($reader->look())->toBe(['checks' => [], 'sessions' => [], 'deadlocks' => null, 'deadlock' => null]);
+});
+
 it('says SQL Server needs VIEW SERVER STATE to see the sessions', function () {
     $reader = new class(DB::connection(), 30) extends SqlServer
     {
+        protected function azure(): bool
+        {
+            return false;
+        }
+
         protected function allowed(): bool
         {
             return false;
