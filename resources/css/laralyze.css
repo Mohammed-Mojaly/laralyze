@@ -3345,6 +3345,34 @@ body.lz-root {
     margin-top: 10px;
 }
 
+.lz-db-sessions-title {
+    margin: 18px 0 8px;
+}
+
+.lz-db-blocked td {
+    background: color-mix(in srgb, var(--lz-bad) 6%, transparent);
+}
+
+.lz-db-tally {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+}
+
+.lz-db-tally strong {
+    color: var(--lz-ink);
+    font-family: var(--lz-mono);
+}
+
+.lz-incident-row {
+    grid-template-columns: 48px 72px 150px minmax(0, 1fr) auto;
+}
+
+.lz-incident-kind {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
 .lz-db-growth {
     margin: 0;
 }
@@ -3465,6 +3493,12 @@ body.lz-root {
     }
 
     .lz-log-source {
+        display: none;
+    }
+
+    /* An incident: when, what and its summary. */
+    .lz-incident-row > :nth-child(2),
+    .lz-incident-row > :nth-child(5) {
         display: none;
     }
 

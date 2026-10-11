@@ -150,10 +150,18 @@ it('finds a transaction left open on MySQL and MariaDB', function () {
         Schema::drop('held_rows');
     }
 
-    $open = collect(databaseValue('database')['checks'])->firstWhere('key', 'open_transactions');
+    $now = databaseValue('database');
+    $open = collect($now['checks'])->firstWhere('key', 'open_transactions');
+    $holder = $open['rows'][0]['id'];
+    $incidents = app(Storage::class)->values('db_incident')->map(fn ($row) => json_decode((string) $row->value, true));
 
     expect($open['status'])->toBe('warning')
-        ->and($open['rows'][0]['seconds'])->toBeGreaterThanOrEqual(1);
+        ->and($open['rows'][0]['seconds'])->toBeGreaterThanOrEqual(1)
+        ->and(collect($now['sessions'])->firstWhere('id', $holder)['state'])->toBe('idle, transaction open')
+        ->and($incidents)->toHaveCount(1)
+        ->and($incidents->first()['kind'])->toBe('open_transaction')
+        ->and($incidents->first()['summary'])->toContain("Session {$holder}")
+        ->and(app(Storage::class)->aggregate('db_incident', ['count'], 3_600)->first()->count)->toBe(1.0);
 })->skip(fn () => ! onMySql(), 'MySQL and MariaDB only');
 
 it('lists long-running queries without their values', function () {

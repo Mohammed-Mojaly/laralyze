@@ -37,13 +37,15 @@ class Reader
     }
 
     /**
-     * Connections, long-running queries, locks and open transactions.
+     * One look: the checks (connections, long-running queries, locks, open
+     * transactions), the sessions at work, deadlocks since the server
+     * started, and the last one's details.
      *
-     * @return list<array<string, mixed>>
+     * @return array{checks: list<array<string, mixed>>, sessions: list<array<string, mixed>>, deadlocks: int|null, deadlock: array<string, mixed>|null}
      */
-    public function now(): array
+    public function look(): array
     {
-        return [];
+        return ['checks' => [], 'sessions' => [], 'deadlocks' => null, 'deadlock' => null];
     }
 
     /**

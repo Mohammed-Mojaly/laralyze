@@ -66,6 +66,11 @@
             @endforeach
         </ul>
 
+        @if ($sessions !== [])
+            <h3 class="lz-label lz-db-sessions-title">Active sessions</h3>
+            <x-laralyze::db-sessions :sessions="$sessions" />
+        @endif
+
         @if ($needs !== [])
             <p class="lz-note lz-db-needs">
                 @foreach ($needs as $privilege => $count)

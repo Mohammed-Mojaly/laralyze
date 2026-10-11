@@ -9,6 +9,7 @@
     </x-slot:filters>
 
     <livewire:laralyze.database-now cols="full" />
+    <livewire:laralyze.database-incidents cols="full" />
     <livewire:laralyze.database-trends cols="full" />
     <livewire:laralyze.database-size cols="full" />
 </x-laralyze::page>

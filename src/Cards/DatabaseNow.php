@@ -41,6 +41,7 @@ class DatabaseNow extends DatabaseCard
         return view('laralyze::cards.database-now', [
             'snapshot' => $snapshot,
             'checks' => $checks,
+            'sessions' => (array) ($snapshot['sessions'] ?? []),
             'needs' => $needs,
             'startedAt' => $startedAt,
             'stale' => $snapshot !== null && (int) $snapshot['at'] < now()->getTimestamp() - 300,

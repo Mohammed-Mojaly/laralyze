@@ -10,6 +10,8 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Facades\Cache;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Database\Check;
+use MohammedMojaly\Laralyze\Database\Errors;
+use MohammedMojaly\Laralyze\Database\Incidents;
 use MohammedMojaly\Laralyze\Database\Reader;
 use MohammedMojaly\Laralyze\Laralyze;
 
@@ -110,20 +112,25 @@ class Database extends Recorder
 
     protected function look(string $name): void
     {
-        // Its own queries aren't the app's.
-        [$now, $size] = $this->laralyze->ignore(function () use ($name) {
+        $at = now()->getTimestamp();
+
+        // Its own queries, and its own cache, aren't the app's.
+        [$now, $incidents, $size] = $this->laralyze->ignore(function () use ($name, $at) {
             $db = $this->databases->connection($name);
             $reader = Reader::for($db, (int) ($this->config['long_running'] ?? 30));
 
+            $look = (array) $this->laralyze->rescue(fn () => $reader->look(), []);
             $now = [
                 'engine' => $reader->engine(),
                 'started_at' => $this->laralyze->rescue(fn () => $reader->startedAt()),
-                'checks' => (array) $this->laralyze->rescue(fn () => $reader->now(), []),
+                'checks' => (array) ($look['checks'] ?? []),
+                'sessions' => (array) ($look['sessions'] ?? []),
             ];
 
             $previous = $this->storage->values('database_size', [$name])->first();
+            $size = $this->due($name, (int) ($previous->timestamp ?? 0)) ? $this->measure($db, $reader, json_decode((string) ($previous->value ?? ''), true)) : null;
 
-            return [$now, $this->due($name, (int) ($previous->timestamp ?? 0)) ? $this->measure($db, $reader, json_decode((string) ($previous->value ?? ''), true)) : null];
+            return [$now, $this->incidents($name, [...$look, 'started_at' => $now['started_at']], $at), $size];
         });
 
         foreach ($now['checks'] as $check) {
@@ -134,13 +141,55 @@ class Database extends Recorder
             };
         }
 
-        $at = now()->getTimestamp();
+        [$save, $new, $deadlocks] = $incidents;
+
+        foreach ($save as $incident) {
+            $this->laralyze->set('db_incident', "{$name}|{$incident['id']}", (string) json_encode(['connection' => $name, ...$incident], JSON_INVALID_UTF8_SUBSTITUTE), $at);
+        }
+
+        foreach ($new as $incident) {
+            $this->laralyze->record('db_incident', Errors::key($name, $incident['kind']))->count();
+        }
+
+        // Every deadlock, including the ones Laravel retried and the ones between other apps.
+        if ($deadlocks > 0) {
+            $this->laralyze->merge('db_deadlocks', $name, ['count' => $deadlocks]);
+        }
+
         $this->laralyze->set('database', $name, (string) json_encode(['at' => $at, ...$now], JSON_INVALID_UTF8_SUBSTITUTE), $at);
 
         if ($size !== null) {
             $this->laralyze->record('db_size', $name, (float) $size['total'])->max();
             $this->laralyze->set('database_size', $name, (string) json_encode($size, JSON_INVALID_UTF8_SUBSTITUTE), $size['at']);
         }
+    }
+
+    /**
+     * The incidents to save, the new ones among them, and how many deadlocks
+     * happened since the last look. What the last look saw is kept in the
+     * cache, which is faster than reading it back and doesn't wait for ingest.
+     *
+     * @param  array<string, mixed>  $look
+     * @return array{0: list<array<string, mixed>>, 1: list<array<string, mixed>>, 2: int}
+     */
+    protected function incidents(string $name, array $look, int $at): array
+    {
+        $key = "laralyze:database:state:{$name}";
+        $before = (array) $this->laralyze->rescue(fn () => Cache::get($key, []), []);
+
+        [$open, $save, $new] = Incidents::track((array) ($before['open'] ?? []), Incidents::found($look, $before), $at);
+
+        $deadlocks = isset($look['deadlocks']) ? (int) $look['deadlocks'] : null;
+        $counted = isset($before['deadlocks']) ? (int) $before['deadlocks'] : null;
+
+        $this->laralyze->rescue(fn () => Cache::put($key, [
+            'open' => $open,
+            'deadlocks' => $deadlocks ?? $counted,
+            'deadlock_at' => $look['deadlock']['at'] ?? $before['deadlock_at'] ?? null,
+            'started_at' => $look['started_at'] ?? $before['started_at'] ?? null,
+        ], 86_400));
+
+        return [$save, $new, $deadlocks !== null && $counted !== null ? max(0, $deadlocks - $counted) : 0];
     }
 
     /**

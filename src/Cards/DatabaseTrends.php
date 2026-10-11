@@ -18,7 +18,7 @@ class DatabaseTrends extends DatabaseCard
         $name = $this->database();
         $errors = [];
 
-        foreach ($this->aggregate('db_error', ['count'], keyPrefix: substr(Errors::key($name, ''), 0, -3)) as $row) {
+        foreach ($this->aggregate('db_error', ['count'], keyPrefix: Errors::prefix($name)) as $row) {
             $kind = (string) (json_decode((string) $row->key, true)[1] ?? '');
             $errors[$kind] = (float) $row->count;
         }

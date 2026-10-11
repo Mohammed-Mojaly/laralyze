@@ -32,6 +32,8 @@ function lookedAt(string $connection, array $checks, array $size = [], ?int $sta
 it('waits for the scheduler before it has anything to show', function () {
     $this->get('/laralyze/database')->assertOk()->assertSee('Database');
 
+    databaseCard('database-incidents')->assertSee('No incidents in the last hour.');
+
     databaseCard('database-now')->assertSee('Laralyze hasn\'t looked at this database yet.');
     databaseCard('database-size')->assertSee('Not measured yet.');
     databaseCard('database-trends')->assertSee('No deadlocks, lock timeouts, refused or lost connections');
@@ -55,6 +57,55 @@ it('shows each check with what to do about it, and what a missing privilege hide
         ->assertDontSee('Restarted');
 
     databaseCard('attention')->assertSee('Database testing: connections, 93 / 100.');
+});
+
+it('lists the sessions at work, like who is active', function () {
+    Laralyze::set('database', 'testing', json_encode(['at' => time(), 'engine' => 'MySQL 8.4.2', 'started_at' => time() - 86_400 * 9, 'checks' => [], 'sessions' => [
+        ['id' => 41, 'user' => 'app', 'host' => 'web-1', 'database' => 'shop', 'seconds' => 130, 'state' => 'updating', 'blocked_by' => 37, 'rows_locked' => 1, 'query' => 'update orders set paid = ? where id = ?'],
+        ['id' => 37, 'user' => 'app', 'host' => 'web-2', 'database' => 'shop', 'seconds' => 240, 'state' => 'idle, transaction open', 'blocked_by' => null, 'rows_locked' => 3, 'query' => ''],
+    ]]));
+    Laralyze::flush();
+
+    databaseCard('database-now')
+        ->assertSeeInOrder(['Active sessions', 'Session', 'Blocked by', 'Query'])
+        ->assertSeeInOrder(['41', 'app', 'web-1 · shop', '2.2 min', 'updating', '37', 'update orders set paid = ? where id = ?'])
+        ->assertSee('idle, transaction open');
+});
+
+it('keeps each incident, opened in place for the sessions at its worst or the deadlock', function () {
+    $incident = fn (string $id, string $kind, string $status, string $summary, array $extra = []) => Laralyze::set('db_incident', "testing|{$id}", json_encode([
+        'connection' => 'testing', 'id' => $id, 'kind' => $kind, 'status' => $status, 'summary' => $summary, 'peak' => 100,
+        'started_at' => time() - 600, 'last_seen' => time() - 360, 'sessions' => [], ...$extra,
+    ]));
+
+    $incident('1:blocking:37', 'blocking', Check::PROBLEM, 'Session 37 (app) blocked 2 sessions, waiting up to 1m 40s', [
+        'sessions' => [['id' => 41, 'user' => 'app', 'host' => 'web-1', 'database' => 'shop', 'seconds' => 100, 'state' => 'updating', 'blocked_by' => 37, 'rows_locked' => 1, 'query' => 'update orders set paid = ?']],
+    ]);
+    $incident('2:deadlock:x', 'deadlock', Check::PROBLEM, 'Deadlock on orders: transaction 2 was rolled back', [
+        'started_at' => time() - 60, 'last_seen' => time() - 60,
+        'deadlock' => ['at' => '2026-10-11 01:23:45', 'transactions' => [
+            ['number' => 1, 'session' => 12, 'query' => 'update orders set paid = ? where id = ?', 'holds' => 'orders (PRIMARY): X', 'waits' => 'orders (PRIMARY): X waiting', 'rolled_back' => false],
+            ['number' => 2, 'session' => 13, 'query' => 'update orders set total = ? where id = ?', 'holds' => 'orders (PRIMARY): X', 'waits' => 'orders (PRIMARY): X waiting', 'rolled_back' => true],
+        ]],
+    ]);
+    $incident('3:other', 'blocking', Check::PROBLEM, 'On another connection', ['connection' => 'reports']);
+    Laralyze::record('db_incident', Errors::key('testing', 'blocking'))->count();
+    Laralyze::record('db_incident', Errors::key('testing', 'deadlock'))->count();
+    Laralyze::merge('db_deadlocks', 'testing', ['count' => 3]);
+    Laralyze::record('db_error', Errors::key('testing', 'deadlock'))->count();
+    Laralyze::flush();
+
+    databaseCard('database-incidents')
+        ->assertSeeInOrder(['Blocking', '1', 'Deadlock', '1', 'Deadlocks in the database', '3', '1 reached the app'])
+        ->assertSeeInOrder(['Deadlock on orders: transaction 2 was rolled back', 'Session 37 (app) blocked 2 sessions'])
+        ->assertSee('for 4 min')
+        ->assertDontSee('On another connection')
+        ->assertDontSee('Sessions at its worst')
+        ->call('toggle', '1:blocking:37')
+        ->assertSeeInOrder(['Sessions at its worst', '41', 'update orders set paid = ?'])
+        ->call('toggle', '2:deadlock:x')
+        ->assertSeeInOrder(['2026-10-11 01:23:45', 'update orders set paid = ? where id = ?', 'rolled back', 'update orders set total = ? where id = ?'])
+        ->assertDontSee('Sessions at its worst');
 });
 
 it('says when the database restarted', function () {

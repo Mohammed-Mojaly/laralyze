@@ -30,6 +30,14 @@ final class Errors
         return (string) json_encode([$connection, $kind], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 
+    /**
+     * What every key of a connection starts with.
+     */
+    public static function prefix(string $connection): string
+    {
+        return substr(self::key($connection, ''), 0, -3);
+    }
+
     public static function kind(Throwable $e): ?string
     {
         if (! $e instanceof PDOException) {

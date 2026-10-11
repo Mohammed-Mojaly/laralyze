@@ -45,6 +45,7 @@ class LaralyzeServiceProvider extends ServiceProvider
         'queries' => Cards\QueryList::class,
         'slow-queries' => Cards\SlowQueries::class,
         'database-now' => Cards\DatabaseNow::class,
+        'database-incidents' => Cards\DatabaseIncidents::class,
         'database-trends' => Cards\DatabaseTrends::class,
         'database-size' => Cards\DatabaseSize::class,
         'cache' => Cards\CacheTotals::class,
