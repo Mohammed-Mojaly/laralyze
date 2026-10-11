@@ -9,6 +9,7 @@ use MohammedMojaly\Laralyze\Assistant\Untrusted;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Dashboard\Issues;
 use MohammedMojaly\Laralyze\Dashboard\Range;
+use MohammedMojaly\Laralyze\Database\Report;
 use MohammedMojaly\Laralyze\Recorders\Ai;
 use MohammedMojaly\Laralyze\Recorders\Queries;
 use MohammedMojaly\Laralyze\Support\Format;
@@ -18,13 +19,13 @@ use MohammedMojaly\Laralyze\Support\Format;
  */
 class LaralyzeData implements Tool
 {
-    public const TOPICS = ['overview', 'routes', 'exceptions', 'findings', 'queries', 'jobs', 'outgoing_requests', 'cache', 'ai'];
+    public const TOPICS = ['overview', 'routes', 'exceptions', 'findings', 'queries', 'jobs', 'outgoing_requests', 'cache', 'ai', 'database'];
 
     public function __construct(protected Storage $storage, protected Issues $issues) {}
 
     public function description(): string
     {
-        return 'Read what Laralyze recorded about the app over a period: overview (totals), routes (traffic, timings, errors), exceptions, findings (N+1 and duplicate queries), queries (by total time), jobs, outgoing_requests, cache, ai (the app\'s own AI calls).';
+        return 'Read what Laralyze recorded about the app over a period: overview (totals), routes (traffic, timings, errors), exceptions, findings (N+1 and duplicate queries), queries (by total time), jobs, outgoing_requests, cache, ai (the app\'s own AI calls), database (the database itself: connections, long-running queries, blocking, open transactions, incidents with both sides of each deadlock, errors by kind, size and ids running out).';
     }
 
     public function handle(Request $request): string
@@ -42,6 +43,7 @@ class LaralyzeData implements Tool
             'outgoing_requests' => $this->table('http', ['count', 'avg', 'p95'], $window, 'count', ['URL', 'Calls', 'Avg', 'p95'], [null, 'number', 'duration', 'duration']),
             'cache' => $this->cache($window),
             'ai' => $this->ai($window),
+            'database' => Report::markdown($this->storage, $window),
             default => $this->overview($window),
         };
 

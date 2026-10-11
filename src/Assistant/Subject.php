@@ -5,6 +5,7 @@ namespace MohammedMojaly\Laralyze\Assistant;
 use MohammedMojaly\Laralyze\Cards\ExceptionDetail;
 use MohammedMojaly\Laralyze\Cards\Findings;
 use MohammedMojaly\Laralyze\Contracts\Storage;
+use MohammedMojaly\Laralyze\Database\Report;
 use MohammedMojaly\Laralyze\Recorders\Queries;
 use MohammedMojaly\Laralyze\Support\Format;
 use stdClass;
@@ -16,7 +17,7 @@ use stdClass;
  */
 final class Subject
 {
-    public const KINDS = ['general', 'exception', 'n_plus_one', 'duplicate_query', 'query', 'request', 'execution'];
+    public const KINDS = ['general', 'exception', 'n_plus_one', 'duplicate_query', 'query', 'request', 'execution', 'database'];
 
     protected const WEEK = 7 * 86_400;
 
@@ -46,6 +47,7 @@ final class Subject
             'query' => 'Query · '.mb_strimwidth(Queries::parts($key)[1], 0, 60, '…'),
             'request' => 'Route · '.$key,
             'execution' => self::executionLabel($storage->execution($key)),
+            'database' => 'Database health',
             default => null,
         };
 
@@ -63,6 +65,7 @@ final class Subject
             'query' => $this->query($storage, $files),
             'request' => $this->route($storage),
             'execution' => $this->executionContext($storage->execution($this->key)),
+            'database' => "## Database health, last 7 days\n\n".Report::markdown($storage, self::WEEK),
             default => '',
         };
 

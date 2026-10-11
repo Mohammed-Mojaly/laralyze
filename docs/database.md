@@ -15,6 +15,8 @@ Errors, size and growth work on every database. The live checks, sessions, incid
 
 Queries running in the database are shown without their values, like on the Queries page.
 
+Ask AI on this page reads all of it: the last look, the week's incidents with both sides of each deadlock, errors, size and ids. Ask it why the last deadlock happened, or what went wrong this week. It can also read it from any other page when a question is about the database.
+
 ## Setup
 
 Nothing to install on the database: no extension, no setting, no restart. Laralyze uses what the database ships with and what your app's own user may read. A check that user may not run is left out, and the page says which privilege it needs.

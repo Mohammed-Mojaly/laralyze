@@ -13,6 +13,8 @@ use MohammedMojaly\Laralyze\Assistant\Assistant;
 use MohammedMojaly\Laralyze\Assistant\Chats;
 use MohammedMojaly\Laralyze\Assistant\Tools\LaralyzeData;
 use MohammedMojaly\Laralyze\Contracts\Storage;
+use MohammedMojaly\Laralyze\Database\Check;
+use MohammedMojaly\Laralyze\Database\Errors;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Livewire\AssistantPanel;
 use MohammedMojaly\Laralyze\Recorders;
@@ -383,4 +385,101 @@ it('keeps links only to the docs and the app itself, so one click can\'t send da
         ->assertSee('href="http://localhost/laralyze/requests"', false)
         ->assertDontSee('href="https://evil.test', false)
         ->assertSee('more');
+});
+
+/**
+ * A database with something to tell: a look, a deadlock, errors and its size.
+ */
+function databaseWithTrouble(): void
+{
+    Laralyze::set('database', 'testing', json_encode(['at' => time(), 'engine' => 'MySQL 8.4.2', 'started_at' => time() - 12 * 86_400, 'checks' => [
+        Check::make('connections', 'Connections', Check::OK, '12 / 151', percent: 7.9),
+        Check::make('long_running', 'Long-running queries', Check::WARNING, '1 over 30 s', 'Check what they wait for.', rows: [['id' => 41, 'user' => 'app', 'seconds' => 95, 'query' => 'select * from orders where total > ?']]),
+        Check::needs('deadlocks', 'PROCESS'),
+    ], 'sessions' => [
+        ['id' => 41, 'user' => 'app', 'host' => 'web-1', 'database' => 'shop', 'seconds' => 95, 'state' => 'Sending data', 'blocked_by' => null, 'query' => 'select * from orders where total > ?'],
+    ]]));
+    Laralyze::set('db_incident', 'testing|'.(time() - 600).':deadlock:x', json_encode([
+        'connection' => 'testing', 'id' => 'x', 'kind' => 'deadlock', 'status' => Check::PROBLEM, 'summary' => 'Deadlock on orders: transaction 2 was rolled back', 'peak' => 1,
+        'started_at' => time() - 600, 'last_seen' => time() - 600, 'sessions' => [],
+        'deadlock' => ['at' => '2026-10-11 01:23:45', 'transactions' => [
+            ['number' => 1, 'session' => 12, 'query' => 'update orders set paid = ? where id = ?', 'holds' => 'orders (PRIMARY): X', 'waits' => 'invoices (PRIMARY): X', 'rolled_back' => false],
+            ['number' => 2, 'session' => 13, 'query' => 'update invoices set total = ? where order_id = ?', 'holds' => 'invoices (PRIMARY): X', 'waits' => 'orders (PRIMARY): X', 'rolled_back' => true],
+        ]],
+    ]));
+    Laralyze::set('database_size', 'testing', json_encode(['at' => time(), 'total' => 50 * 1_048_576, 'count' => 2,
+        'tables' => [['name' => 'orders', 'size' => 40 * 1_048_576, 'own' => false]],
+        'ids' => [['table' => 'orders', 'column' => 'id', 'type' => 'int', 'used' => 1_900_000_000.0, 'max' => 2_147_483_647.0, 'percent' => 88.5, 'status' => Check::WARNING]],
+        'history' => [
+            ['day' => now()->subDays(2)->toDateString(), 'total' => 46 * 1_048_576, 'tables' => ['orders' => 36 * 1_048_576]],
+            ['day' => now()->toDateString(), 'total' => 50 * 1_048_576, 'tables' => ['orders' => 40 * 1_048_576]],
+        ],
+    ]));
+    Laralyze::record('db_incident', Errors::key('testing', 'deadlock'))->count();
+    Laralyze::merge('db_deadlocks', 'testing', ['count' => 3]);
+    Laralyze::record('db_error', Errors::key('testing', 'deadlock'))->count();
+    Laralyze::record('db_error', Errors::key('testing', 'lock_timeout'))->count();
+    Laralyze::flush();
+}
+
+it('reads the database\'s health: the last look, incidents with both sides of a deadlock, errors and size', function () {
+    databaseWithTrouble();
+
+    $data = app(LaralyzeData::class)->handle(new Request(['topic' => 'database', 'period' => '24h']));
+
+    expect($data)->toContain('## database, last 24 hours')
+        ->toContain('### testing · MySQL 8.4.2')
+        ->toContain('- Long-running queries: warning, 1 over 30 s')
+        ->toContain('| 41 | app | 1.6 min | select * from orders where total > ? |')
+        ->toContain('- Not seen without the PROCESS privilege: deadlocks')
+        ->toContain('| 41 | app | 1.6 min | Sending data |')
+        ->toContain('Deadlock on orders: transaction 2 was rolled back')
+        ->toContain('| 2 | 13 | update invoices set total = ? where order_id = ? | invoices (PRIMARY): X | orders (PRIMARY): X | yes |')
+        ->toContain('- Deadlocks counted by the database: 3, of which 1 reached the app')
+        ->toContain('- Database errors: Deadlocks 1, Lock timeouts 1')
+        ->toContain('- Size: 50 MB, +2 MB a day')
+        ->toContain('- Ids running out: orders.id (int) has used 89%');
+});
+
+it('says when no database has been looked at', function () {
+    expect(app(LaralyzeData::class)->handle(new Request(['topic' => 'database'])))->toContain('No database looked at yet.');
+});
+
+it('asks about the database from its page, with its health in hand', function () {
+    databaseWithTrouble();
+    Assistant::fake([new TextResponse('Two transactions took the same rows in opposite order.', new TextUsage(100, 10), new Meta('openai', 'gpt-4o-mini'))]);
+
+    Livewire::test('laralyze.assistant')
+        ->call('ask', 'database')
+        ->assertSet('kind', 'database')
+        ->assertSee('Database health')
+        ->assertSee('Why did the last deadlock happen, and how do I stop it?')
+        ->call('suggest', 1)
+        ->call('send')
+        ->call('reply');
+
+    [$instructions, $context] = promptedWith();
+
+    expect($context)->toContain('Deadlock on orders: transaction 2 was rolled back')
+        ->toContain('update invoices set total = ? where order_id = ?')
+        ->and($instructions)->toContain("Tables named laralyze_* are Laralyze's own.");
+
+    $this->get('/laralyze/database')->assertSee('data-kind="database"', false);
+});
+
+it('tells a deadlock between Laralyze\'s own writes apart from the app\'s', function () {
+    Laralyze::set('database', 'testing', json_encode(['at' => time(), 'engine' => 'MySQL 8.4.2', 'checks' => [], 'sessions' => []]));
+    Laralyze::set('db_incident', 'testing|'.time().':deadlock:own', json_encode([
+        'connection' => 'testing', 'id' => 'own', 'kind' => 'deadlock', 'status' => Check::PROBLEM, 'summary' => 'Deadlock on laralyze_aggregates', 'peak' => 1,
+        'started_at' => time(), 'last_seen' => time(), 'sessions' => [],
+        'deadlock' => ['at' => '2026-10-11 01:23:45', 'transactions' => [
+            ['number' => 1, 'session' => 12, 'query' => 'insert into laralyze_aggregates ...', 'holds' => 'laralyze_aggregates (PRIMARY): X', 'waits' => 'laralyze_aggregates (PRIMARY): X', 'rolled_back' => true],
+            ['number' => 2, 'session' => 13, 'query' => 'insert into laralyze_aggregates ...', 'holds' => 'laralyze_aggregates (PRIMARY): X', 'waits' => 'laralyze_aggregates (PRIMARY): X', 'rolled_back' => false],
+        ]],
+    ]));
+    Laralyze::flush();
+
+    expect(app(LaralyzeData::class)->handle(new Request(['topic' => 'database'])))
+        ->toContain("It's between Laralyze's own writes to its tables, not the app's code")
+        ->toContain('| under a minute | Deadlock | Deadlock on laralyze_aggregates |');
 });

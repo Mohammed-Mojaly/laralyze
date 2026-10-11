@@ -2,6 +2,10 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## Unreleased
+
+- **Ask AI knows the database's health.** Ask AI on the Database health page reads what the page shows: the last look at each connection, the incidents with the sessions at their worst and both sides of each deadlock, deadlocks the database counted, errors by kind, size, growth and ids running out. It starts with questions like "Why did the last deadlock happen, and how do I stop it?". From any other page it reads the same when a question is about the database. Deadlocks and locks on Laralyze's own tables are told apart, so it doesn't send you to change your app for them.
+
 ## v0.7.3 - 2026-10-12
 
 - **Upgrades need only `php artisan migrate`.** Laralyze's migrations now run from the package, so there's nothing to copy into your app, and `laralyze:install` is only for the first install. On ClickHouse, `php artisan migrate` creates or updates Laralyze's tables there, and adds none to your app's database. Migrations an earlier version copied into your app keep running from there, never twice. To keep them with your own instead, publish them with `php artisan vendor:publish --tag=laralyze-migrations`.

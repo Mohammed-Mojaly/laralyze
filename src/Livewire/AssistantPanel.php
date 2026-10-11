@@ -65,6 +65,11 @@ class AssistantPanel extends Component
             ['What happened here, and what should I fix?', 'Its timeline, step by step'],
             ['Why did this take so long?', 'Where the time went'],
         ],
+        'database' => [
+            ['What went wrong with my database this week, and why?', 'Incidents, errors and what was running'],
+            ['Why did the last deadlock happen, and how do I stop it?', 'Both transactions, their queries and locks'],
+            ['Is my database running out of anything?', 'Connections, size and ids'],
+        ],
     ];
 
     /**
