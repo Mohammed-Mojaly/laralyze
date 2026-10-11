@@ -2,6 +2,7 @@
 
 namespace MohammedMojaly\Laralyze\Storage;
 
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use MohammedMojaly\Laralyze\Assistant\Chats;
@@ -288,10 +289,11 @@ class ClickHouseStorage implements Storage
             [$where, $params] = ["{$where} AND startsWith(key, {prefix:String})", [...$params, 'prefix' => $keyPrefix]];
         }
 
+        // Not "AS key": ClickHouse lets WHERE use SELECT's aliases, so the key prefix would read any(key).
         $rows = collect($this->client->select(
-            "SELECT key_hash, any(key) AS key, {$this->columns($selected)} FROM laralyze_aggregates WHERE {$where} AND aggregate IN {stored:Array(String)} GROUP BY key_hash{$order} LIMIT {limit:UInt32}",
+            "SELECT key_hash, any(key) AS any_key, {$this->columns($selected)} FROM laralyze_aggregates WHERE {$where} AND aggregate IN {stored:Array(String)} GROUP BY key_hash{$order} LIMIT {limit:UInt32}",
             [...$params, 'stored' => $this->storedAggregatesFor($selected), 'limit' => $limit],
-        ))->map(fn (array $row) => $this->castRow($this->object($row), $plain));
+        ))->map(fn (array $row) => $this->castRow($this->object(['key_hash' => $row['key_hash'], 'key' => $row['any_key'], ...Arr::except($row, ['key_hash', 'any_key'])]), $plain));
 
         if ($percentiles !== []) {
             $bins = $this->binsByKey($type, $window, $rows->pluck('key_hash')->map(fn ($hash) => (string) $hash)->all());

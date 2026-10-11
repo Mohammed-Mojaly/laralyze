@@ -74,7 +74,7 @@ it('measures once an hour even before the last measure is saved', function () {
     // With database ingest, a measure is only readable after the next digest.
     $sizes = 0;
     DB::listen(function ($query) use (&$sizes) {
-        $sizes += (int) preg_match('/pragma_table_list|data_length/i', $query->sql);
+        $sizes += (int) preg_match('/pragma_table_list|data_length|pg_total_relation_size|total_pages/i', $query->sql);
     });
 
     app(Recorders\Database::class, ['config' => []])->snapshot();
