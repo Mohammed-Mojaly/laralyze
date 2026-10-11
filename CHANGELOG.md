@@ -2,7 +2,7 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
-## Unreleased
+## v0.7.4 - 2026-10-12
 
 - **Ask AI knows the database's health.** Ask AI on the Database health page reads what the page shows: the last look at each connection, the incidents with the sessions at their worst and both sides of each deadlock, deadlocks the database counted, errors by kind, size, growth and ids running out. It starts with questions like "Why did the last deadlock happen, and how do I stop it?". From any other page it reads the same when a question is about the database. Deadlocks and locks on Laralyze's own tables are told apart, so it doesn't send you to change your app for them.
 
