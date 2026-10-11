@@ -142,6 +142,16 @@ return [
             ],
         ],
 
+        Recorders\Database::class => [
+            'enabled' => env('LARALYZE_DATABASE_ENABLED', true),
+
+            // Looked at every minute by the scheduler, from one server. null is the default connection.
+            'connections' => [null],
+
+            // Seconds before a query, or an open transaction doing nothing, is worth a look.
+            'long_running' => (int) env('LARALYZE_DATABASE_LONG_RUNNING', 30),
+        ],
+
         Recorders\Exceptions::class => [
             'enabled' => env('LARALYZE_EXCEPTIONS_ENABLED', true),
 

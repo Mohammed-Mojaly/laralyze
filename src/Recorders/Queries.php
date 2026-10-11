@@ -236,13 +236,19 @@ class Queries extends Recorder
      */
     public function fingerprint(string $sql): string
     {
-        $sql = (string) preg_replace(
+        return mb_strimwidth($this->group(self::withoutValues($sql)), 0, 2_000, '…');
+    }
+
+    /**
+     * The SQL without its values, and with lists folded.
+     */
+    public static function withoutValues(string $sql): string
+    {
+        return (string) preg_replace(
             ['/\s+/', "/'(?:[^'\\\\]|\\\\.)*'/", '/\b\d+(?:\.\d+)?\b/', '/\bin\s*\(\s*\?(?:\s*,\s*\?)*\s*\)/i', '/\bvalues\s*\([^)]*\)(?:\s*,\s*\([^)]*\))*/i'],
             [' ', '?', '?', 'in (...)', 'values (...)'],
             trim($sql),
         );
-
-        return mb_strimwidth($this->group($sql), 0, 2_000, '…');
     }
 
     protected function isRead(string $sql): bool

@@ -11,6 +11,7 @@ use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Str;
+use MohammedMojaly\Laralyze\Database\Errors;
 use MohammedMojaly\Laralyze\Laralyze;
 use MohammedMojaly\Laralyze\Support\Location;
 use MohammedMojaly\Laralyze\Support\Trace;
@@ -124,6 +125,11 @@ class Exceptions extends Recorder
 
         if ($user !== null) {
             $this->laralyze->record('exception_user', hash('xxh128', $key).':'.$user)->count();
+        }
+
+        // Deadlocks, lock timeouts and the like, for the Database page.
+        if (($kind = Errors::kind($e)) !== null) {
+            $this->laralyze->record('db_error', Errors::key($e instanceof QueryException ? $e->getConnectionName() : '', $kind))->count();
         }
     }
 

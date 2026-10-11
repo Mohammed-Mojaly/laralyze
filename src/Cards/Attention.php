@@ -8,6 +8,7 @@ use Livewire\Attributes\Lazy;
 use MohammedMojaly\Laralyze\Dashboard\Issues;
 use MohammedMojaly\Laralyze\Dashboard\Pages;
 use MohammedMojaly\Laralyze\Dashboard\Range;
+use MohammedMojaly\Laralyze\Database\Check;
 use MohammedMojaly\Laralyze\Livewire\Card;
 use MohammedMojaly\Laralyze\Recorders;
 use MohammedMojaly\Laralyze\Support\Format;
@@ -40,6 +41,7 @@ class Attention extends Card
 
         foreach ([
             Recorders\Servers::class => fn () => $this->server(),
+            Recorders\Database::class => fn () => $this->database(),
             Recorders\Exceptions::class => fn () => $this->exception(),
             Recorders\Jobs::class => fn () => $this->failedJobs(),
             Recorders\ScheduledTasks::class => fn () => $this->failedTask(),
@@ -103,6 +105,46 @@ class Attention extends Card
         }
 
         return $worst === null ? null : $this->line('bad', $worst[0], $this->pageUrl('servers'));
+    }
+
+    /**
+     * The worst of the database checks, from the last minute's look and the last hour's measure.
+     *
+     * @return array{level: string, text: string, url: string}|null
+     */
+    protected function database(): ?array
+    {
+        $worst = null;
+        $rank = [Check::WARNING => 1, Check::PROBLEM => 2];
+
+        foreach ($this->values('database') as $row) {
+            $snapshot = json_decode((string) $row->value, true) ?: [];
+
+            // An old look says nothing about now.
+            if ((int) ($snapshot['at'] ?? 0) < time() - 300) {
+                continue;
+            }
+
+            foreach ((array) ($snapshot['checks'] ?? []) as $check) {
+                if (($rank[$check['status'] ?? ''] ?? 0) > ($rank[$worst[0] ?? ''] ?? 0)) {
+                    $worst = [$check['status'], "Database {$row->key}: ".strtolower((string) $check['label']).', '.$check['value'].'.', (string) $row->key];
+                }
+            }
+        }
+
+        foreach ($this->values('database_size') as $row) {
+            foreach ((array) ((json_decode((string) $row->value, true) ?: [])['ids'] ?? []) as $id) {
+                if (($rank[$id['status'] ?? ''] ?? 0) > ($rank[$worst[0] ?? ''] ?? 0)) {
+                    $worst = [$id['status'], "Database {$row->key}: {$id['table']}.{$id['column']} has used ".round($id['percent']).'% of its ids.', (string) $row->key];
+                }
+            }
+        }
+
+        return $worst === null ? null : $this->line(
+            $worst[0] === Check::PROBLEM ? 'bad' : 'warn',
+            $worst[1],
+            route('laralyze.page', ['page' => 'database', 'connection' => $worst[2], ...($this->range() === Range::Hour ? [] : ['period' => $this->range()->value])]),
+        );
     }
 
     /**

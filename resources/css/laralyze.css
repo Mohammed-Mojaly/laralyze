@@ -3290,6 +3290,65 @@ body.lz-root {
     content: "✓";
 }
 
+/* Database: one line per check, worst first */
+.lz-db-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.lz-db-checks {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lz-db-checks > li {
+    padding: 10px 0;
+    border-top: 1px solid var(--lz-line);
+}
+
+.lz-db-checks > li:first-child {
+    border-top: 0;
+}
+
+.lz-db-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lz-db-check-label {
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+}
+
+.lz-db-check-value {
+    color: var(--lz-ink-2);
+    font-family: var(--lz-mono);
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.lz-db-checks .lz-meter {
+    margin-top: 8px;
+}
+
+.lz-db-advice {
+    margin: 6px 0 0;
+    color: var(--lz-ink-2);
+    font-size: 13px;
+}
+
+.lz-db-checks .lz-table-wrap {
+    margin-top: 10px;
+}
+
+.lz-db-growth {
+    margin: 0;
+}
+
 .lz-select select {
     max-width: 180px;
     padding-right: 2px;

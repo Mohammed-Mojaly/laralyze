@@ -7,6 +7,7 @@
         'commands' => '<rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="m7 10 2.5 2L7 14"/><path d="M12 14.5h4.5"/>',
         'scheduled' => '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
         'exceptions' => '<path d="M10.3 4.6 3.2 17a2 2 0 0 0 1.7 3h14.2a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0Z"/><path d="M12 9.5v4"/><path d="M12 16.8h.01"/>',
+        'database' => '<ellipse cx="12" cy="5.5" rx="7" ry="2.5"/><path d="M5 5.5v13c0 1.4 3.1 2.5 7 2.5"/><path d="M19 5.5v5"/><path d="M12.5 16.5h2.5l1.5-3 2 6 1.5-3h1.5"/>',
         'queries' => '<ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6"/><path d="M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/>',
         'cache' => '<path d="M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z"/>',
         'outgoing-requests' => '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.3 2.4 3.4 5.2 3.4 8.5s-1.1 6.1-3.4 8.5c-2.3-2.4-3.4-5.2-3.4-8.5S9.7 5.9 12 3.5Z"/>',

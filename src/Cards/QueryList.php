@@ -4,10 +4,9 @@ namespace MohammedMojaly\Laralyze\Cards;
 
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Lazy;
-use Livewire\Attributes\On;
-use Livewire\Attributes\Url;
 use MohammedMojaly\Laralyze\Livewire\Card;
 use MohammedMojaly\Laralyze\Livewire\Concerns\ListsRows;
+use MohammedMojaly\Laralyze\Livewire\Concerns\PicksConnection;
 use MohammedMojaly\Laralyze\Recorders\Queries;
 use stdClass;
 
@@ -18,25 +17,11 @@ use stdClass;
 class QueryList extends Card
 {
     use ListsRows;
+    use PicksConnection;
 
     public string $sort = 'sum';
 
     public int $limit = 100;
-
-    /**
-     * Only this connection's queries; every connection when empty.
-     */
-    #[Url(except: '')]
-    public string $connection = '';
-
-    /**
-     * Picked in the Queries page's top bar.
-     */
-    #[On('laralyze-connection')]
-    public function filterConnection(string $connection): void
-    {
-        $this->connection = $connection;
-    }
 
     public function render(): View
     {

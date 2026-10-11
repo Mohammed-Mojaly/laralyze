@@ -34,6 +34,7 @@ Settings live in `config/laralyze.php`, published by `php artisan laralyze:insta
 |---|---|---|
 | `Requests` | Requests by route and status class, duration, slow requests | Livewire updates are grouped by component and method. Developer tools (`telescope`, `horizon`, `pulse`, `_boost`…) are ignored. |
 | `Queries` | Queries by SQL and connection, slow queries with the line that ran them | Lists and literals are folded. `location => false` skips finding the line. |
+| `Database` | The database itself: connections, long-running queries, locks, restarts, errors by kind, size, ids | From the scheduler, on one server. `connections`, `LARALYZE_DATABASE_LONG_RUNNING`. See [Database](database.md). |
 | `Exceptions` | Reported exceptions by class and line, users affected, the latest stack trace with code around app frames, and context | Handled means reported with `report()` or `rescue()`. |
 | `Jobs` | Queued, processed, released and failed per queue; wait time; duration per job | |
 | `ScheduledTasks` | Runs, failures and skips per task; last and next run | |

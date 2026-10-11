@@ -117,6 +117,7 @@ class Pages
             // Only for apps that use laravel/ai.
             ...(interface_exists('Laravel\Ai\Contracts\Agent') ? ['ai' => $page('AI', 'Inside', Recorders\Ai::class, 'ai')] : []),
             'queries' => $page('Queries', 'Inside', Recorders\Queries::class, 'queries'),
+            'database' => $page('Database', 'Inside', Recorders\Database::class, 'database'),
             'cache' => $page('Cache', 'Inside', Recorders\Cache::class, 'cache'),
             'outgoing-requests' => $page('Outgoing Requests', 'Inside', Recorders\OutgoingRequests::class, 'outgoing-requests'),
             'mail' => $page('Mail', 'Inside', Recorders\Mail::class, 'mail'),
