@@ -71,6 +71,7 @@ class Schema
                 server LowCardinality(String),
                 started_at Int64,
                 exceptions Array(String),
+                calls Array(String),
                 counts String,
                 meta String CODEC(ZSTD(3)),
                 job_uuid String,
@@ -79,13 +80,25 @@ class Schema
                 INDEX trace_idx trace TYPE bloom_filter GRANULARITY 4,
                 INDEX job_idx job_uuid TYPE bloom_filter GRANULARITY 4,
                 INDEX user_idx user_id TYPE bloom_filter GRANULARITY 4,
-                INDEX exceptions_idx exceptions TYPE bloom_filter GRANULARITY 4
+                INDEX exceptions_idx exceptions TYPE bloom_filter GRANULARITY 4,
+                INDEX calls_idx calls TYPE bloom_filter GRANULARITY 4
             ) ENGINE = MergeTree
             PARTITION BY intDiv(started_at, 86400)
             ORDER BY (type, name_hash, started_at)
             SQL);
 
+        self::upgrade($client);
         self::createLogs($client);
+    }
+
+    /**
+     * Columns added by later releases to a table made by an earlier one. Only
+     * the table's description changes: the rows already there stay as they are.
+     */
+    public static function upgrade(Client $client): void
+    {
+        $client->statement('ALTER TABLE laralyze_executions ADD COLUMN IF NOT EXISTS calls Array(String) AFTER exceptions');
+        $client->statement('ALTER TABLE laralyze_executions ADD INDEX IF NOT EXISTS calls_idx calls TYPE bloom_filter GRANULARITY 4');
     }
 
     /**

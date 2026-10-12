@@ -231,6 +231,16 @@ class Queries extends Recorder
     }
 
     /**
+     * The key a query is counted under, or null when it isn't counted.
+     */
+    public function keyFor(string $connection, string $sql): ?string
+    {
+        $fingerprint = $this->fingerprint($sql);
+
+        return $this->ignores($fingerprint) ? null : self::key($connection, $fingerprint);
+    }
+
+    /**
      * "select * from users where id in (?, ?, ?)" and the same query with
      * ten ids become one row.
      */

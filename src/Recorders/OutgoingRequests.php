@@ -59,6 +59,11 @@ class OutgoingRequests extends Recorder
     {
         $uri = $request->toPsrRequest()->getUri();
 
-        return $request->method().' '.$this->group($uri->getHost().($uri->getPath() === '' ? '/' : $uri->getPath()));
+        return $this->keyFor($request->method(), $uri->getHost().($uri->getPath() === '' ? '/' : $uri->getPath()));
+    }
+
+    public function keyFor(string $method, string $hostAndPath): string
+    {
+        return $method.' '.$this->group($hostAndPath);
     }
 }

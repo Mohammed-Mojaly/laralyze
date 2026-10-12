@@ -20,7 +20,7 @@
             @foreach ($tasks as $task)
                 <tr wire:key="{{ $task->name }}">
                     <td>
-                        <span class="lz-mono">{{ $task->name }}</span>
+                        <a class="lz-row-link lz-mono" href="{{ $this->groupUrl('scheduled', $task->name) }}">{{ $task->name }}</a>
                         @if ($task->expression)
                             <span class="lz-sub lz-mono">{{ $task->expression }}</span>
                         @endif

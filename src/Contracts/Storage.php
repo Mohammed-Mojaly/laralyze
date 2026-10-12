@@ -59,7 +59,7 @@ interface Storage
     /**
      * Single requests, jobs or commands, newest or slowest first.
      *
-     * @param  array{type?: string, name?: string, user?: string, exception?: string, failed?: bool, slower?: float}  $filters
+     * @param  array{type?: string, name?: string, user?: string, exception?: string, call?: string, failed?: bool, slower?: float}  $filters
      * @return Collection<int, stdClass>
      */
     public function executions(array $filters, int $window, string $order = 'recent', int $limit = 50, int $offset = 0): Collection;

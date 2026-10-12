@@ -65,6 +65,8 @@ return new class extends Migration
             $table->bigInteger('started_at');
             // ",<hash>,<hash>," of the exceptions it reported, for the exception page.
             $table->text('exceptions');
+            // ",<hash>,<hash>," of the queries and outgoing requests it made, for their pages.
+            $table->text('calls')->nullable();
             $table->text('counts');
             // Command line, job connection, queue and attempt, stages, time per kind.
             $table->text('meta');

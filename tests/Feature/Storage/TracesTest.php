@@ -3,6 +3,7 @@
 use Illuminate\Auth\GenericUser;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
@@ -12,6 +13,7 @@ use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -369,4 +371,86 @@ it('pages through runs and filters them by speed', function () {
         ->assertSee('Page 2')
         ->set('speed', 'p95')
         ->assertSet('page', 1);
+});
+
+it('lists them on the pages of the queries and outgoing requests they made', function () {
+    test()->rebootWith(['laralyze.recorders' => [
+        Recorders\Traces::class => ['enabled' => true, 'sample_rate' => 1],
+        Recorders\Queries::class => ['enabled' => true],
+        Recorders\OutgoingRequests::class => ['enabled' => true, 'groups' => ['#/\d+(?=/|$)#' => '/*']],
+    ]]);
+    app()->detectEnvironment(fn () => 'local');
+    Http::fake();
+
+    Route::get('/stock', function () {
+        DB::select('select 1 + ? as n', [7]);
+        Http::get('https://api.shop.test/books/42?token=secret');
+
+        return 'ok';
+    });
+    Route::get('/other', fn () => DB::select('select 2 * ? as n', [7]) ? 'ok' : 'ok');
+
+    $this->get('/stock');
+    $this->get('/other');
+    Laralyze::flush();
+
+    $stock = kept(['name' => 'GET /stock'])->sole()->uuid;
+    $other = kept(['name' => 'GET /other'])->sole()->uuid;
+    $query = (string) app(Storage::class)->aggregate('query', ['count'], 3_600)->pluck('key')->first(fn (string $key) => str_contains($key, '+'));
+    $http = (string) app(Storage::class)->aggregate('http', ['count'], 3_600)->sole()->key;
+    $card = fn (string $call) => Livewire::withoutLazyLoading()->test('laralyze.executions', ['call' => $call]);
+
+    expect($http)->toBe('GET api.shop.test/books/*');
+
+    $card($query)->assertSee($stock)->assertDontSee($other);
+    $card($http)->assertSee($stock)->assertDontSee($other);
+    $card('GET api.shop.test/nothing')->assertSee('Nothing kept');
+});
+
+it('keeps scheduled closures with what they did, and a failed one with its exception', function () {
+    traceWith(['sample_rate' => 1]);
+
+    $schedule = app(Schedule::class);
+    $schedule->call(fn () => DB::select('select 1'))->description('Prune carts');
+    $schedule->call(fn () => throw new RuntimeException('Cart API down'))->description('Sync carts');
+
+    $this->artisan('schedule:run');
+    Laralyze::flush();
+
+    $tasks = kept(['type' => 'task']);
+    $storage = app(Storage::class);
+
+    expect($tasks->pluck('name')->sort()->values()->all())->toBe(['Prune carts', 'Sync carts'])
+        ->and(array_column($storage->execution($tasks->firstWhere('name', 'Prune carts')->uuid)->events, 0))->toBe(['query']);
+
+    $failed = $storage->execution($tasks->firstWhere('name', 'Sync carts')->uuid);
+
+    expect($failed->status)->toBe('failed')
+        ->and($failed->failed)->toBeTrue()
+        ->and(array_column($failed->events, 0))->toBe(['exception'])
+        ->and($failed->events[0][4])->toBe('Cart API down');
+
+    $this->get('/laralyze/executions/'.$failed->uuid)->assertOk()->assertSee('Sync carts')->assertSee('Cart API down');
+});
+
+it('keeps recording when an upgraded app has no column for their calls yet', function () {
+    if (usingClickHouse()) {
+        $this->markTestSkipped('ClickHouse adds the column itself.');
+    }
+
+    traceWith(['sample_rate' => 1]);
+    $migration = require __DIR__.'/../../../database/migrations/2026_10_13_000000_add_calls_to_laralyze_executions_table.php';
+    $migration->down();
+
+    try {
+        Route::get('/fine', fn () => DB::select('select 1') ? 'ok' : 'ok');
+        $this->get('/fine');
+        Laralyze::flush();
+
+        expect(kept())->toHaveCount(1)
+            ->and(kept(['call' => hash('xxh128', '["sqlite","select ?"]')]))->toBeEmpty();
+    } finally {
+        // MySQL and PostgreSQL keep the schema between tests.
+        $migration->up();
+    }
 });

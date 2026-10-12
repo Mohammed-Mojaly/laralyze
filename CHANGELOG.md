@@ -2,6 +2,13 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## v0.7.5 - 2026-10-13
+
+- **Timelines on more pages.** A query's page now lists the requests, jobs and commands that ran it, slowest first, each opening its timeline. An outgoing request's page lists the ones that called it.
+- **Scheduled tasks have a page each.** Click a task to see its runs, failures, how long it takes, its schedule and next run, and its timelines. A task that runs an artisan command lists that command's runs. Closures and jobs the scheduler runs are now kept as timelines of their own, with their queries, outgoing requests, exceptions and the rest; a failed one keeps its exception.
+- **Fixed:** Ask AI no longer shortens PHP's time limit. In a command or test with no limit, one answer set it to five minutes, which could end a long run.
+- **Upgrade:** run `php artisan migrate` (it adds one column). Until you do, timelines are still kept, without the new lists. On ClickHouse the column is added by itself. Only timelines kept after the upgrade appear in the new lists.
+
 ## v0.7.4 - 2026-10-12
 
 - **Ask AI knows the database's health.** Ask AI on the Database health page reads what the page shows: the last look at each connection, the incidents with the sessions at their worst and both sides of each deadlock, deadlocks the database counted, errors by kind, size, growth and ids running out. It starts with questions like "Why did the last deadlock happen, and how do I stop it?". From any other page it reads the same when a question is about the database. Deadlocks and locks on Laralyze's own tables are told apart, so it doesn't send you to change your app for them.

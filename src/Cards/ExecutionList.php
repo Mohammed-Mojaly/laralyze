@@ -14,7 +14,8 @@ use stdClass;
 /**
  * Single requests, jobs or commands that were kept, newest or slowest
  * first, each opening its timeline. Narrowed to one route, job, command,
- * user or exception by the page it sits on, and by status and speed.
+ * scheduled task, user, exception, query or outgoing request by the page it
+ * sits on, and by status and speed.
  */
 #[Lazy]
 class ExecutionList extends Card
@@ -36,6 +37,12 @@ class ExecutionList extends Card
      */
     #[Locked]
     public string $exception = '';
+
+    /**
+     * A query's or outgoing request's key, to list what made it.
+     */
+    #[Locked]
+    public string $call = '';
 
     #[Locked]
     public string $title = 'Executions';
@@ -87,6 +94,7 @@ class ExecutionList extends Card
             'name' => $this->name,
             'user' => $this->user,
             'exception' => $this->exception === '' ? '' : hash('xxh128', $this->exception),
+            'call' => $this->call === '' ? '' : hash('xxh128', $this->call),
         ], fn (string $value) => $value !== '');
 
         if (in_array($this->status, ['ok', 'failed'], true)) {

@@ -35,11 +35,11 @@ it('finds one execution with its events, and nulls stay null', function () {
         ->and(app(Storage::class)->execution('not-a-ulid'))->toBeNull();
 });
 
-it('filters by name, user, exception, failure and slowness, newest or slowest first', function () {
+it('filters by name, user, exception, call, failure and slowness, newest or slowest first', function () {
     app(Storage::class)->store([], [], [
         execution(['name' => 'GET /a', 'duration' => 5, 'started_at' => time() - 30, 'user_id' => '7']),
         execution(['name' => 'GET /a', 'duration' => 900, 'started_at' => time() - 20, 'failed' => true, 'exceptions' => ['abc']]),
-        execution(['name' => 'GET /b', 'duration' => 50, 'started_at' => time() - 10]),
+        execution(['name' => 'GET /b', 'duration' => 50, 'started_at' => time() - 10, 'calls' => ['q1', 'h1']]),
     ]);
     $storage = app(Storage::class);
 
@@ -47,6 +47,7 @@ it('filters by name, user, exception, failure and slowness, newest or slowest fi
         ->and($storage->executions([], 3_600, 'slowest')->pluck('duration')->all())->toBe([900.0, 50.0, 5.0])
         ->and($storage->executions(['user' => '7'], 3_600))->toHaveCount(1)
         ->and($storage->executions(['exception' => 'abc'], 3_600))->toHaveCount(1)
+        ->and($storage->executions(['call' => 'h1'], 3_600)->sole()->name)->toBe('GET /b')
         ->and($storage->executions(['failed' => true], 3_600))->toHaveCount(1)
         ->and($storage->executions(['slower' => 40.0], 3_600))->toHaveCount(2)
         ->and($storage->executions([], 3_600, limit: 1, offset: 1)->first()->duration)->toBe(900.0);

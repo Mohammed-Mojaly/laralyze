@@ -1,8 +1,13 @@
 <?php
 
+use Illuminate\Console\Events\ScheduledTaskFinished;
+use Illuminate\Console\Events\ScheduledTaskStarting;
+use Illuminate\Console\Scheduling\Schedule;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use MohammedMojaly\Laralyze\Contracts\Storage;
+use MohammedMojaly\Laralyze\Dashboard\Groups;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 use MohammedMojaly\Laralyze\Recorders;
 
@@ -141,6 +146,32 @@ it('counts signed-in users and splits requests into theirs and guests\'', functi
     listCard('user-totals')
         ->assertSeeInOrder(['Signed-in users', '2', 'users'])
         ->assertSeeInOrder(['Requests', '5', 'authenticated', '3', '60%', 'guest', '2', '40%']);
+});
+
+it('opens a scheduled task, with its runs: the command\'s, or the closure\'s own', function () {
+    $schedule = app(Schedule::class);
+    $command = $schedule->command('books:import --limit=5');
+    $closure = $schedule->call(fn () => null)->description('Prune carts');
+
+    foreach ([$command, $closure] as $task) {
+        event(new ScheduledTaskStarting($task));
+        event(new ScheduledTaskFinished($task, 0.5));
+    }
+
+    Laralyze::flush();
+
+    listCard('scheduled-tasks')->assertSee(groupPath('scheduled', 'books:import --limit=5'));
+    $this->get(groupPath('scheduled', 'books:import --limit=5'))->assertOk()->assertSee('books:import --limit=5');
+    $this->get(groupPath('scheduled', 'Prune carts'))->assertOk();
+    groupCard('scheduled', 'Prune carts')->assertSee('Schedule')->assertSee('* * * * *')->assertSeeInOrder(['processed', '1']);
+
+    $storage = app(Storage::class);
+
+    expect(Groups::executions('scheduled', 'books:import --limit=5', $storage))->toMatchArray(['type' => 'command', 'name' => 'books:import', 'title' => 'Runs'])
+        ->and(Groups::executions('scheduled', 'Prune carts', $storage))->toMatchArray(['type' => 'task', 'name' => 'Prune carts', 'title' => 'Runs'])
+        ->and(Groups::executions('queries', '["sqlite","select ?"]', $storage))->toMatchArray(['call' => '["sqlite","select ?"]', 'title' => 'Executions'])
+        ->and(Groups::executions('outgoing-requests', 'GET api.shop.test/books/*', $storage))->toMatchArray(['call' => 'GET api.shop.test/books/*'])
+        ->and(Groups::executions('cache', 'user:*', $storage))->toBeNull();
 });
 
 it('answers 404 for unknown rows, pages without row pages, and disabled recorders', function () {

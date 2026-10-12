@@ -13,7 +13,7 @@ uses(WithConsoleEvents::class);
 
 function publishedMigrations(): array
 {
-    return File::glob(database_path('migrations/*_create_laralyze_*.php'));
+    return File::glob(database_path('migrations/*_laralyze_*.php'));
 }
 
 function cleanUpInstall(): void
@@ -133,7 +133,7 @@ it('still copies the migrations for apps that want them', function () {
 
     $this->artisan('migrate')->assertSuccessful();
 
-    expect(publishedMigrations())->toHaveCount(3)
+    expect(publishedMigrations())->toHaveCount(4)
         ->and(laralyzeTables())->toHaveCount(5);
 });
 

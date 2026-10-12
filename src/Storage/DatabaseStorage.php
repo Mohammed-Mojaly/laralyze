@@ -47,6 +47,12 @@ class DatabaseStorage implements Storage
      */
     protected bool $logsInstalled = false;
 
+    /**
+     * Known once the column for executions' calls was found missing: an app
+     * upgraded without running migrate. Until it does, they're kept without.
+     */
+    protected bool $callsMissing = false;
+
     public function __construct(protected DatabaseManager $db, protected Repository $config) {}
 
     public function connection(): Connection
@@ -103,8 +109,8 @@ class DatabaseStorage implements Storage
             $this->retrying(fn () => $connection->table(self::VALUES)->upsert($chunk, ['type', 'key_hash'], ['timestamp', 'value']));
         }
 
-        foreach ($this->chunk($connection, $this->prepareExecutions($executions), 17) as $chunk) {
-            $this->retrying(fn () => $connection->table(self::EXECUTIONS)->insert($chunk));
+        foreach ($this->chunk($connection, $this->prepareExecutions($executions), 18) as $chunk) {
+            $this->retrying(fn () => $this->insertExecutions($connection, $chunk));
         }
 
         // An app upgraded without running migrate has no table for them yet.
@@ -277,6 +283,7 @@ class DatabaseStorage implements Storage
             'server' => (string) $execution['server'],
             'started_at' => (int) $execution['started_at'],
             'exceptions' => $execution['exceptions'] === [] ? '' : ','.implode(',', $execution['exceptions']).',',
+            'calls' => ($execution['calls'] ?? []) === [] ? null : ','.implode(',', $execution['calls']).',',
             'counts' => (string) json_encode($execution['counts']),
             'meta' => (string) json_encode($execution['meta'] ?? [], JSON_INVALID_UTF8_SUBSTITUTE),
             'job_uuid' => isset($execution['job_uuid']) ? (string) $execution['job_uuid'] : null,
@@ -285,10 +292,36 @@ class DatabaseStorage implements Storage
     }
 
     /**
+     * @param  list<array<string, int|string|null>>  $chunk
+     */
+    protected function insertExecutions(Connection $connection, array $chunk): void
+    {
+        if (! $this->callsMissing) {
+            try {
+                $connection->table(self::EXECUTIONS)->insert($chunk);
+
+                return;
+            } catch (Throwable $e) {
+                if (Contention::causedBy($e) || ! $this->callsMissing()) {
+                    throw $e;
+                }
+            }
+        }
+
+        $connection->table(self::EXECUTIONS)->insert(array_map(fn (array $row) => array_diff_key($row, ['calls' => true]), $chunk));
+    }
+
+    protected function callsMissing(): bool
+    {
+        return $this->callsMissing = $this->callsMissing || ! $this->connection()->getSchemaBuilder()->hasColumn(self::EXECUTIONS, 'calls');
+    }
+
+    /**
      * Single requests, jobs or commands, newest or slowest first. Filter by
-     * what ran (type and name), by user, or by an exception they reported.
+     * what ran (type and name), by user, by an exception they reported, or
+     * by a query or outgoing request they made.
      *
-     * @param  array{type?: string, name?: string, user?: string, exception?: string, failed?: bool, slower?: float}  $filters
+     * @param  array{type?: string, name?: string, user?: string, exception?: string, call?: string, failed?: bool, slower?: float}  $filters
      * @return Collection<int, stdClass>
      */
     public function executions(array $filters, int $window, string $order = 'recent', int $limit = 50, int $offset = 0): Collection
@@ -300,6 +333,7 @@ class DatabaseStorage implements Storage
             ->when($filters['name'] ?? null, fn (Builder $query, string $name) => $query->where('name_hash', hash('xxh128', $name)))
             ->when($filters['user'] ?? null, fn (Builder $query, string $user) => $query->where('user_id', $user))
             ->when($filters['exception'] ?? null, fn (Builder $query, string $hash) => $query->where('exceptions', 'like', '%,'.$hash.',%'))
+            ->when($filters['call'] ?? null, fn (Builder $query, string $hash) => $this->callsMissing() ? $query->whereRaw('1 = 0') : $query->where('calls', 'like', '%,'.$hash.',%'))
             ->when(isset($filters['failed']), fn (Builder $query) => $query->where('failed', $filters['failed'] ?? false))
             ->when($filters['slower'] ?? null, fn (Builder $query, float $ms) => $query->where('duration', '>=', $ms))
             ->orderByDesc($order === 'slowest' ? 'duration' : 'started_at')

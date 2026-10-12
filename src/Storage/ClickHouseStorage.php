@@ -175,6 +175,7 @@ class ClickHouseStorage implements Storage
             'name' => ['name_hash = {name:String}', fn ($value) => hash('xxh128', (string) $value)],
             'user' => ['user_id = {user:String}', fn ($value) => (string) $value],
             'exception' => ['has(exceptions, {exception:String})', fn ($value) => (string) $value],
+            'call' => ['has(calls, {call:String})', fn ($value) => (string) $value],
             'slower' => ['duration >= {slower:Float64}', fn ($value) => (float) $value],
         ];
 
@@ -191,11 +192,20 @@ class ClickHouseStorage implements Storage
         }
 
         $by = $order === 'slowest' ? 'duration' : 'started_at';
+        $sql = 'SELECT '.self::EXECUTION_COLUMNS.' FROM laralyze_executions WHERE '.implode(' AND ', $where)." ORDER BY {$by} DESC, uuid DESC LIMIT {limit:UInt32} OFFSET {offset:UInt32}";
 
-        return $this->executionRows(
-            'SELECT '.self::EXECUTION_COLUMNS.' FROM laralyze_executions WHERE '.implode(' AND ', $where)." ORDER BY {$by} DESC, uuid DESC LIMIT {limit:UInt32} OFFSET {offset:UInt32}",
-            $params,
-        );
+        try {
+            return $this->executionRows($sql, $params);
+        } catch (Throwable $e) {
+            // Upgraded without running migrate: the table has no calls yet.
+            if (! isset($params['call']) || ! str_contains($e->getMessage(), 'UNKNOWN_IDENTIFIER')) {
+                throw $e;
+            }
+
+            Schema::upgrade($this->client);
+
+            return $this->executionRows($sql, $params);
+        }
     }
 
     public function execution(string $uuid): ?stdClass
@@ -622,6 +632,7 @@ class ClickHouseStorage implements Storage
             'server' => (string) $execution['server'],
             'started_at' => (int) $execution['started_at'],
             'exceptions' => array_values(array_map(fn ($hash) => (string) $hash, (array) $execution['exceptions'])),
+            'calls' => array_values(array_map(fn ($hash) => (string) $hash, (array) ($execution['calls'] ?? []))),
             'counts' => (string) json_encode($execution['counts']),
             'meta' => (string) json_encode($execution['meta'] ?? [], JSON_INVALID_UTF8_SUBSTITUTE),
             'job_uuid' => isset($execution['job_uuid']) ? (string) $execution['job_uuid'] : '',

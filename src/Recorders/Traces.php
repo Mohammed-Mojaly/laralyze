@@ -9,6 +9,10 @@ use Illuminate\Cache\Events\KeyForgotten;
 use Illuminate\Cache\Events\KeyWritten;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Console\Events\ScheduledTaskFailed;
+use Illuminate\Console\Events\ScheduledTaskFinished;
+use Illuminate\Console\Events\ScheduledTaskStarting;
+use Illuminate\Console\Scheduling\CallbackEvent;
 use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
@@ -38,14 +42,14 @@ use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 /**
- * Keeps single requests, jobs and commands with what happened inside them,
+ * Keeps single requests, jobs, commands and scheduled closures with what happened inside them,
  * in order: queries, cache calls, outgoing requests, mail, notifications,
  * queued jobs, logs, exceptions and AI calls with the tools they used. Jobs link back to the request, job or
  * command that queued them.
  *
  * Slow and failed ones are always kept; the rest are sampled.
  *
- * @phpstan-type Execution array{uuid: string, trace: string, type: string, name: string, sampled: bool, start: float, events: list<array<int, mixed>>, counts: array<string, int>, exceptions: list<string>, queries: array<string, int>, binds: array<string, list<array<mixed>>>, kept: int, where: array<string, string|null>, begun: float, ms: array<string, float>, stages: list<array{0: string, 1: float, 2: float|null}>, meta: array<string, mixed>}
+ * @phpstan-type Execution array{uuid: string, trace: string, type: string, name: string, sampled: bool, start: float, events: list<array<int, mixed>>, counts: array<string, int>, exceptions: list<string>, overflow: array<string, true>, queries: array<string, int>, binds: array<string, list<array<mixed>>>, kept: int, where: array<string, string|null>, begun: float, ms: array<string, float>, stages: list<array{0: string, 1: float, 2: float|null}>, meta: array<string, mixed>}
  */
 class Traces extends Recorder
 {
@@ -68,6 +72,9 @@ class Traces extends Recorder
         JobReleasedAfterException::class,
         CommandStarting::class,
         CommandFinished::class,
+        ScheduledTaskStarting::class,
+        ScheduledTaskFinished::class,
+        ScheduledTaskFailed::class,
         RequestHandled::class,
         Looping::class,
     ];
@@ -98,6 +105,19 @@ class Traces extends Recorder
     protected ?array $failing = null;
 
     protected Requests $requests;
+
+    /**
+     * How the Queries and Outgoing requests pages key what an execution made,
+     * or null when their recorder is off.
+     */
+    protected Queries|false|null $queries = null;
+
+    protected OutgoingRequests|false|null $outgoing = null;
+
+    /**
+     * Queries and outgoing requests past the event cap, still listed on their pages.
+     */
+    protected const KEEP_OVERFLOW = 200;
 
     /**
      * The same read this many times in one execution, with more than one
@@ -212,6 +232,8 @@ class Traces extends Recorder
             $event instanceof CommandStarting => $this->startCommand($event),
             $event instanceof JobProcessed, $event instanceof JobFailed, $event instanceof JobReleasedAfterException => $this->finishJob($event),
             $event instanceof CommandFinished => $this->finishCommand($event),
+            $event instanceof ScheduledTaskStarting => $this->startTask($event),
+            $event instanceof ScheduledTaskFinished, $event instanceof ScheduledTaskFailed => $this->finishTask($event),
             default => $this->ai($event),
         };
     }
@@ -362,6 +384,41 @@ class Traces extends Recorder
     }
 
     /**
+     * A closure or job the scheduler runs inside schedule:run. A command it
+     * runs is a process of its own, traced as that command.
+     */
+    protected function startTask(ScheduledTaskStarting $event): void
+    {
+        $name = ScheduledTasks::name($event->task);
+
+        if (! $event->task instanceof CallbackEvent || str_starts_with($name, 'laralyze:') || $this->shouldIgnore($name)) {
+            return;
+        }
+
+        $this->digest();
+        $this->start('task', $name, null);
+    }
+
+    protected function finishTask(ScheduledTaskFinished|ScheduledTaskFailed $event): void
+    {
+        $execution = $this->pop('task', ScheduledTasks::name($event->task));
+
+        if ($execution === null) {
+            return;
+        }
+
+        $duration = (microtime(true) - $execution['start']) * 1_000;
+
+        if ($event instanceof ScheduledTaskFinished && (int) $event->task->exitCode === 0) {
+            $this->finish($execution, $execution['name'], 'processed', false, $duration, null);
+        } else {
+            // The scheduler reports its exception after this event, as with a failed job.
+            $this->digest();
+            $this->failing = [$execution, 'failed', $duration];
+        }
+    }
+
+    /**
      * @param  array{trace?: mixed, sampled?: mixed}|null  $parent
      * @param  array<string, mixed>  $meta
      */
@@ -389,6 +446,7 @@ class Traces extends Recorder
             'meta' => $meta,
             'counts' => [],
             'exceptions' => [],
+            'overflow' => [],
             ...$reads,
         ];
     }
@@ -483,6 +541,10 @@ class Traces extends Recorder
 
             if ($duration !== null) {
                 $execution['ms'][$kind] = ($execution['ms'][$kind] ?? 0) + $duration;
+            }
+
+            if (($kind === 'query' || $kind === 'http') && count($execution['overflow']) < self::KEEP_OVERFLOW) {
+                $execution['overflow'][$kind."\0".($kind === 'query' ? $detail : '')."\0".$label] = true;
             }
 
             return;
@@ -731,6 +793,7 @@ class Traces extends Recorder
             'server' => $this->server(),
             'started_at' => (int) $execution['start'],
             'exceptions' => array_values(array_unique($execution['exceptions'])),
+            'calls' => $this->calls($execution),
             'counts' => [...$counts, 'memory' => memory_get_peak_usage(true)],
             'meta' => [
                 ...$execution['meta'], 'ms' => $ms, 'stages' => $this->closeStages($execution, $duration), 'error' => $this->firstError($execution),
@@ -739,6 +802,44 @@ class Traces extends Recorder
             'job_uuid' => $execution['meta']['job_uuid'] ?? null,
             'events' => array_map(fn (array $event) => [$event[0], round($event[1], 2), ...array_slice($event, 2)], $execution['events']),
         ]);
+    }
+
+    /**
+     * The queries and outgoing requests it made, hashed as their pages' keys are.
+     *
+     * @param  Execution  $execution
+     * @return list<string>
+     */
+    protected function calls(array $execution): array
+    {
+        $made = $execution['overflow'];
+
+        foreach ($execution['events'] as $event) {
+            if ($event[0] === 'query' || $event[0] === 'http') {
+                $made[$event[0]."\0".($event[0] === 'query' ? $event[4] : '')."\0".$event[3]] = true;
+            }
+        }
+
+        $config = $this->app->make('config');
+        $this->queries ??= $config->get('laralyze.recorders.'.Queries::class.'.enabled') ? new Queries($this->laralyze, (array) $config->get('laralyze.recorders.'.Queries::class)) : false;
+        $this->outgoing ??= $config->get('laralyze.recorders.'.OutgoingRequests::class.'.enabled') ? new OutgoingRequests($this->laralyze, (array) $config->get('laralyze.recorders.'.OutgoingRequests::class)) : false;
+        $calls = [];
+
+        foreach (array_keys($made) as $call) {
+            [$kind, $connection, $label] = explode("\0", (string) $call, 3);
+
+            $key = match (true) {
+                $kind === 'query' && $this->queries !== false => $this->queries->keyFor($connection, $label),
+                $kind === 'http' && $this->outgoing !== false && str_contains($label, ' ') => $this->outgoing->keyFor(...explode(' ', $label, 2)),
+                default => null,
+            };
+
+            if ($key !== null) {
+                $calls[hash('xxh128', $key)] = true;
+            }
+        }
+
+        return array_keys($calls);
     }
 
     /**

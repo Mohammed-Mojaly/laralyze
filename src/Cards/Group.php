@@ -45,7 +45,7 @@ class Group extends Card
         }
 
         // Jobs and commands count every run; the ones that went fine are the rest.
-        if (in_array($this->page, ['jobs', 'commands'], true)) {
+        if (in_array($this->page, ['jobs', 'commands', 'scheduled'], true)) {
             $failed = $series['failed'];
             $series['processed'] = $series['processed']->map(fn (?float $runs, int $slot) => $runs === null ? null : max(0, $runs - ($failed[$slot] ?? 0)));
             $counts['processed'] = max(0, $counts['processed'] - $counts['failed']);
@@ -77,6 +77,7 @@ class Group extends Card
             'outgoing-requests' => ['http', [...$statuses('http'), 'failed' => 'http_failed'], true],
             'jobs' => ['job', ['processed' => 'job', 'failed' => 'job_failed'], true],
             'commands' => ['command', ['processed' => 'command', 'failed' => 'command_failed'], true],
+            'scheduled' => ['scheduled', ['processed' => 'scheduled', 'failed' => 'scheduled_failed'], false],
             'queries' => ['query', ['calls' => 'query'], true],
             'users' => ['user_request', $statuses('user_request'), false],
             'ai' => $this->isModel()
@@ -95,6 +96,17 @@ class Group extends Card
     {
         if ($this->page === 'ai') {
             return $this->aiDetails();
+        }
+
+        if ($this->page === 'scheduled') {
+            $task = json_decode((string) $this->values('scheduled_task', [$this->name])->first()?->value, true) ?: [];
+            $skipped = (float) ($this->total('scheduled_skipped', ['count'], $this->name)->count ?? 0);
+
+            return [
+                'Schedule' => [(string) ($task['expression'] ?? '—'), 'lz-mono'],
+                'Skipped' => [Format::number($skipped), $skipped > 0 ? 'lz-warn' : ''],
+                'Next run' => [isset($task['next_at']) ? now()->setTimestamp((int) $task['next_at'])->diffForHumans() : '—', ''],
+            ];
         }
 
         if ($this->page === 'queries') {

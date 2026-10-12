@@ -46,7 +46,7 @@ Settings live in `config/laralyze.php`, published by `php artisan laralyze:insta
 | `Logs` | Messages per level; entries at `info` and above with their context, user and where they were written | `level` (`LARALYZE_LOGS_LEVEL`, `info`) is the lowest level kept as an entry; `debug` keeps everything, at the cost of many more rows. Every level is counted. Context keys like `password` or `token` are masked. |
 | `Users` | Signed-in users and their requests, jobs and exceptions | Only users the app already loaded, so no extra query. |
 | `Servers` | CPU, memory and disks every minute | From the scheduler. `LARALYZE_SERVER_NAME`, `LARALYZE_SERVER_DIRECTORIES`. |
-| `Traces` | Single requests, jobs and commands with what happened inside, in order; possible N+1 and duplicate queries | `sample_rate` (`LARALYZE_TRACES_SAMPLE_RATE`, 0.1) decides which are kept; slow, failed and throwing ones always are. `keep_days` (7), `max_events` (500). |
+| `Traces` | Single requests, jobs, commands and scheduled closures with what happened inside, in order; possible N+1 and duplicate queries | `sample_rate` (`LARALYZE_TRACES_SAMPLE_RATE`, 0.1) decides which are kept; slow, failed and throwing ones always are. `keep_days` (7), `max_events` (500). |
 | `Visits` | Page views, visitors, devices, browsers, top pages, bots | Counted by route. IPs and user agents are never stored. `except` takes paths like `$request->is()`. |
 
 Each recorder has an `LARALYZE_<NAME>_ENABLED` switch, e.g. `LARALYZE_QUERIES_ENABLED`.

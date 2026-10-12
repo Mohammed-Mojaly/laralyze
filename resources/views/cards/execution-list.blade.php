@@ -4,7 +4,7 @@
         @if ($speeds !== [])
             <x-laralyze::segmented :options="['all' => 'Any speed', ...(isset($speeds['avg']) ? ['avg' => '≥ avg'] : []), ...(isset($speeds['p95']) ? ['p95' => '≥ p95'] : [])]" :value="$speed" model="speed" label="Speed" />
         @endif
-        <x-laralyze::segmented :options="['all' => 'All', 'ok' => $type === 'job' ? 'Processed' : 'Successful', 'failed' => 'Failed']" :value="$status" model="status" label="Status" />
+        <x-laralyze::segmented :options="['all' => 'All', 'ok' => in_array($type, ['job', 'task'], true) ? 'Processed' : 'Successful', 'failed' => 'Failed']" :value="$status" model="status" label="Status" />
         <x-laralyze::segmented :options="['slowest' => 'Slowest', 'recent' => 'Recent']" :value="$order" model="order" label="Order" />
     </x-slot:actions>
 
@@ -30,7 +30,7 @@
                 <th scope="col">{{ $type === 'command' ? 'Exit code' : 'Status' }}</th>
                 <th scope="col" class="lz-num">Duration</th>
                 <th scope="col" class="lz-num">Queries</th>
-                @if ($user === '' && $type !== 'job' && $type !== 'command')
+                @if ($user === '' && ! in_array($type, ['job', 'command', 'task'], true))
                     <th scope="col">User</th>
                 @endif
             </x-slot:head>
@@ -61,7 +61,7 @@
                     </td>
                     <td class="lz-num lz-strong">{{ Format::duration($execution->duration) }}</td>
                     <td class="lz-num">{{ Format::number($execution->counts['query'] ?? 0) }}</td>
-                    @if ($user === '' && $type !== 'job' && $type !== 'command')
+                    @if ($user === '' && ! in_array($type, ['job', 'command', 'task'], true))
                         <td>{{ $execution->user_id === null ? ($execution->type === 'request' ? 'Guest' : '—') : ($users[$execution->user_id] ?? $execution->user_id) }}</td>
                     @endif
                 </tr>

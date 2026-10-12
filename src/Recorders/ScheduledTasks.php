@@ -6,6 +6,7 @@ use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskSkipped;
 use Illuminate\Console\Events\ScheduledTaskStarting;
+use Illuminate\Console\Scheduling\CallbackEvent;
 use Illuminate\Console\Scheduling\Event;
 
 /**
@@ -28,7 +29,7 @@ class ScheduledTasks extends Recorder
 
     public function record(ScheduledTaskStarting|ScheduledTaskFinished|ScheduledTaskSkipped|ScheduledTaskFailed $event): void
     {
-        $name = $this->name($event->task);
+        $name = self::name($event->task);
 
         if (str_starts_with($name, 'laralyze:') || $this->shouldIgnore($name)) {
             return;
@@ -69,13 +70,14 @@ class ScheduledTasks extends Recorder
             'duration' => $duration,
             'ran_at' => time(),
             'next_at' => $event->task->nextRunDate()->getTimestamp(),
+            'command' => self::command($event->task),
         ]));
     }
 
     /**
      * "inspire" rather than "'/usr/bin/php' 'artisan' inspire".
      */
-    protected function name(Event $task): string
+    public static function name(Event $task): string
     {
         $summary = $task->description ?: (string) $task->command;
 
@@ -84,5 +86,18 @@ class ScheduledTasks extends Recorder
         }
 
         return $summary ?: 'Closure';
+    }
+
+    /**
+     * The artisan command it runs, e.g. "books:import": that runs in a process
+     * of its own, traced as the command. Null for closures, jobs and shell commands.
+     */
+    public static function command(Event $task): ?string
+    {
+        if ($task instanceof CallbackEvent) {
+            return null;
+        }
+
+        return preg_match('/(?:^|\s)["\']?artisan["\']?\s+["\']?([^\s"\']+)/', (string) $task->command, $matches) ? $matches[1] : null;
     }
 }
