@@ -7,7 +7,7 @@ use MohammedMojaly\Laralyze\Storage\ClickHouseStorage;
 use MohammedMojaly\Laralyze\Support\Outage;
 
 it('pauses recording and says so when ClickHouse is unreachable', function () {
-    config(['laralyze.storage.driver' => 'clickhouse', 'laralyze.storage.clickhouse' => ['url' => 'http://admin:url-pw@127.0.0.1:9', 'password' => 'secret-pw', 'timeout' => 1]]);
+    config(['laralyze.storage.driver' => 'clickhouse', 'laralyze.storage.clickhouse' => ['url' => 'http://admin:url-pw@127.0.0.1:9', 'password' => 'secret-pw', 'timeout' => 1, 'connect_timeout' => 0.25]]);
     app()->forgetInstance(Storage::class);
     app()->forgetInstance(ClickHouseStorage::class);
     app()->forgetInstance(Health::class);
