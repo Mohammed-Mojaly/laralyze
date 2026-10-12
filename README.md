@@ -12,6 +12,8 @@ Laralyze records what your Laravel app does in production and shows it on a dash
 
 See it running in the [live demo](https://laralyze-demo.mohammedmojaly.me/laralyze).
 
+<p align="center"><img src="art/promo.gif" alt="A 20-second tour of Laralyze: what needs attention, exceptions down to the line, N+1 queries, a request step by step, database health and Ask AI" width="100%"></p>
+
 > Laralyze is in `0.x`: minor releases (`0.1` → `0.2`) may change things until `1.0`; patch releases don't. Read the [changelog](CHANGELOG.md) before you upgrade.
 
 ## Requirements
