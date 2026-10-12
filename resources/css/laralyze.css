@@ -3405,17 +3405,27 @@ body.lz-root {
 
 .lz-log-row {
     display: grid;
-    grid-template-columns: 64px 72px minmax(0, 240px) minmax(0, 1fr);
+    grid-template-columns: 56px 92px minmax(0, 1fr) auto;
     gap: 12px;
-    align-items: baseline;
+    align-items: center;
     width: 100%;
-    padding: 8px 4px;
+    padding: 7px 8px 7px 12px;
     border: 0;
     background: none;
+    box-shadow: inset 3px 0 0 var(--lz-log-bar, transparent);
     color: var(--lz-ink);
     font: inherit;
     text-align: left;
     cursor: pointer;
+}
+
+/* Warnings and worse stand out by a bar in their color. */
+.lz-log.lz-s-warning,
+.lz-log.lz-s-error,
+.lz-log.lz-s-critical,
+.lz-log.lz-s-alert,
+.lz-log.lz-s-emergency {
+    --lz-log-bar: var(--lz-series);
 }
 
 .lz-log-row:hover,
@@ -3430,37 +3440,139 @@ body.lz-root {
 }
 
 .lz-log-level {
+    justify-self: start;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--lz-series) 14%, transparent);
     color: var(--lz-series);
     font-family: var(--lz-mono);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
+    letter-spacing: .02em;
     text-transform: uppercase;
+}
+
+.lz-log-main {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.lz-log-message {
+    overflow: hidden;
+    font-size: 13.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .lz-log-source {
     overflow: hidden;
-    white-space: nowrap;
+    color: var(--lz-ink-3);
+    font-family: var(--lz-mono);
+    font-size: 11.5px;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.lz-log-name {
+.lz-log-marks {
+    display: flex;
+    gap: 8px;
     color: var(--lz-ink-3);
     font-family: var(--lz-mono);
     font-size: 12px;
 }
 
-.lz-log-message {
-    overflow: hidden;
-    font-family: var(--lz-mono);
-    font-size: 12.5px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.lz-log-mark {
+    display: inline-flex;
+    align-items: center;
+}
+
+.lz-log-mark svg {
+    width: 14px;
+    height: 14px;
+}
+
+.lz-log-mark.is-bad {
+    color: var(--lz-bad);
 }
 
 .lz-log-detail {
     display: grid;
-    gap: 12px;
-    padding: 4px 4px 16px;
+    gap: 14px;
+    padding: 6px 8px 16px 12px;
+    box-shadow: inset 3px 0 0 var(--lz-log-bar, transparent);
+}
+
+.lz-log-full {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.lz-log-context {
+    display: grid;
+    gap: 6px;
+}
+
+.lz-log-pairs {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.lz-log-pairs th {
+    width: 1%;
+    padding: 6px 20px 6px 0;
+    color: var(--lz-ink-3);
+    font-family: var(--lz-mono);
+    font-size: 12px;
+    font-weight: 400;
+    text-align: left;
+    vertical-align: top;
+    white-space: nowrap;
+}
+
+.lz-log-pairs td {
+    padding: 6px 0;
+    vertical-align: top;
+    word-break: break-word;
+}
+
+.lz-log-pairs tr + tr > * {
+    border-top: 1px solid var(--lz-line);
+}
+
+.lz-log-pairs .lz-code {
+    margin: 0;
+}
+
+.lz-json {
+    max-height: 320px;
+    overflow: auto;
+    font-size: 12.5px;
+}
+
+.lz-json-key { color: var(--lz-sql-kw); }
+.lz-json-str { color: var(--lz-sql-value); }
+.lz-json-num,
+.lz-json-lit { color: var(--lz-warn); }
+
+.lz-log-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.lz-dropdown-presets {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 4px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--lz-line);
+}
+
+.lz-dropdown-menu .lz-dropdown-presets .lz-button {
+    justify-content: flex-start;
+    margin-top: 0;
 }
 
 .lz-log-facts {
@@ -3488,13 +3600,18 @@ body.lz-root {
 }
 
 @media (max-width: 640px) {
+    /* Level over when, the message beside them. */
     .lz-log-row {
-        grid-template-columns: auto auto minmax(0, 1fr);
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: "level main marks" "at main marks";
+        row-gap: 2px;
+        align-items: start;
     }
 
-    .lz-log-source {
-        display: none;
-    }
+    .lz-log-at { grid-area: at; }
+    .lz-log-level { grid-area: level; }
+    .lz-log-main { grid-area: main; }
+    .lz-log-marks { grid-area: marks; }
 
     /* An incident: when, what and its summary. */
     .lz-incident-row > :nth-child(2),

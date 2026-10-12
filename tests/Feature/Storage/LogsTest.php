@@ -282,7 +282,7 @@ it('lists logs on the logs page, filtered and expanded in place', function () {
 
     // Only a run that was kept can be opened.
     $card->call('toggle', $warning->uuid)
-        ->assertSee('"supplier": "acme"')
+        ->assertSeeHtml('<th scope="row">supplier</th>')->assertSee('acme')
         ->assertSee(route('laralyze.execution', ['execution' => $kept->uuid]), false)
         ->call('toggle', $warning->uuid)
         ->call('toggle', $fine->uuid)
@@ -290,4 +290,55 @@ it('lists logs on the logs page, filtered and expanded in place', function () {
         ->assertDontSee('/laralyze/executions/'.$fine->execution, false);
 
     $this->get('/laralyze/logs')->assertOk()->assertSeeLivewire('laralyze.log-list');
+});
+
+it('picks a level and every one above it in a click', function () {
+    logsWith();
+
+    Log::info('All good');
+    Log::warning('Slow supplier');
+    Log::error('Card declined');
+    Log::critical('Disk full');
+    Laralyze::flush();
+
+    Livewire::withoutLazyLoading()->test('laralyze.log-list')
+        ->call('atLeast', 'error')
+        ->assertSet('levels', ['emergency', 'alert', 'critical', 'error'])
+        ->assertSee('Card declined')->assertSee('Disk full')->assertDontSee('Slow supplier')
+        ->call('atLeast', 'warning')
+        ->assertSee('Slow supplier')->assertDontSee('All good')
+        ->call('atLeast', 'nonsense')
+        ->assertSet('levels', []);
+});
+
+it('marks entries with context or an exception, and opens one with its context as rows', function () {
+    logsWith();
+
+    Route::get('/refund', function () {
+        report(new RuntimeException('Card expired'));
+
+        return 'ok';
+    });
+
+    Log::warning('Payment provider slow', ['provider' => 'stripe', 'order' => ['id' => 219, 'paid' => false]]);
+    Log::error("Sync failed\nfor 37 products");
+    $this->get('/refund');
+    Laralyze::flush();
+
+    $slow = storedLogs(['search' => 'Payment'])->sole();
+    $multi = storedLogs(['search' => 'Sync failed'])->sole();
+    $card = Livewire::withoutLazyLoading()->test('laralyze.log-list');
+
+    $card->assertSeeHtml('title="Has context"')
+        ->assertSeeHtml('title="Reported an exception"')
+        ->call('toggle', $slow->uuid)
+        ->assertSeeHtml('<th scope="row">provider</th>')
+        ->assertSeeHtml('<span class="lz-json-key">&quot;id&quot;</span>')
+        ->assertSeeHtml('<span class="lz-json-lit">false</span>')
+        ->assertSeeHtml('data-label="Copy context"')
+        // A short message is already whole in its row.
+        ->assertDontSeeHtml('lz-log-full')
+        ->call('toggle', $multi->uuid)
+        ->assertSeeHtml('lz-log-full')
+        ->assertSeeHtml('data-label="Copy message"');
 });

@@ -41,6 +41,16 @@ class LogList extends Card
         }
     }
 
+    /**
+     * A level and every one more severe, e.g. errors and worse.
+     */
+    public function atLeast(string $level): void
+    {
+        $at = array_search($level, Logs::LEVELS, true);
+        $this->levels = $at === false ? [] : array_slice(Logs::LEVELS, 0, $at + 1);
+        [$this->page, $this->open] = [1, ''];
+    }
+
     public function toggle(string $uuid): void
     {
         $this->open = $this->open === $uuid ? '' : $uuid;
@@ -81,6 +91,7 @@ class LogList extends Card
             // Only a run that was kept with its timeline can be opened.
             'kept' => $opened?->execution !== null && app(Storage::class)->keptExecutions([$opened->execution]) !== [],
             'levelOptions' => $this->levelOptions(),
+            'levelLabel' => $this->levelLabel(),
             'users' => $this->userNames([...$userIds, ...$logs->pluck('user_id')->filter()->all()]),
             'userIds' => $userIds,
             'more' => $rows->count() > $limit,
@@ -99,6 +110,21 @@ class LogList extends Card
         $lowest = array_search(strtolower((string) config('laralyze.recorders.'.Logs::class.'.level', 'info')), Logs::LEVELS, true);
 
         return array_slice(Logs::LEVELS, 0, $lowest === false ? 7 : $lowest + 1);
+    }
+
+    /**
+     * What the level menu shows: All, one level, "Error and above", or how many.
+     */
+    protected function levelLabel(): string
+    {
+        $levels = array_values(array_intersect(Logs::LEVELS, $this->levels));
+
+        return match (true) {
+            $levels === [] => 'All',
+            count($levels) === 1 => ucfirst($levels[0]),
+            $levels === array_slice(Logs::LEVELS, 0, count($levels)) => ucfirst(end($levels)).' and above',
+            default => count($levels).' levels',
+        };
     }
 
     /**

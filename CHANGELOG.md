@@ -2,6 +2,10 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
+## v0.7.6 - 2026-10-13
+
+- **An easier Logs page.** Warnings and worse have a bar in their color, and each level is a badge. The message gets the room, in a plain font, with where it was written under it. Entries with context or an exception say so in their row. The Level menu picks "Warning and above" or "Error and above" in one click. An open entry shows its context as rows, nested values as colored JSON, and the whole message only when its row cuts it. The message and context can be copied.
+
 ## v0.7.5 - 2026-10-13
 
 - **Timelines on more pages.** A query's page now lists the requests, jobs and commands that ran it, slowest first, each opening its timeline. An outgoing request's page lists the ones that called it.
