@@ -193,7 +193,12 @@ class AssistantPanel extends Component
             return;
         }
 
-        @set_time_limit(300);
+        // A slow answer gets five minutes; a longer limit, or none (0), stays as it is.
+        $limit = (int) ini_get('max_execution_time');
+
+        if ($limit !== 0 && $limit < 300) {
+            @set_time_limit(300);
+        }
 
         $subject = $this->subject();
         $model = app(Providers::class)->model($provider);
