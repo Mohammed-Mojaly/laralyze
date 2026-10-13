@@ -24,16 +24,30 @@
             </div>
         </div>
 
-        <label class="lz-dropdown-button lz-select">
-            <span class="lz-dropdown-label">User</span>
-            <select wire:model.live="user">
-                <option value="">All</option>
-                @foreach ($userIds as $id)
-                    <option value="{{ $id }}">{{ $users[$id] ?? $id }}</option>
-                @endforeach
-            </select>
-            <span class="lz-dropdown-caret" aria-hidden="true">▾</span>
-        </label>
+        <div class="lz-dropdown" x-data="{ open: false, find: '' }" x-on:click.outside="open = false" x-on:keydown.escape="open = false">
+            <button type="button" class="lz-dropdown-button" x-on:click="open = ! open; $nextTick(() => $refs.find?.focus())" x-bind:aria-expanded="open" aria-haspopup="true">
+                <span class="lz-dropdown-label">User</span>
+                <span class="lz-dropdown-value">{{ $user === '' ? 'All' : ($users[$user] ?? $user) }}</span>
+                <span class="lz-dropdown-caret" aria-hidden="true">▾</span>
+            </button>
+            <div class="lz-dropdown-menu lz-user-menu" x-show="open" x-cloak>
+                @if (count($userIds) > 6)
+                    <label class="lz-search">
+                        <x-laralyze::icon name="search" />
+                        <input type="search" x-ref="find" x-model="find" placeholder="Find a user" aria-label="Find a user">
+                    </label>
+                @endif
+                <div class="lz-user-options">
+                    <button type="button" @class(['lz-option', 'is-active' => $user === '']) wire:click="$set('user', '')" x-on:click="open = false">All users</button>
+                    @foreach ($userIds as $id)
+                        @php($name = $users[$id] ?? (string) $id)
+                        <button type="button" @class(['lz-option', 'is-active' => $user === (string) $id]) wire:click="$set('user', @js((string) $id))" x-on:click="open = false" x-show="find === '' || @js(mb_strtolower($name.' #'.$id)).includes(find.toLowerCase())">
+                            <span class="lz-user-option">{{ $name }}@if ($name !== (string) $id) <span class="lz-muted">#{{ $id }}</span>@endif</span>
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        </div>
     </x-slot:actions>
 
     @if ($logs->isEmpty())

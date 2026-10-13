@@ -342,3 +342,27 @@ it('marks entries with context or an exception, and opens one with its context a
         ->assertSeeHtml('lz-log-full')
         ->assertSeeHtml('data-label="Copy message"');
 });
+
+it('picks a user from a menu of its own, not the browser\'s', function () {
+    logsWith();
+
+    Route::get('/orders', function () {
+        Log::info('Order placed by '.auth()->id());
+
+        return 'ok';
+    });
+
+    foreach ([7 => 'Sara', 9 => 'Omar'] as $id => $name) {
+        $this->actingAs(new GenericUser(['id' => $id, 'name' => $name]));
+        $this->get('/orders')->assertOk();
+    }
+
+    Laralyze::flush();
+
+    Livewire::withoutLazyLoading()->test('laralyze.log-list')
+        ->assertDontSeeHtml('<select')
+        ->assertSeeHtml('wire:click="$set(\'user\', \'7\')"')
+        ->assertSee('Order placed by 7')->assertSee('Order placed by 9')
+        ->set('user', '7')
+        ->assertSee('Order placed by 7')->assertDontSee('Order placed by 9');
+});
