@@ -3,6 +3,7 @@
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use MohammedMojaly\Laralyze\Alerts\Metrics\Catalog;
+use MohammedMojaly\Laralyze\Alerts\Metrics\EventMetric;
 use MohammedMojaly\Laralyze\Alerts\Rule;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Storage\ClickHouseStorage;
@@ -73,4 +74,20 @@ function measured(array $rule): array
     $rule = Rule::fromArray('r', $rule);
 
     return app(Catalog::class)->find($rule->metric)->measure(app(Storage::class), $rule, now()->getTimestamp());
+}
+
+/**
+ * What an event rule finds now, before it's told.
+ *
+ * @param  array<string, mixed>  $rule
+ * @return list<array{id: string, item: string, text: string, url?: string}>
+ */
+function alertEvents(array $rule): array
+{
+    $rule = Rule::fromArray('r', $rule);
+    $metric = app(Catalog::class)->find($rule->metric);
+
+    expect($metric)->toBeInstanceOf(EventMetric::class);
+
+    return $metric->events(app(Storage::class), $rule, now()->getTimestamp());
 }

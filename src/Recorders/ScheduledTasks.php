@@ -60,7 +60,8 @@ class ScheduledTasks extends Recorder
             $this->laralyze->record('scheduled', $name, $duration ?? 0)->avg()->max();
 
             if ($status === 'failed') {
-                $this->laralyze->record('scheduled_failed', $name)->count();
+                // The time of the last failure tells each failure apart, for alerts.
+                $this->laralyze->record('scheduled_failed', $name, time())->count()->max();
             }
         }
 

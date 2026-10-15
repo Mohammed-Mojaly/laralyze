@@ -214,6 +214,7 @@ it('follows jobs per queue and per class', function () {
 });
 
 it('records scheduled task runs, failures and skips with the next run', function () {
+    $before = time();
     $task = app(Schedule::class)->command('inspire')->everyFiveMinutes();
 
     event(new ScheduledTaskStarting($task));
@@ -227,6 +228,7 @@ it('records scheduled task runs, failures and skips with the next run', function
 
     expect(countOf('scheduled', 'inspire'))->toBe(2.0)
         ->and(countOf('scheduled_failed', 'inspire'))->toBe(1.0)
+        ->and((int) app(Storage::class)->total('scheduled_failed', ['max'], 3_600, 'inspire')->max)->toBeGreaterThanOrEqual($before)
         ->and(countOf('scheduled_skipped', 'inspire'))->toBe(1.0)
         ->and($latest['status'])->toBe('skipped')
         ->and($latest['expression'])->toBe('*/5 * * * *')
