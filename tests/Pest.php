@@ -2,6 +2,9 @@
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use MohammedMojaly\Laralyze\Alerts\Metrics\Catalog;
+use MohammedMojaly\Laralyze\Alerts\Rule;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Storage\ClickHouseStorage;
 use MohammedMojaly\Laralyze\Tests\Concerns\UsesStorage;
 use MohammedMojaly\Laralyze\Tests\TestCase;
@@ -57,4 +60,17 @@ function asWebRequest(callable $callback): void
     } finally {
         (fn () => $this->isRunningInConsole = null)->call(app());
     }
+}
+
+/**
+ * What a rule sees now: a value per item, or one value under '*' all together.
+ *
+ * @param  array<string, mixed>  $rule
+ * @return array<string|int, float|null>
+ */
+function measured(array $rule): array
+{
+    $rule = Rule::fromArray('r', $rule);
+
+    return app(Catalog::class)->find($rule->metric)->measure(app(Storage::class), $rule, now()->getTimestamp());
 }
