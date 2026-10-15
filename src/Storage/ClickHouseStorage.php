@@ -251,9 +251,10 @@ class ClickHouseStorage implements Storage
 
         // Values are few: one lightweight delete costs less than partitioning them.
         $this->client->statement(
-            'DELETE FROM laralyze_values WHERE timestamp < {retention:Int64} OR (type = {chats:String} AND timestamp < {chats_cutoff:Int64}) OR (type IN {short:Array(String)} AND timestamp < {short_cutoff:Int64})',
+            'DELETE FROM laralyze_values WHERE (timestamp < {retention:Int64} AND type NOT IN {kept:Array(String)}) OR (type = {chats:String} AND timestamp < {chats_cutoff:Int64}) OR (type IN {short:Array(String)} AND timestamp < {short_cutoff:Int64})',
             [
                 'retention' => $now - $retentionDays * 86_400,
+                'kept' => DatabaseStorage::KEPT_VALUES,
                 'chats' => Chats::TYPE,
                 'chats_cutoff' => $now - Chats::DAYS * 86_400,
                 'short' => DatabaseStorage::SHORT_LIVED_VALUES,

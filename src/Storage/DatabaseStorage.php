@@ -43,6 +43,14 @@ class DatabaseStorage implements Storage
     public const SHORT_LIVED_VALUES = ['visitor_seen'];
 
     /**
+     * Values kept however old they are: alert rules, what's firing now,
+     * when each viewer last opened the bell, and the one-time setup.
+     *
+     * @var list<string>
+     */
+    public const KEPT_VALUES = ['alert_rule', 'alert_state', 'alert_seen', 'alert_setup'];
+
+    /**
      * Known once the logs table was found; until then each write checks again.
      */
     protected bool $logsInstalled = false;
@@ -436,6 +444,7 @@ class DatabaseStorage implements Storage
 
         $connection->table(self::VALUES)
             ->where('timestamp', '<', $now - $retentionDays * 86_400)
+            ->whereNotIn('type', self::KEPT_VALUES)
             ->delete();
 
         if ($this->logsInstalled()) {
