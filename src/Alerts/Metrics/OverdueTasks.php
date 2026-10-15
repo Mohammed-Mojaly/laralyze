@@ -28,7 +28,7 @@ class OverdueTasks extends EventMetric
 
     public function hint(): ?string
     {
-        return 'A task more than a minute past its next run. It only catches a task skipped while the scheduler runs: when the scheduler stops, alerts stop too, so set LARALYZE_HEARTBEAT_URL for that.';
+        return 'A task more than a minute past its next run, plus the length of its last run, so one still running isn\'t counted. It only catches a task skipped while the scheduler runs: when the scheduler stops, alerts stop too, so set LARALYZE_HEARTBEAT_URL for that.';
     }
 
     public function events(Storage $storage, Rule $rule, int $now): array
@@ -36,11 +36,16 @@ class OverdueTasks extends EventMetric
         $events = [];
 
         foreach ($storage->values('scheduled_task') as $row) {
-            $nextAt = (int) (json_decode((string) $row->value, true)['next_at'] ?? 0);
+            $data = json_decode((string) $row->value, true);
+            $nextAt = (int) ($data['next_at'] ?? 0);
             $task = (string) $row->key;
 
+            // The next run is only written when a run ends, so a task still running looks late:
+            // it gets the length of its last run (in ms) on top of the minute.
+            $lastRun = (int) ceil((float) ($data['duration'] ?? 0) / 1_000);
+
             // More than a day late: most likely taken off the schedule.
-            if ($nextAt <= 0 || $nextAt >= $now - self::LATE || $nextAt < $now - 86_400) {
+            if ($nextAt <= 0 || $now - $nextAt <= self::LATE + $lastRun || $nextAt < $now - 86_400) {
                 continue;
             }
 

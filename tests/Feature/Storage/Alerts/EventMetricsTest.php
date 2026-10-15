@@ -77,3 +77,26 @@ it('finds database incidents of the chosen kinds, each by its id', function () {
         ->and($events[0]['id'])->toBe("mysql|{$now}:deadlock")
         ->and(alertEvents(['metric' => 'database.problem']))->toHaveCount(2);
 });
+
+it('gives an overdue task the length of its last run on top of the minute', function () {
+    $now = now()->getTimestamp();
+
+    app(Storage::class)->store([], [
+        ['timestamp' => $now - 3_600, 'type' => 'scheduled_task', 'key' => 'backup:long', 'value' => (string) json_encode(['next_at' => $now - 300, 'duration' => 600_000])],
+        ['timestamp' => $now - 3_600, 'type' => 'scheduled_task', 'key' => 'backup:short', 'value' => (string) json_encode(['next_at' => $now - 300, 'duration' => 60_000])],
+        ['timestamp' => $now - 3_600, 'type' => 'scheduled_task', 'key' => 'backup:unknown', 'value' => (string) json_encode(['next_at' => $now - 300, 'duration' => null])],
+    ]);
+
+    expect(array_column(alertEvents(['metric' => 'scheduled.overdue']), 'item'))->toEqualCanonicalizing(['backup:short', 'backup:unknown']);
+});
+
+it('matches an exception filter against the whole message, not the part that is sent', function () {
+    $key = (string) json_encode([RuntimeException::class, 'app/Pay.php:3']);
+
+    exceptionAt($key, now()->getTimestamp(), str_repeat('a', 400).' needle');
+
+    $events = alertEvents(['metric' => 'exceptions.new', 'filter' => ['by' => 'message', 'operator' => 'contains', 'values' => ['needle']]]);
+
+    expect($events)->toHaveCount(1)
+        ->and(mb_strlen($events[0]['text']))->toBeLessThan(400);
+});

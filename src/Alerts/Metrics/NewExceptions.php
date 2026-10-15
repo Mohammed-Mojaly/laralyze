@@ -54,11 +54,13 @@ class NewExceptions extends EventMetric
         foreach ($recent as $row) {
             $key = (string) $row->key;
             $class = (string) (json_decode($key, true)[0] ?? $key);
-            $message = Str::limit((string) ($messages[$key] ?? ''), 300);
+            $message = (string) ($messages[$key] ?? '');
 
             if ($filter !== null && ! $filter->matches($filter->by === 'message' ? $message : $class)) {
                 continue;
             }
+
+            $message = Str::limit($message, 300);
 
             $url = route('laralyze.group', ['page' => 'exceptions', 'group' => hash('xxh128', $key)]);
 
