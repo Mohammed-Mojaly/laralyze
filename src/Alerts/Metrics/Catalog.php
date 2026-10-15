@@ -70,6 +70,7 @@ final class Catalog
             new Highest('jobs.p95', 'Jobs', 'Duration p95', 'ms', 'job', 'p95', $job, Recorders\Jobs::class),
             new Highest('queues.wait', 'Queues', 'Wait time', 's', 'queue_wait', 'avg', $queue, Recorders\Jobs::class, 1_000,
                 'Recorded when a worker picks a job up, so it can\'t see a stopped worker: use Waiting for that.'),
+            new QueueSize,
             new LogEntries,
             ...(interface_exists('Laravel\Ai\Contracts\Agent') ? [
                 new AiUsage('ai.cost', 'Cost', '$', ['model' => ['ai_model_cost'], 'agent' => ['ai_cost'], 'user' => ['ai_user_cost']], 'sum', Recorders\Ai::MICRO,
@@ -79,6 +80,8 @@ final class Catalog
             ] : []),
             new Highest('servers.cpu', 'Servers', 'CPU', '%', 'server_cpu', 'avg', $server, Recorders\Servers::class),
             new Highest('servers.memory', 'Servers', 'Memory', '%', 'server_memory', 'avg', $server, Recorders\Servers::class),
+            new Disk,
+            new StoppedReporting,
         ];
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use MohammedMojaly\Laralyze\Alerts\Metrics\Catalog;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
@@ -127,4 +128,43 @@ it('lists only the metrics whose recorder is on', function () {
     $available = array_keys(app(Catalog::class)->available());
 
     expect($available)->toContain('requests.error_rate')->not->toContain('jobs.failed');
+});
+
+it('reads how many jobs wait in each queue now, and skips sync queues', function () {
+    config(['queue.connections.redis' => ['driver' => 'redis'], 'queue.connections.sync' => ['driver' => 'sync']]);
+    Laralyze::record('queue_queued', 'redis:emails')->count();
+    Laralyze::record('queue_queued', 'sync:default')->count();
+    Laralyze::record('queue_processing', 'redis:default')->count();
+    Laralyze::flush();
+
+    Queue::fake();
+    Queue::push('SendInvoice', [], 'emails');
+    Queue::push('SendInvoice', [], 'emails');
+    Queue::push('SendInvoice', [], 'emails');
+
+    expect(measured(['metric' => 'queues.waiting', 'mode' => 'each']))->toBe(['redis:emails' => 3.0, 'redis:default' => 0.0])
+        ->and(measured(['metric' => 'queues.waiting']))->toBe(['*' => 3.0]);
+});
+
+it('leaves out a queue it cannot read', function () {
+    config(['queue.connections.database' => ['driver' => 'database', 'table' => 'missing_jobs', 'queue' => 'default']]);
+    Laralyze::record('queue_queued', 'database:default')->count();
+    Laralyze::flush();
+
+    expect(measured(['metric' => 'queues.waiting', 'mode' => 'each']))->toBe([]);
+});
+
+it('reads disk use and the minutes since each server reported, from servers seen in the last day', function () {
+    $now = now()->getTimestamp();
+
+    app(Storage::class)->store([], [
+        ['timestamp' => $now - 600, 'type' => 'server', 'key' => 'web-1', 'value' => (string) json_encode(['disks' => [['directory' => '/', 'used' => 93, 'total' => 100]]])],
+        ['timestamp' => $now - 30, 'type' => 'server', 'key' => 'web-2', 'value' => (string) json_encode(['disks' => [['directory' => '/', 'used' => 40, 'total' => 100], ['directory' => '/data', 'used' => 1, 'total' => 0]]])],
+        ['timestamp' => $now - 90_000, 'type' => 'server', 'key' => 'old', 'value' => (string) json_encode(['disks' => [['directory' => '/', 'used' => 99, 'total' => 100]]])],
+    ]);
+
+    expect(measured(['metric' => 'servers.disk', 'mode' => 'each']))->toBe(['web-1 · /' => 93.0, 'web-2 · /' => 40.0])
+        ->and(measured(['metric' => 'servers.disk']))->toBe(['*' => 93.0])
+        ->and(measured(['metric' => 'servers.disk', 'mode' => 'each', 'filter' => ['by' => 'server', 'operator' => 'equals', 'values' => ['web-2']]]))->toBe(['web-2 · /' => 40.0])
+        ->and(measured(['metric' => 'servers.stopped', 'mode' => 'each']))->toBe(['web-1' => 10.0, 'web-2' => 0.5]);
 });
