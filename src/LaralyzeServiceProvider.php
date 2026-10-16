@@ -171,6 +171,7 @@ class LaralyzeServiceProvider extends ServiceProvider
 
             $livewire->component('laralyze.assistant', Livewire\AssistantPanel::class);
             $livewire->component('laralyze.alerts', Livewire\AlertsPage::class);
+            $livewire->component('laralyze.alert-bell', Livewire\AlertBell::class);
         });
     }
 

@@ -3931,3 +3931,70 @@ body.lz-root {
 .lz-delivery-error {
     color: var(--lz-ink-3);
 }
+
+/* The alerts bell in the top bar */
+.lz-bell .lz-icon-button {
+    position: relative;
+}
+
+.lz-bell-count {
+    position: absolute;
+    top: 2px;
+    right: 0;
+    min-width: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: var(--lz-bad);
+    color: var(--lz-surface);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+}
+
+.lz-bell-menu {
+    width: min(360px, calc(100vw - 32px));
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.lz-bell-entry {
+    display: grid;
+    gap: 2px;
+    padding: 8px;
+    border-radius: 6px;
+    color: var(--lz-ink);
+    text-decoration: none;
+}
+
+.lz-bell-entry:hover {
+    background: var(--lz-surface-2);
+}
+
+.lz-bell-title {
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.lz-bell-meta,
+.lz-bell-empty {
+    margin: 0;
+    color: var(--lz-ink-3);
+    font-size: 12px;
+}
+
+.lz-bell-empty {
+    padding: 8px;
+}
+
+.lz-bell-failed {
+    color: var(--lz-bad);
+}
+
+.lz-bell-all {
+    padding: 8px;
+    border-top: 1px solid var(--lz-line);
+    color: var(--lz-accent);
+    font-size: 12px;
+    text-decoration: none;
+}

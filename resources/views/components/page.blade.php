@@ -31,6 +31,9 @@
                         @unless ($health->blocking())
                             <x-laralyze::ask :kind="$ask[0] ?? 'general'" :key="$ask[1] ?? ''" />
                         @endunless
+                        @unless ($health->blocking())
+                            <livewire:laralyze.alert-bell />
+                        @endunless
                         <x-laralyze::periods :range="$range" />
                         <x-laralyze::theme-toggle />
                     </div>
