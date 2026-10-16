@@ -18,6 +18,17 @@ it('turns off when LARALYZE_ENABLED is false in the environment', function () {
     unset($_ENV['LARALYZE_ENABLED'], $_SERVER['LARALYZE_ENABLED']);
 });
 
+it('adds alert keys that are newer than a published config', function () {
+    // As if config/laralyze.php was published before 0.8.
+    config(['laralyze.alerts' => ['mail' => 'a@b.c', 'webhook' => ['url' => 'https://hooks.test/in']]]);
+
+    (new LaralyzeServiceProvider(app()))->register();
+
+    expect(config('laralyze.alerts'))->toHaveKeys(['telegram.token', 'telegram.chats', 'webhook.secret', 'heartbeat', 'rules'])
+        ->and(config('laralyze.alerts.mail'))->toBe('a@b.c')
+        ->and(config('laralyze.alerts.webhook.url'))->toBe('https://hooks.test/in');
+});
+
 it('reports its status in php artisan about', function () {
     $this->artisan('about', ['--only' => 'laralyze'])
         ->expectsOutputToContain('Laralyze')

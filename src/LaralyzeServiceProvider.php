@@ -78,6 +78,7 @@ class LaralyzeServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/laralyze.php', 'laralyze');
         $this->addNewRecorders();
+        $this->addNewAlertKeys();
 
         $this->app->singleton(Laralyze::class);
         $this->app->singleton(Storage\DatabaseStorage::class);
@@ -110,6 +111,30 @@ class LaralyzeServiceProvider extends ServiceProvider
         $defaults = (array) ((require __DIR__.'/../config/laralyze.php')['recorders'] ?? []);
 
         $config->set('laralyze.recorders', [...$recorders, ...array_diff_key($defaults, $recorders)]);
+    }
+
+    /**
+     * A config published before 0.8 has its own alerts array without the
+     * Telegram, webhook and heartbeat keys, so their .env keys would do
+     * nothing. Missing keys are added; a key the app set is kept.
+     */
+    protected function addNewAlertKeys(): void
+    {
+        if ($this->app instanceof CachesConfiguration && $this->app->configurationIsCached()) {
+            return;
+        }
+
+        $config = $this->app->make('config');
+        $alerts = (array) $config->get('laralyze.alerts', []);
+        $defaults = (array) ((require __DIR__.'/../config/laralyze.php')['alerts'] ?? []);
+
+        foreach (['telegram', 'webhook'] as $key) {
+            if (is_array($alerts[$key] ?? null)) {
+                $alerts[$key] = [...$alerts[$key], ...array_diff_key((array) $defaults[$key], $alerts[$key])];
+            }
+        }
+
+        $config->set('laralyze.alerts', [...$alerts, ...array_diff_key($defaults, $alerts)]);
     }
 
     public function boot(): void
