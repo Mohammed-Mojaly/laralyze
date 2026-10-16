@@ -7,10 +7,7 @@ use Illuminate\Notifications\Notification;
 
 class AlertNotification extends Notification
 {
-    /**
-     * @param  list<Alert>  $alerts
-     */
-    public function __construct(public array $alerts) {}
+    public function __construct(public Message $message) {}
 
     /**
      * @return list<string>
@@ -22,17 +19,16 @@ class AlertNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $first = $this->alerts[0];
-        $more = count($this->alerts) - 1;
+        $mail = (new MailMessage)->subject('['.config('app.name').'] '.$this->message->heading());
 
-        $mail = (new MailMessage)
-            ->error()
-            ->subject('['.config('app.name').'] '.$first->title.($more > 0 ? " and {$more} more" : ''));
-
-        foreach ($this->alerts as $alert) {
-            $mail->line("**{$alert->title}**")->line($alert->body)->line($alert->url);
+        if (! in_array($this->message->event, ['recovered', 'test'], true)) {
+            $mail->error();
         }
 
-        return $mail->action('Open Laralyze', $first->url);
+        foreach ($this->message->lines() as $line) {
+            $mail->line($line);
+        }
+
+        return $this->message->url === '' ? $mail : $mail->action('Open in Laralyze', $this->message->url);
     }
 }

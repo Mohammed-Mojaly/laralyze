@@ -301,9 +301,9 @@ return [
     | Alerts
     |--------------------------------------------------------------------------
     |
-    | Laralyze checks every minute from your scheduler and tells you when
-    | something goes wrong. Leave every channel empty to turn alerts off.
-    | Each alert is sent at most once per "every" minutes.
+    | Rules are made on the dashboard's Alerts page and checked every minute
+    | from your scheduler. These are the channels they can send to; keep
+    | their URLs and tokens in .env.
     |
     */
 
@@ -313,16 +313,27 @@ return [
         'slack' => env('LARALYZE_ALERTS_SLACK_WEBHOOK'),
         'discord' => env('LARALYZE_ALERTS_DISCORD_WEBHOOK'),
 
-        'every' => (int) env('LARALYZE_ALERTS_EVERY', 60),
+        'telegram' => [
+            'token' => env('LARALYZE_ALERTS_TELEGRAM_TOKEN'),
+            // Comma separated chat ids.
+            'chats' => env('LARALYZE_ALERTS_TELEGRAM_CHATS'),
+        ],
 
+        // A JSON POST to your own endpoint, signed when a secret is set.
+        'webhook' => [
+            'url' => env('LARALYZE_ALERTS_WEBHOOK_URL'),
+            'secret' => env('LARALYZE_ALERTS_WEBHOOK_SECRET'),
+        ],
+
+        // Pinged every minute after the alerts check, so a service like
+        // healthchecks.io can tell you when the scheduler itself stops.
+        'heartbeat' => env('LARALYZE_HEARTBEAT_URL'),
+
+        // Read once, on the first check after upgrading to 0.8, to make the
+        // default rules. After that, rules live on the Alerts page.
         'rules' => [
-            // A new exception, or one you resolved happening again.
             'exceptions' => true,
-
-            // Percent of requests answered with a 5xx over the last 5 minutes.
             'error_rate' => 5,
-
-            // Jobs that failed over the last 5 minutes.
             'failed_jobs' => 10,
         ],
     ],

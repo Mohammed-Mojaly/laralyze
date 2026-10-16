@@ -176,7 +176,15 @@ class Alerts
         $failures = [];
 
         if (($to = $this->mailTo()) !== []) {
-            $channels['Mail'] = fn () => Notification::route('mail', $to)->notifyNow(new AlertNotification($alerts));
+            $first = $alerts[0];
+            $more = count($alerts) - 1;
+            $message = new Message(
+                event: 'fired',
+                title: $first->title.($more > 0 ? " and {$more} more" : ''),
+                text: implode("\n", array_map(fn (Alert $alert) => $alert->title.': '.$alert->body, $alerts)),
+                url: $first->url,
+            );
+            $channels['Mail'] = fn () => Notification::route('mail', $to)->notifyNow(new AlertNotification($message));
         }
 
         if ($slack = (string) $this->config->get('laralyze.alerts.slack')) {
