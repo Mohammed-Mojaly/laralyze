@@ -3640,6 +3640,15 @@ body.lz-root {
         right: auto;
         left: 0;
     }
+
+    /* The heading keeps its words whole; the tools wrap under it. */
+    .lz-heading {
+        flex-basis: auto;
+    }
+
+    .lz-topbar-tools {
+        flex-wrap: wrap;
+    }
 }
 
 /* Alerts page: rules, the rule form and the history */
@@ -3997,4 +4006,15 @@ body.lz-root {
     color: var(--lz-accent);
     font-size: 12px;
     text-decoration: none;
+}
+
+@media (max-width: 640px) {
+    /* On a phone the bell's list spans the screen, just under the top bar. */
+    .lz-bell-menu {
+        position: fixed;
+        top: 64px;
+        right: 16px;
+        left: 16px;
+        width: auto;
+    }
 }
