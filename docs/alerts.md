@@ -67,7 +67,7 @@ Gate::define('manageLaralyzeAlerts', fn ($user) => $user->isAdmin());
 
 ## Delivery
 
-Rules are checked every minute from your scheduler. Each channel gets 5 seconds. A channel that fails is tried again on the next checks, three times in all, then the History tab and the bell show it with the error. A check stops sending after about 30 seconds so it never holds up the scheduler; the rest go out on the next one. Messages are kept for `LARALYZE_RETENTION` days (30).
+Rules are checked every minute from your scheduler; rules with a 24-hour window are checked every five minutes. Each channel gets 5 seconds. A channel that fails is tried again on the next checks, three times in all, then the History tab and the bell show it with the error. A check stops sending after about 30 seconds so it never holds up the scheduler; the rest go out on the next one. Messages are kept for `LARALYZE_RETENTION_DAYS` days (30).
 
 ## Several servers
 
@@ -75,7 +75,7 @@ Every server may run the scheduler; one checks and sends, and a check never over
 
 ## When the scheduler stops
 
-Alerts can't tell you their own scheduler stopped. Set a heartbeat URL, from a service such as healthchecks.io, and Laralyze pings it after every check; the service tells you when the pings stop:
+Alerts can't tell you their own scheduler stopped. Set a heartbeat URL, from a service such as healthchecks.io, and Laralyze pings it after each check that runs; the service tells you when the pings stop, including when a check is skipped because Laralyze's storage can't be reached:
 
 ```env
 LARALYZE_HEARTBEAT_URL=https://hc-ping.com/your-uuid
