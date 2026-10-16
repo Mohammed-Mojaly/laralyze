@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use MohammedMojaly\Laralyze\Alerts\Alerts;
+use MohammedMojaly\Laralyze\Alerts\History;
 use MohammedMojaly\Laralyze\Alerts\Look;
 use MohammedMojaly\Laralyze\Alerts\Rule;
 use MohammedMojaly\Laralyze\Alerts\Rules;
@@ -266,6 +267,29 @@ it('changes nothing when storage can\'t be reached', function () {
         ->and(app(States::class)->firing()[$rule->id]['*']['clean'])->toBe(0);
 
     Http::assertNothingSent();
+});
+
+it('tells what fired on the next look when writing the history failed', function () {
+    alertRule(['metric' => 'jobs.failed', 'operator' => '>=', 'threshold' => 10]);
+    failJobs(12);
+
+    $real = app(Storage::class);
+    $failing = Mockery::mock($real)->makePartial();
+    $failing->shouldReceive('put')->andReturnUsing(function (string $type, string $key, string $value) use ($real) {
+        $type === History::TYPE ? throw new RuntimeException('Deadlock') : $real->put($type, $key, $value);
+    });
+    app()->instance(Storage::class, $failing);
+
+    look();
+
+    app()->instance(Storage::class, $real);
+
+    expect(alertHistory())->toBe([]);
+
+    $this->travel(1)->minutes();
+    look();
+
+    expect(array_column(alertHistory(), 'event'))->toBe(['fired']);
 });
 
 it('makes the default rules, sends what is pending, and pings the heartbeat', function () {

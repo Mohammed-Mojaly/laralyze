@@ -96,6 +96,9 @@ final class Look
         }
 
         $told = [History::FIRED => [], History::REMINDER => [], History::RECOVERED => []];
+        // New states by item, null to forget. Written after the history, so a
+        // failed write is told again on the next look instead of lost.
+        $writes = [];
 
         // A firing item with no data now is a clean look: not breaching.
         foreach ($metric->measure($this->storage, $rule, $now) + array_fill_keys(array_keys($states), null) as $item => $value) {
@@ -104,13 +107,13 @@ final class Look
             $breaches = $value !== null && $rule->breaches($value);
 
             if ($breaches && $state === null) {
-                $this->states->put($rule->id, $item, ['since' => $now, 'clean' => 0, 'reminded' => $now, 'value' => $value]);
+                $writes[$item] = ['since' => $now, 'clean' => 0, 'reminded' => $now, 'value' => $value];
                 $told[History::FIRED][$item] = $value;
             } elseif ($breaches) {
                 $remind = $rule->remind > 0 && $now - $state['reminded'] >= $rule->remind;
 
                 if ($remind || $state['clean'] > 0) {
-                    $this->states->put($rule->id, $item, ['since' => $state['since'], 'clean' => 0, 'reminded' => $remind ? $now : $state['reminded'], 'value' => $value]);
+                    $writes[$item] = ['since' => $state['since'], 'clean' => 0, 'reminded' => $remind ? $now : $state['reminded'], 'value' => $value];
                 }
 
                 if ($remind) {
@@ -118,10 +121,10 @@ final class Look
                 }
             } elseif ($state !== null) {
                 if ($state['clean'] >= 1) {
-                    $this->states->forget($rule->id, $item);
+                    $writes[$item] = null;
                     $told[History::RECOVERED][$item] = $value;
                 } else {
-                    $this->states->put($rule->id, $item, [...$state, 'clean' => 1]);
+                    $writes[$item] = [...$state, 'clean' => 1];
                 }
             }
         }
@@ -132,6 +135,14 @@ final class Look
                     'item' => (string) $item === Metric::ALL ? ($rule->filter?->describe() ?? '') : $metric->itemLabel((string) $item),
                     'value' => $metric->format($value),
                 ], array_keys($items), $items), $now);
+            }
+        }
+
+        foreach ($writes as $item => $state) {
+            if ($state === null) {
+                $this->states->forget($rule->id, (string) $item);
+            } else {
+                $this->states->put($rule->id, (string) $item, $state);
             }
         }
     }
