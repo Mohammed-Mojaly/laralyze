@@ -90,3 +90,4 @@ Laravel's own `->pingOnSuccess($url)` on any scheduled task works too.
 - A queue's wait time is recorded when a worker picks a job up, so it can't see a stopped worker. Use "Waiting", which asks the queue how many jobs it holds.
 - When a queue can't be read, say its backend is down, the "Waiting" rule is skipped for that check: it neither fires nor recovers. The error goes to your app's exception handler.
 - A message filter on logs reads the stored entries at error and above, up to 1,000 per check.
+- Event rules (exceptions, failed or overdue tasks, database problems) look back an hour, so a new or unmuted rule may tell you what happened in the last hour.

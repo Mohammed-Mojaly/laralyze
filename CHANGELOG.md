@@ -9,7 +9,7 @@ Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch 
 - **Telegram and webhook channels.** Telegram chats and a JSON webhook join mail, Slack and Discord. The webhook can be signed. Errors never show a channel's URL or token.
 - **A heartbeat.** `LARALYZE_HEARTBEAT_URL` is pinged after each check that runs, so a service like healthchecks.io can tell you when the scheduler stops, or when a check is skipped because storage can't be reached.
 - **Health:** the dashboard warns when several servers run the scheduler without a shared cache.
-- **Upgrade:** nothing to run, and no migration. On the first check after the upgrade, `alerts.rules` in your config becomes three of the default rules, once; after that, rules live on the page. `alerts.every` is no longer used: set a reminder on the rule instead. Making and changing rules needs the new `manageLaralyzeAlerts` gate, which follows `viewLaralyze` unless you define it. The alerts check now runs every minute even without a channel.
+- **Upgrade:** nothing to run, and no migration. On the first check after the upgrade, `alerts.rules` in your config becomes three of the default rules, once; after that, rules live on the page. `alerts.every` is no longer used: set a reminder on the rule instead. Making and changing rules needs the new `manageLaralyzeAlerts` gate, which follows `viewLaralyze` unless you define it. The alerts check now runs every minute even without a channel. The new alert keys in `.env` work with a config published before 0.8. `Alerts::enabled()`, `Alerts::check()`, `Alerts::lastFailure()` and the `Alerts\Alert` class are removed, and so is the "Alerts couldn't be delivered" Health warning: the bell shows failed deliveries now.
 
 ## v0.7.7 - 2026-10-13
 
