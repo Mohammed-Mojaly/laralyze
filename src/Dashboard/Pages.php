@@ -114,6 +114,7 @@ class Pages
             'scheduled' => $page('Scheduled Tasks', 'Activity', Recorders\ScheduledTasks::class, 'scheduled'),
             'exceptions' => $page('Exceptions', 'Issues', Recorders\Exceptions::class, 'exceptions'),
             'findings' => $page('Findings', 'Issues', Recorders\Traces::class, 'findings'),
+            'alerts' => ['label' => 'Alerts', 'section' => 'Issues', 'view' => 'laralyze::pages.alerts', 'icon' => 'alerts'],
             // Only for apps that use laravel/ai.
             ...(interface_exists('Laravel\Ai\Contracts\Agent') ? ['ai' => $page('AI', 'Inside', Recorders\Ai::class, 'ai')] : []),
             'queries' => $page('Queries', 'Database', Recorders\Queries::class, 'queries'),

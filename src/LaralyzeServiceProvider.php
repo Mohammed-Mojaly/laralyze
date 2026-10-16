@@ -170,6 +170,7 @@ class LaralyzeServiceProvider extends ServiceProvider
             }
 
             $livewire->component('laralyze.assistant', Livewire\AssistantPanel::class);
+            $livewire->component('laralyze.alerts', Livewire\AlertsPage::class);
         });
     }
 
@@ -249,6 +250,10 @@ class LaralyzeServiceProvider extends ServiceProvider
         // Ask AI reads your code and sends it to your AI provider: its own
         // permission, given by default to whoever may see the dashboard.
         Gate::define('useLaralyzeAssistant', fn ($user = null) => ! in_array(Http\Middleware\Authorize::class, (array) $this->app->make('config')->get('laralyze.middleware', []), true)
+            || Gate::forUser($user)->allows('viewLaralyze'));
+
+        // Making, changing, muting and test-sending alert rules; seeing them needs only viewLaralyze.
+        Gate::define('manageLaralyzeAlerts', fn ($user = null) => ! in_array(Http\Middleware\Authorize::class, (array) $this->app->make('config')->get('laralyze.middleware', []), true)
             || Gate::forUser($user)->allows('viewLaralyze'));
     }
 
