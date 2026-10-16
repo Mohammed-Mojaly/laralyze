@@ -3,7 +3,6 @@
 namespace MohammedMojaly\Laralyze\Dashboard;
 
 use Illuminate\Contracts\Config\Repository;
-use MohammedMojaly\Laralyze\Alerts\Alerts;
 use MohammedMojaly\Laralyze\Contracts\Ingest;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Ingest\DatabaseIngest;
@@ -26,7 +25,7 @@ final class Health
 
     private bool $blocking = false;
 
-    public function __construct(private Storage $storage, private Laralyze $laralyze, private Repository $config, private Ingest $ingest, private Alerts $alerts) {}
+    public function __construct(private Storage $storage, private Laralyze $laralyze, private Repository $config, private Ingest $ingest) {}
 
     /**
      * @return list<array{level: 'bad'|'warn', title: string, hint: string}>
@@ -113,16 +112,6 @@ final class Health
             $problems[] = $this->warn(
                 Format::number($contention).' '.($contention == 1 ? 'write' : 'writes').' failed because of lock contention in the last hour.',
                 'Concurrent writes to Laralyze\'s tables kept deadlocking, even after retries, and their metrics were lost. Recording carries on. With this much traffic, keep Laralyze\'s data in ClickHouse (LARALYZE_STORAGE=clickhouse).',
-            );
-        }
-
-        $alerts = $this->alerts->lastFailure();
-
-        if ($alerts !== null && $alerts['at'] > $now - 3_600) {
-            $problems[] = $this->warn(
-                'Alerts couldn\'t be delivered '.now()->setTimestamp($alerts['at'])->diffForHumans().'.',
-                implode(' ', array_map(fn (string $channel, string $error) => "{$channel}: {$error}", array_keys($alerts['channels']), $alerts['channels']))
-                    .' Laralyze tries again every minute; check LARALYZE_ALERTS_* in your .env.',
             );
         }
 

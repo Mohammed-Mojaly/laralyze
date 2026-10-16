@@ -2,9 +2,13 @@
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use MohammedMojaly\Laralyze\Alerts\History;
+use MohammedMojaly\Laralyze\Alerts\Look;
 use MohammedMojaly\Laralyze\Alerts\Metrics\Catalog;
 use MohammedMojaly\Laralyze\Alerts\Metrics\EventMetric;
 use MohammedMojaly\Laralyze\Alerts\Rule;
+use MohammedMojaly\Laralyze\Alerts\Rules;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Storage\ClickHouseStorage;
 use MohammedMojaly\Laralyze\Tests\Concerns\UsesStorage;
@@ -90,4 +94,30 @@ function alertEvents(array $rule): array
     expect($metric)->toBeInstanceOf(EventMetric::class);
 
     return $metric->events(app(Storage::class), $rule, now()->getTimestamp());
+}
+
+/**
+ * Save an alert rule; anything not given takes the form's defaults.
+ *
+ * @param  array<string, mixed>  $data
+ */
+function alertRule(array $data = []): Rule
+{
+    return app(Rules::class)->save(Rule::fromArray((string) Str::ulid(), ['name' => 'Rule', 'channels' => ['slack'], ...$data]));
+}
+
+/**
+ * One look at the rules, as the scheduler runs it every minute.
+ */
+function look(): void
+{
+    app(Look::class)->run(now()->getTimestamp());
+}
+
+/**
+ * @return list<array<string, mixed>> Newest first.
+ */
+function alertHistory(): array
+{
+    return app(History::class)->latest();
 }

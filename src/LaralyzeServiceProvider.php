@@ -225,15 +225,15 @@ class LaralyzeServiceProvider extends ServiceProvider
                     ->withoutOverlapping(5);
             }
 
-            if ($this->app->make(Alerts\Alerts::class)->enabled()) {
-                $alerts = $schedule->call(fn () => $this->app->make(Alerts\Alerts::class)->run())
-                    ->everyMinute()
-                    ->name('laralyze:alerts');
+            // Rules, history and the bell work without a channel, so the check always runs.
+            $alerts = $schedule->call(fn () => $this->app->make(Alerts\Alerts::class)->run())
+                ->everyMinute()
+                ->name('laralyze:alerts');
 
-                // Every server may run the scheduler; one sends. It needs a cache that can lock.
-                if ($this->app->make('cache')->store()->getStore() instanceof LockProvider) {
-                    $alerts->onOneServer();
-                }
+            // Every server may run the scheduler; one checks and sends. It needs a cache that can lock.
+            if ($this->app->make('cache')->store()->getStore() instanceof LockProvider) {
+                // A slow look must never overlap the next and re-send.
+                $alerts->onOneServer()->withoutOverlapping(5);
             }
         });
     }
