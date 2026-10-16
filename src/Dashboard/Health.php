@@ -115,6 +115,17 @@ final class Health
             );
         }
 
+        // Each server's scheduler runs the alerts check; onOneServer needs a cache they share.
+        $servers = $this->storage->values('server')->filter(fn ($row) => $row->timestamp >= $now - 3_600)->count();
+        $cache = (string) $this->config->get('cache.stores.'.$this->config->get('cache.default').'.driver', '');
+
+        if ($servers >= 2 && in_array($cache, ['file', 'array'], true)) {
+            $problems[] = $this->warn(
+                'Several servers run the scheduler, but the cache isn\'t shared.',
+                'Scheduled checks and alerts may run on each of them. Use a shared cache (redis, database, memcached).',
+            );
+        }
+
         if ($this->config->get('laralyze.recorders.'.Logs::class.'.enabled', true) && ! $this->storage->logsInstalled()) {
             $problems[] = $this->warn(
                 'Logs aren\'t stored yet.',
