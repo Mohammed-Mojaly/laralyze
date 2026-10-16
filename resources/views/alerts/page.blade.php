@@ -35,85 +35,72 @@
             @if ($rules === [])
                 <x-laralyze::empty title="No rules yet." hint="A rule watches one thing Laralyze measures and tells your channels when it starts and when it's back to normal." />
             @else
-                <div class="lz-table-wrap">
-                    <table class="lz-table lz-rules">
-                        <thead>
-                            <tr>
-                                <th>Rule</th>
-                                <th>Condition</th>
-                                <th>Channels</th>
-                                <th>State</th>
-                                <th>Last fired</th>
-                                @if ($canManage)
-                                    <th><span class="lz-offscreen">Actions</span></th>
+                <ul class="lz-rules">
+                    @foreach ($rules as $id => $alertRule)
+                        @php($ruleMetric = $catalog->find($alertRule->metric))
+                        <li class="lz-rule" wire:key="rule-{{ $id }}">
+                            <div class="lz-rule-main">
+                                <span class="lz-rule-name">{{ $alertRule->name }}</span>
+                                @if ($alertRule->note !== '')
+                                    <span class="lz-rule-note">{{ \Illuminate\Support\Str::limit($alertRule->note, 80) }}</span>
                                 @endif
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($rules as $id => $alertRule)
-                                @php($ruleMetric = $catalog->find($alertRule->metric))
-                                <tr wire:key="rule-{{ $id }}">
-                                    <td class="lz-strong">
-                                        {{ $alertRule->name }}
-                                        @if ($alertRule->note !== '')
-                                            <span class="lz-rule-note">{{ \Illuminate\Support\Str::limit($alertRule->note, 80) }}</span>
+                                <span class="lz-muted">
+                                    {{ $ruleMetric ? $ruleMetric->area.' · '.$ruleMetric->label : $alertRule->metric }}
+                                    @if ($ruleMetric && $ruleMetric->kind() !== Metric::EVENT)
+                                        {{ $alertRule->operator }} {{ $ruleMetric->format($alertRule->threshold) }}
+                                        @if ($ruleMetric->kind() === Metric::NUMBER)
+                                            over {{ Rule::WINDOWS[$alertRule->window] }}
                                         @endif
-                                    </td>
-                                    <td>
-                                        {{ $ruleMetric ? $ruleMetric->area.' · '.$ruleMetric->label : $alertRule->metric }}
-                                        @if ($ruleMetric && $ruleMetric->kind() !== Metric::EVENT)
-                                            {{ $alertRule->operator }} {{ $ruleMetric->format($alertRule->threshold) }}
-                                            @if ($ruleMetric->kind() === Metric::NUMBER)
-                                                <span class="lz-muted">over {{ Rule::WINDOWS[$alertRule->window] }}</span>
-                                            @endif
-                                        @endif
-                                        @if ($alertRule->filter)
-                                            <span class="lz-muted">· {{ $alertRule->filter->describe() }}</span>
-                                        @endif
-                                        @if ($alertRule->mode === Rule::EACH)
-                                            <span class="lz-muted">· each separately</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if (in_array(Rule::ALL_CHANNELS, $alertRule->channels, true))
-                                            All channels
-                                        @else
-                                            {{ implode(', ', array_map(fn ($channel) => $channels[$channel] ?? $channel.' (not set)', $alertRule->channels)) ?: 'None' }}
-                                        @endif
-                                    </td>
-                                    <td><span @class(['lz-badge', 'lz-badge-bad' => $states[$id] === 'firing', 'lz-badge-warn' => $states[$id] === 'muted'])>{{ $states[$id] }}</span></td>
-                                    <td>
-                                        @isset($lastFired[$id])
-                                            <x-laralyze::ago :at="$lastFired[$id]" />
-                                        @else
-                                            <span class="lz-muted">Never</span>
-                                        @endisset
-                                    </td>
-                                    @if ($canManage)
-                                        <td class="lz-rule-actions">
-                                            <button type="button" class="lz-button" wire:click="toggle('{{ $id }}')">{{ $alertRule->enabled ? 'Turn off' : 'Turn on' }}</button>
-                                            @if ($alertRule->mutedUntil !== null)
-                                                <button type="button" class="lz-button" wire:click="mute('{{ $id }}', 0)">Unmute</button>
-                                            @else
-                                                <div class="lz-dropdown" x-data="{ open: false }" x-on:click.outside="open = false" x-on:keydown.escape="open = false">
-                                                    <button type="button" class="lz-button" x-on:click="open = ! open" x-bind:aria-expanded="open">Mute ▾</button>
-                                                    <div class="lz-dropdown-menu" x-show="open" x-cloak>
-                                                        <button type="button" class="lz-option" wire:click="mute('{{ $id }}', 60)" x-on:click="open = false">For an hour</button>
-                                                        <button type="button" class="lz-option" wire:click="mute('{{ $id }}', 1440)" x-on:click="open = false">For a day</button>
-                                                        <button type="button" class="lz-option" wire:click="mute('{{ $id }}', -1)" x-on:click="open = false">Until unmuted</button>
-                                                    </div>
-                                                </div>
-                                            @endif
-                                            <button type="button" class="lz-button" wire:click="edit('{{ $id }}')">Edit</button>
-                                            <button type="button" class="lz-button" wire:click="test('{{ $id }}')" wire:loading.attr="disabled" wire:target="test('{{ $id }}')">Test</button>
-                                            <button type="button" class="lz-button lz-button-danger" wire:click="delete('{{ $id }}')" wire:confirm="Delete the rule &quot;{{ $alertRule->name }}&quot;?">Delete</button>
-                                        </td>
                                     @endif
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                                    @if ($alertRule->filter)
+                                        · {{ $alertRule->filter->describe() }}
+                                    @endif
+                                    @if ($alertRule->mode === Rule::EACH)
+                                        · each separately
+                                    @endif
+                                    →
+                                    @if (in_array(Rule::ALL_CHANNELS, $alertRule->channels, true))
+                                        All channels
+                                    @else
+                                        {{ implode(', ', array_map(fn ($channel) => $channels[$channel] ?? $channel.' (not set)', $alertRule->channels)) ?: 'None' }}
+                                    @endif
+                                </span>
+                            </div>
+
+                            <div class="lz-rule-side">
+                                <span @class(['lz-badge', 'lz-badge-bad' => $states[$id] === 'firing', 'lz-badge-warn' => $states[$id] === 'muted'])>{{ $states[$id] }}</span>
+                                <span class="lz-muted">
+                                    @isset($lastFired[$id])
+                                        Last fired <x-laralyze::ago :at="$lastFired[$id]" />
+                                    @else
+                                        Never fired
+                                    @endisset
+                                </span>
+
+                                @if ($canManage)
+                                    <div class="lz-rule-actions">
+                                        <button type="button" class="lz-button" wire:click="toggle(@js($id))">{{ $alertRule->enabled ? 'Turn off' : 'Turn on' }}</button>
+                                        @if ($alertRule->muted(now()->getTimestamp()))
+                                            <button type="button" class="lz-button" wire:click="mute(@js($id), 0)">Unmute</button>
+                                        @else
+                                            <div class="lz-dropdown" x-data="{ open: false }" x-on:click.outside="open = false" x-on:keydown.escape="open = false">
+                                                <button type="button" class="lz-button" x-on:click="open = ! open" x-bind:aria-expanded="open">Mute ▾</button>
+                                                <div class="lz-dropdown-menu" x-show="open" x-cloak>
+                                                    <button type="button" class="lz-option" wire:click="mute(@js($id), 60)" x-on:click="open = false">For an hour</button>
+                                                    <button type="button" class="lz-option" wire:click="mute(@js($id), 1440)" x-on:click="open = false">For a day</button>
+                                                    <button type="button" class="lz-option" wire:click="mute(@js($id), -1)" x-on:click="open = false">Until unmuted</button>
+                                                </div>
+                                            </div>
+                                        @endif
+                                        <button type="button" class="lz-button" wire:click="edit(@js($id))">Edit</button>
+                                        <button type="button" class="lz-button" wire:click="test(@js($id))" wire:loading.attr="disabled" wire:target="test(@js($id))">Test</button>
+                                        <button type="button" class="lz-button lz-button-danger" wire:click="delete(@js($id))" wire:confirm="Delete the rule &quot;{{ $alertRule->name }}&quot;?">Delete</button>
+                                    </div>
+                                @endif
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
             @endif
         </x-laralyze::card>
     @else
@@ -122,7 +109,7 @@
                 @if ($rule !== '')
                     <button type="button" class="lz-button" wire:click="$set('rule', '')">{{ $rules[$rule]->name ?? 'One rule' }} ✕</button>
                 @endif
-                <x-laralyze::segmented :options="['' => 'All', History::FIRED => 'Fired', History::RECOVERED => 'Back to normal', History::TEST => 'Tests', 'failed' => 'Not delivered']" :value="$outcome" model="outcome" label="Outcome" />
+                <x-laralyze::segmented :options="['' => 'All', History::FIRED => 'Fired', History::RECOVERED => 'Back to normal', History::REMINDER => 'Reminders', History::TEST => 'Tests', 'failed' => 'Not delivered']" :value="$outcome" model="outcome" label="Outcome" />
             </x-slot:actions>
 
             @if ($entries === [])

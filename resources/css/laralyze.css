@@ -3702,10 +3702,49 @@ body.lz-root {
     font-weight: 400;
 }
 
+.lz-rules {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lz-rule {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--lz-line);
+}
+
+.lz-rule:first-child {
+    border-top: 0;
+}
+
+.lz-rule-main {
+    display: grid;
+    flex: 1 1 320px;
+    gap: 2px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.lz-rule-name {
+    color: var(--lz-ink);
+    font-weight: 600;
+}
+
+.lz-rule-side {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px 16px;
+}
+
 .lz-rule-actions {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-end;
     gap: 6px;
 }
 

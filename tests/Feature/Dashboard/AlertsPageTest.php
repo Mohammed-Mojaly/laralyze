@@ -198,3 +198,14 @@ it('says which .env keys to add when no channel is set', function () {
 
     Livewire::test('laralyze.alerts')->assertSee('LARALYZE_ALERTS_SLACK_WEBHOOK');
 });
+
+it('offers Unmute only while a mute lasts', function () {
+    $rule = alertRule(['name' => 'Failed jobs', 'metric' => 'jobs.failed', 'threshold' => 10]);
+    $rules = app(Rules::class);
+
+    $rules->save($rule->with(['muted_until' => now()->getTimestamp() - 60]));
+    Livewire::test('laralyze.alerts')->assertDontSee('Unmute');
+
+    $rules->save($rule->with(['muted_until' => now()->getTimestamp() + 3_600]));
+    Livewire::test('laralyze.alerts')->assertSee('Unmute');
+});

@@ -282,7 +282,11 @@ class AlertsPage extends Component
         $this->notice = $deliveries === []
             ? 'This rule has no channel to send to. Set one in .env, then pick it in the rule.'
             : implode(' ', array_map(
-                fn (string $channel, array $delivery) => ($labels[$channel] ?? $channel).': '.($delivery['status'] === History::SENT ? 'sent.' : 'not sent ('.$delivery['error'].').'),
+                fn (string $channel, array $delivery) => ($labels[$channel] ?? $channel).': '.match ($delivery['status']) {
+                    History::SENT => 'sent.',
+                    History::PENDING => 'will retry.',
+                    default => 'not sent ('.$delivery['error'].').',
+                },
                 array_keys($deliveries),
                 $deliveries,
             ));
