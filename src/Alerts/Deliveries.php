@@ -14,6 +14,11 @@ final class Deliveries
 
     public const BUDGET = 30.0;
 
+    /**
+     * A test send runs inside a web request.
+     */
+    public const TEST_BUDGET = 10.0;
+
     public function __construct(private History $history, private Sender $sender, private Channels $channels) {}
 
     public function send(float $budget = self::BUDGET): void

@@ -92,6 +92,9 @@ class Sender
             'slack', 'discord', 'telegram.token', 'webhook.url', 'webhook.secret',
         ]));
 
+        // Longest first, so a secret that starts another can't leave the rest showing.
+        usort($secrets, fn (string $a, string $b) => strlen($b) <=> strlen($a));
+
         return $secrets === [] ? $error : str_replace($secrets, '[hidden]', $error);
     }
 }

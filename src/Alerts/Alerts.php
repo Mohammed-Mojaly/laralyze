@@ -75,7 +75,7 @@ class Alerts
                 'url' => Look::historyUrl($rule->id),
             ], $this->channels->resolve($rule->channels), now()->getTimestamp());
 
-            $this->deliveries->deliver($entry, $this->channels->configured(), microtime(true), Deliveries::BUDGET);
+            $this->deliveries->deliver($entry, $this->channels->configured(), microtime(true), Deliveries::TEST_BUDGET);
 
             return $this->history->find((string) $entry['key']) ?? $entry;
         });

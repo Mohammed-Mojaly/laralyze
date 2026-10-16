@@ -140,15 +140,17 @@ final class Message
     }
 
     /**
-     * Telegram's HTML.
+     * Telegram's HTML, within its 4,096 characters. Telegram counts the text
+     * as read, so the lines are cut before escaping, and the link stays.
      */
     public function telegram(): string
     {
         $escape = fn (string $text) => htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE);
+        $lines = Str::limit(implode("\n", $this->lines()), 3_800);
 
         return implode("\n", [
             '<b>'.$escape($this->heading()).'</b>',
-            ...array_map($escape, $this->lines()),
+            ...($lines === '' ? [] : [$escape($lines)]),
             ...($this->url === '' ? [] : ['<a href="'.$escape($this->url).'">Open in Laralyze</a>']),
         ]);
     }

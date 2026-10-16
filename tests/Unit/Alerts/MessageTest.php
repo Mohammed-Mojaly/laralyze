@@ -41,6 +41,15 @@ it('escapes for Telegram', function () {
         ->toContain('<a href="https://app.test/laralyze/alerts">Open in Laralyze</a>');
 });
 
+it('stays within Telegram\'s 4,096 characters and keeps the link', function () {
+    $telegram = sampleMessage(['text' => str_repeat('<&> ', 2_000)])->telegram();
+
+    expect(mb_strlen(html_entity_decode(strip_tags($telegram))))->toBeLessThanOrEqual(4_096)
+        ->and($telegram)->toStartWith('<b>API errors')
+        ->toEndWith('<a href="https://app.test/laralyze/alerts">Open in Laralyze</a>')
+        ->toContain('&lt;&amp;&gt;');
+});
+
 it('says when it is back to normal, a reminder, or a test', function () {
     expect(sampleMessage(['event' => 'recovered'])->heading())->toStartWith('Back to normal: ')
         ->and(sampleMessage(['event' => 'reminder'])->heading())->toStartWith('Still firing: ')

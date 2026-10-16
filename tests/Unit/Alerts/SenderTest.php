@@ -91,6 +91,15 @@ it('never shows a channel\'s secret in an error', function () {
     expect($error)->toContain('cURL error 6')->not->toContain('secret-token')->not->toContain('secret-slack');
 });
 
+it('hides the longer secret whole when one secret starts another', function () {
+    config(['laralyze.alerts.webhook.url' => 'https://hooks.slack.test/secret-slack/more-secret']);
+    Http::fake(fn () => throw new ConnectionException('cURL error 7: Failed to connect to https://hooks.slack.test/secret-slack/more-secret'));
+
+    $error = app(Sender::class)->send('webhook', senderMessage());
+
+    expect($error)->toContain('[hidden]')->not->toContain('more-secret');
+});
+
 it('says what a channel answered when it refused', function () {
     Http::fake(['hooks.slack.test/*' => Http::response('no_service', 404)]);
 
