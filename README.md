@@ -84,7 +84,7 @@ The gate is checked on the page and on every card update.
 - [AI calls](docs/configuration.md#ai): tokens and estimated cost of `laravel/ai` calls
 - [Ask AI](docs/configuration.md#ask-ai): a chat on every page that answers from what Laralyze recorded
 - [ClickHouse](docs/configuration.md#clickhouse): keep Laralyze's data out of your app's database
-- [Alerts](docs/configuration.md#alerts): mail, Slack or Discord
+- [Alerts](docs/alerts.md): rules made on the dashboard, sent by mail, Slack, Discord, Telegram or a webhook
 - [Customization](docs/customization.md): pages, cards, your own metrics and recorders, filters, theme
 - [Running in production](docs/runtime.md): overhead, the scheduler, several servers, Octane
 - [Known limits](docs/limits.md): what Laralyze doesn't see, and what is estimated

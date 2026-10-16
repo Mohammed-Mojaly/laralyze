@@ -32,11 +32,11 @@ The digest can only merge so much each minute. On a local MySQL 8, with a typica
 * * * * * cd /path-to-your-app && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-Laralyze schedules `laralyze:trim` (hourly, removes old data), `laralyze:digest` (every minute, with database ingest), `laralyze:servers` (every minute) and alert checks. Without the scheduler, a request now and then runs the digest and the cleanup itself.
+Laralyze schedules `laralyze:trim` (hourly, removes old data), `laralyze:digest` (every minute, with database ingest), `laralyze:servers` (every minute) and `laralyze:alerts` (every minute). Without the scheduler, a request now and then runs the digest and the cleanup itself.
 
 ## Several servers
 
-Point every server at the same database or ClickHouse. A cache lock keeps one digest at a time, and alerts go out from one server when the cache store supports locks. Set `LARALYZE_SERVER_NAME` if hostnames aren't meaningful.
+Point every server at the same database or ClickHouse. A cache lock keeps one digest at a time, and alerts are checked on one server when the cache store supports locks; the dashboard warns when several servers report and the cache is `file` or `array`. Set `LARALYZE_SERVER_NAME` if hostnames aren't meaningful.
 
 ## PHP-FPM, Octane and queue workers
 
@@ -55,7 +55,7 @@ The dashboard shows a warning above the cards, and `php artisan about` lists it 
 - a web request recorded more distinct metrics than `LARALYZE_BUFFER` and some were dropped;
 - writes failed because of lock contention, even after retries (use database ingest or ClickHouse);
 - batches have waited more than five minutes for the digest (the scheduler isn't running);
-- no alert channel took an alert in the last hour.
+- several servers run the scheduler without a shared cache.
 
 ## ClickHouse in production
 

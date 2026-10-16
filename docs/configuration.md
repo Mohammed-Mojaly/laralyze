@@ -13,7 +13,7 @@ Settings live in `config/laralyze.php`, published by `php artisan laralyze:insta
 | `ingest.lottery` | | `[1, 500]` | Odds that a request runs the digest itself when the scheduler hasn't for three minutes. |
 | `retention` | `LARALYZE_RETENTION_DAYS` | `30` | Days of data to keep. Minute detail is kept for a day. |
 | `buffer` | `LARALYZE_BUFFER` | `5000` | Distinct metrics one request, job or command holds before writing. |
-| `alerts.*` | see [Alerts](#alerts) | off | Mail, Slack or Discord. |
+| `alerts.*` | see [Alerts](alerts.md) | none | Channels for alert rules: mail, Slack, Discord, Telegram, a webhook. |
 | `path` / `domain` | `LARALYZE_PATH` / `LARALYZE_DOMAIN` | `laralyze` / none | Where the dashboard lives. |
 | `middleware` | | `['web', Authorize::class]` | Middleware for the dashboard and its card updates. |
 | `pages` / `cards` | | `[]` | Add, hide or replace pages and cards. See [customization](customization.md). |
@@ -111,14 +111,4 @@ See [ClickHouse in production](runtime.md#clickhouse-in-production).
 
 ## Alerts
 
-Set at least one channel, and Laralyze checks every minute from the scheduler:
-
-```env
-LARALYZE_ALERTS_MAIL=ops@example.com,cto@example.com
-LARALYZE_ALERTS_SLACK_WEBHOOK=https://hooks.slack.com/services/...
-LARALYZE_ALERTS_DISCORD_WEBHOOK=https://discord.com/api/webhooks/...
-```
-
-- `alerts.rules`: `exceptions` (new, or resolved and back), `error_rate` (5% of requests answered 5xx over 5 minutes, at least 20 requests), `failed_jobs` (10 in 5 minutes). `null` or `false` turns one off.
-- Each exception is told once. Other alerts repeat at most every `LARALYZE_ALERTS_EVERY` minutes (60).
-- An alert no channel took is tried again a minute later, and the dashboard shows the error.
+Rules are made on the dashboard's Alerts page. Channels and the heartbeat come from `.env`: `LARALYZE_ALERTS_MAIL`, `LARALYZE_ALERTS_SLACK_WEBHOOK`, `LARALYZE_ALERTS_DISCORD_WEBHOOK`, `LARALYZE_ALERTS_TELEGRAM_TOKEN` with `LARALYZE_ALERTS_TELEGRAM_CHATS`, `LARALYZE_ALERTS_WEBHOOK_URL` with `LARALYZE_ALERTS_WEBHOOK_SECRET`, and `LARALYZE_HEARTBEAT_URL`. See [Alerts](alerts.md).
