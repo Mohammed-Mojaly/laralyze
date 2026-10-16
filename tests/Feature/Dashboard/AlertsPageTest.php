@@ -179,6 +179,9 @@ it('lets viewers see the page, and only managers change rules', function () {
     Livewire::test('laralyze.alerts')->call('create')->assertForbidden();
     Livewire::test('laralyze.alerts')->call('toggle', $rule->id)->assertForbidden();
     Livewire::test('laralyze.alerts')->call('test', $rule->id)->assertForbidden();
+    Livewire::test('laralyze.alerts')->call('edit', $rule->id)->assertForbidden();
+    Livewire::test('laralyze.alerts')->call('save')->assertForbidden();
+    Livewire::test('laralyze.alerts')->call('mute', $rule->id, 60)->assertForbidden();
 
     expect(app(Rules::class)->find($rule->id)?->enabled)->toBeTrue();
 });

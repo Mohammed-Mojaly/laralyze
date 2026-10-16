@@ -3,6 +3,7 @@
 use Illuminate\Auth\GenericUser;
 use Livewire\Livewire;
 use MohammedMojaly\Laralyze\Alerts\History;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 
 beforeEach(function () {
     app()->detectEnvironment(fn () => 'local');
@@ -44,4 +45,12 @@ it('keeps a seen marker per user', function () {
 
     expect(app(History::class)->seenAt('7'))->toBeGreaterThan(0)
         ->and(app(History::class)->seenAt(null))->toBe(0);
+});
+
+it('shows an empty bell when storage can\'t be reached', function () {
+    $down = Mockery::mock(app(Storage::class))->makePartial();
+    $down->shouldReceive('values')->andThrow(new RuntimeException('Connection refused'));
+    app()->instance(Storage::class, $down);
+
+    Livewire::test('laralyze.alert-bell')->assertOk()->assertSee('No alerts yet.')->assertDontSeeHtml('lz-bell-count');
 });

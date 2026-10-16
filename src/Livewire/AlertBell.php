@@ -5,6 +5,7 @@ namespace MohammedMojaly\Laralyze\Livewire;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use MohammedMojaly\Laralyze\Alerts\History;
+use MohammedMojaly\Laralyze\Laralyze;
 
 /**
  * The bell in the top bar: the latest alerts, failed deliveries first,
@@ -22,8 +23,9 @@ class AlertBell extends Component
     public function render(): View
     {
         $history = app(History::class);
-        $entries = $history->bell();
-        $seen = $history->seenAt($this->viewer());
+
+        // A storage blip shows an empty bell until the next poll, not an error.
+        [$entries, $seen] = app(Laralyze::class)->rescue(fn () => [$history->bell(), $history->seenAt($this->viewer())], [[], 0]);
 
         return view('laralyze::alerts.bell', [
             'entries' => $entries,
