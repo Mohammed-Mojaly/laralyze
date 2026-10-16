@@ -4,6 +4,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use MohammedMojaly\Laralyze\Alerts\Alerts;
 use MohammedMojaly\Laralyze\Alerts\Look;
 use MohammedMojaly\Laralyze\Alerts\Rule;
@@ -195,6 +196,28 @@ it('skips rules that are off or muted', function () {
     expect(alertHistory())->toBe([]);
 });
 
+it('never counts a queue it cannot read as recovered', function () {
+    config(['queue.connections.database' => ['driver' => 'database', 'table' => 'missing_jobs', 'queue' => 'default']]);
+    $rule = alertRule(['name' => 'Waiting', 'metric' => 'queues.waiting', 'operator' => '>=', 'threshold' => 1, 'mode' => 'each']);
+    Laralyze::record('queue_queued', 'database:default')->count();
+    Laralyze::flush();
+
+    Queue::fake();
+    Queue::push('SendInvoice', [], 'default');
+    look();
+
+    expect(array_column(alertHistory(), 'event'))->toBe(['fired']);
+
+    // The queue goes down: the real connection can't be read.
+    app()->forgetInstance('queue');
+    Queue::clearResolvedInstance('queue');
+    look();
+    look();
+
+    expect(array_column(alertHistory(), 'event'))->toBe(['fired'])
+        ->and(app(States::class)->firing()[$rule->id]['database:default']['clean'])->toBe(0);
+});
+
 it('forgets the state of a rule that no longer exists', function () {
     app(States::class)->put('GONE', '*', ['since' => 1, 'clean' => 0, 'reminded' => 1, 'value' => 1.0]);
     alertRule(['metric' => 'jobs.failed', 'threshold' => 1]);
@@ -228,7 +251,8 @@ it('changes nothing when storage can\'t be reached', function () {
     look();
 
     $real = app(Storage::class);
-    $down = Mockery::mock(Storage::class);
+    // Everything else passes through, so without the skip the look would really run on an empty window.
+    $down = Mockery::mock($real)->makePartial();
     $down->shouldReceive('installed')->andThrow(new RuntimeException('Connection refused'));
     app()->instance(Storage::class, $down);
 

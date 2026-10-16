@@ -146,12 +146,12 @@ it('reads how many jobs wait in each queue now, and skips sync queues', function
         ->and(measured(['metric' => 'queues.waiting']))->toBe(['*' => 3.0]);
 });
 
-it('leaves out a queue it cannot read', function () {
+it('throws for a queue it cannot read, so no rule treats it as empty', function () {
     config(['queue.connections.database' => ['driver' => 'database', 'table' => 'missing_jobs', 'queue' => 'default']]);
     Laralyze::record('queue_queued', 'database:default')->count();
     Laralyze::flush();
 
-    expect(measured(['metric' => 'queues.waiting', 'mode' => 'each']))->toBe([]);
+    expect(fn () => measured(['metric' => 'queues.waiting', 'mode' => 'each']))->toThrow(RuntimeException::class, 'database:default');
 });
 
 it('reads disk use and the minutes since each server reported, from servers seen in the last day', function () {

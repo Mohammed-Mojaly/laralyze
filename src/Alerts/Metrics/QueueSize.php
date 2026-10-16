@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Queue;
 use MohammedMojaly\Laralyze\Alerts\Rule;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Recorders;
+use RuntimeException;
 use stdClass;
 use Throwable;
 
@@ -54,8 +55,9 @@ class QueueSize extends Metric
 
             try {
                 $items[(string) $queue] = ['value' => (float) Queue::connection($connection)->size($name)];
-            } catch (Throwable) {
-                // A queue that can't be reached is left out of this look.
+            } catch (Throwable $e) {
+                // Not read means not known: the look skips the rule instead of counting it as clean.
+                throw new RuntimeException("Couldn't read the queue [{$queue}]: ".$e->getMessage(), previous: $e);
             }
         }
 
