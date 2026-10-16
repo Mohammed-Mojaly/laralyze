@@ -1,5 +1,6 @@
 <?php
 
+use MohammedMojaly\Laralyze\Alerts\Metrics\Catalog;
 use MohammedMojaly\Laralyze\Alerts\Metrics\DatabaseProblems;
 use MohammedMojaly\Laralyze\Alerts\Rule;
 use MohammedMojaly\Laralyze\Alerts\Rules;
@@ -58,6 +59,51 @@ it('creates the default rules once, from the old config', function () {
         ->and($all['ai.cost']->enabled)->toBeFalse()
         ->and($all['ai.cost']->window)->toBe(86_400)
         ->and($all->every(fn (Rule $rule) => $rule->channels === [Rule::ALL_CHANNELS]))->toBeTrue();
+});
+
+it('makes a default rule turned off with null disabled, with its usual threshold', function () {
+    config(['laralyze.alerts.rules' => ['exceptions' => null, 'error_rate' => null]]);
+    $rules = app(Rules::class);
+
+    $rules->createDefaults();
+
+    $all = collect($rules->all())->keyBy(fn (Rule $rule) => $rule->metric);
+
+    expect($all['exceptions.new']->enabled)->toBeFalse()
+        ->and($all['requests.error_rate']->enabled)->toBeFalse()
+        ->and($all['requests.error_rate']->threshold)->toBe(5.0)
+        ->and($all['jobs.failed']->enabled)->toBeTrue()
+        ->and($all['jobs.failed']->threshold)->toBe(10.0);
+});
+
+it('skips default rules whose metric is not available', function () {
+    $catalog = app(Catalog::class);
+    // As if laravel/ai wasn't installed.
+    $metrics = array_diff_key($catalog->all(), array_flip(['ai.cost', 'ai.tokens', 'ai.failed']));
+    (fn () => $this->metrics = $metrics)->call($catalog);
+    app()->instance(Catalog::class, $catalog);
+
+    app(Rules::class)->createDefaults();
+
+    expect(array_map(fn (Rule $rule) => $rule->metric, app(Rules::class)->all()))->toHaveCount(7)->not->toContain('ai.cost');
+});
+
+it('forgets what a rule had firing when what it watches changes, but not when only the threshold does', function () {
+    $rules = app(Rules::class);
+    $rule = $rules->save(Rule::fromArray('R1', ['name' => 'Rule', 'metric' => 'jobs.failed', 'threshold' => 10]));
+    $firing = fn () => app(States::class)->put('R1', '*', ['since' => 1, 'clean' => 0, 'reminded' => 1, 'value' => 12.0]);
+
+    $firing();
+    $rules->save($rule->with(['threshold' => 5]));
+
+    expect(app(States::class)->firing())->toHaveKey('R1');
+
+    foreach ([['metric' => 'jobs.p95'], ['mode' => Rule::EACH], ['filter' => ['by' => 'job', 'operator' => 'equals', 'values' => ['App\Jobs\Import']]]] as $change) {
+        $firing();
+        $rules->save($rule->with($change));
+
+        expect(app(States::class)->firing())->toBe([]);
+    }
 });
 
 it('does not bring back default rules that were deleted', function () {

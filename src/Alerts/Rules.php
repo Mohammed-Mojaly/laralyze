@@ -4,6 +4,7 @@ namespace MohammedMojaly\Laralyze\Alerts;
 
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\Str;
+use MohammedMojaly\Laralyze\Alerts\Metrics\Catalog;
 use MohammedMojaly\Laralyze\Alerts\Metrics\DatabaseProblems;
 use MohammedMojaly\Laralyze\Contracts\Storage;
 
@@ -21,7 +22,7 @@ final class Rules
 
     public const MAX = 100;
 
-    public function __construct(private Storage $storage, private States $states, private Repository $config) {}
+    public function __construct(private Storage $storage, private States $states, private Repository $config, private Catalog $catalog) {}
 
     /**
      * @return array<string, Rule> By id, sorted by name.
@@ -59,11 +60,15 @@ final class Rules
     {
         $now = now()->getTimestamp();
         $rule = $rule->with(['created_at' => $rule->createdAt ?: $now, 'updated_at' => $now]);
+        $old = $this->find($rule->id);
 
         $this->storage->put(self::TYPE, $rule->id, (string) json_encode($rule->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
-        // A rule turned off holds nothing "firing".
-        if (! $rule->enabled) {
+        // A rule turned off holds nothing "firing", and one that now watches
+        // something else starts over. A new threshold keeps what's firing.
+        $watches = fn (Rule $rule) => [$rule->metric, $rule->mode, $rule->filter?->toArray()];
+
+        if (! $rule->enabled || ($old !== null && $watches($old) !== $watches($rule))) {
             $this->states->forgetRule($rule->id);
         }
 
@@ -87,24 +92,28 @@ final class Rules
         }
 
         foreach (self::defaults((array) $this->config->get('laralyze.alerts.rules', [])) as $rule) {
-            $this->save($rule);
+            // AI cost needs laravel/ai.
+            if ($this->catalog->find($rule->metric) !== null) {
+                $this->save($rule);
+            }
         }
 
         $this->storage->put(self::SETUP, 'defaults', '1');
     }
 
     /**
-     * @param  array<string, mixed>  $config  The old alerts.rules config. A rule turned off there is made disabled.
+     * @param  array<string, mixed>  $config  The old alerts.rules config. A rule turned off there (false or null) is made disabled.
      * @return list<Rule>
      */
     public static function defaults(array $config): array
     {
         $rule = fn (string $name, array $data) => Rule::fromArray((string) Str::ulid(), ['name' => $name, 'channels' => [Rule::ALL_CHANNELS], ...$data]);
-        $errorRate = $config['error_rate'] ?? 5;
-        $failedJobs = $config['failed_jobs'] ?? 10;
+        $setting = fn (string $key, mixed $default) => array_key_exists($key, $config) ? $config[$key] : $default;
+        $errorRate = $setting('error_rate', 5);
+        $failedJobs = $setting('failed_jobs', 10);
 
         return [
-            $rule('New or returning exception', ['metric' => 'exceptions.new', 'enabled' => (bool) ($config['exceptions'] ?? true)]),
+            $rule('New or returning exception', ['metric' => 'exceptions.new', 'enabled' => (bool) $setting('exceptions', true)]),
             $rule('Error rate', ['metric' => 'requests.error_rate', 'operator' => '>', 'threshold' => is_numeric($errorRate) ? $errorRate : 5, 'window' => 300, 'enabled' => is_numeric($errorRate)]),
             $rule('Failed jobs', ['metric' => 'jobs.failed', 'operator' => '>=', 'threshold' => is_numeric($failedJobs) ? $failedJobs : 10, 'window' => 300, 'enabled' => is_numeric($failedJobs)]),
             $rule('Database health problem', ['metric' => 'database.problem', 'filter' => ['by' => 'kind', 'operator' => 'in', 'values' => DatabaseProblems::DEFAULT_KINDS]]),
