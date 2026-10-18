@@ -239,3 +239,14 @@ it('names a rule after what it watches when the name is left empty', function ()
 
     expect(collect(app(Rules::class)->all())->pluck('name'))->toContain('Jobs · Failed at least 5');
 });
+
+it('opens every default rule in the form and saves it unchanged', function () {
+    app(Storage::class)->forget(Rules::SETUP, 'defaults');
+    $page = Livewire::test('laralyze.alerts');
+
+    foreach (app(Rules::class)->all() as $rule) {
+        $page->call('edit', $rule->id)->assertSet('editing', $rule->id)->call('save')->assertHasNoErrors();
+
+        expect(app(Rules::class)->find($rule->id)->toArray())->toMatchArray(collect($rule->toArray())->except(['updated_at'])->all());
+    }
+});
