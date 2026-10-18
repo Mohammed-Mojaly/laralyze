@@ -29,7 +29,7 @@ abort_if(abs(time() - (int) $request->header('X-Laralyze-Timestamp')) > 300, 403
 
 ## Rules
 
-A rule is one metric, one condition and one filter at most:
+A rule is one metric, one condition and one filter at most. The form asks three things: what to watch, when to alert and where to send it; the rest is under "More options". A rule left without a name is named after what it watches.
 
 - **Watch:** exceptions, requests, jobs, queues, scheduled tasks, logs, AI, database health or servers. Only areas whose recorder is on are offered.
 - **Condition:** a threshold over 5 minutes, 15 minutes, an hour or a day. The form shows the current value as you type it.
@@ -44,7 +44,7 @@ Rules can be turned off, muted for an hour, a day or until unmuted, and test-sen
 
 ## Default rules
 
-On the first check after you upgrade, Laralyze makes these rules, sent to every channel set in `.env`:
+On the first check, or the first visit to the Alerts page, Laralyze makes these rules, sent to every channel set in `.env`:
 
 1. A new exception, or a resolved one that happens again.
 2. Error rate over 5% over 5 minutes.
@@ -53,7 +53,15 @@ On the first check after you upgrade, Laralyze makes these rules, sent to every 
 5. A scheduled task failed.
 6. A server stopped reporting for 5 minutes.
 7. A disk 90% full.
-8. AI cost over a day, turned off until you set the amount.
+
+And these, ready but turned off, to show what else a rule can watch. Turn one on as it is, or edit it first:
+
+- Slow requests: p95 over 1 second over 5 minutes.
+- 100 or more jobs waiting in a queue.
+- 10 or more errors in the logs over 5 minutes.
+- A scheduled task overdue.
+- CPU over 90% over 15 minutes, each server separately.
+- AI cost over $10 a day.
 
 The old `alerts.rules` config sets the first three, once: a rule turned off there is made turned off. After that, the page is the only place for rules, and a deleted default doesn't come back. `alerts.every` is no longer used: set a reminder on the rule instead.
 

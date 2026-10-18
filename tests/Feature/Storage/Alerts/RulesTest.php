@@ -46,8 +46,8 @@ it('creates the default rules once, from the old config', function () {
 
     $all = collect($rules->all())->keyBy(fn (Rule $rule) => $rule->metric);
 
-    expect($all)->toHaveCount(8)
-        ->and($all->keys()->sort()->values()->all())->toBe(['ai.cost', 'database.problem', 'exceptions.new', 'jobs.failed', 'requests.error_rate', 'scheduled.failed', 'servers.disk', 'servers.stopped'])
+    expect($all)->toHaveCount(13)
+        ->and($all->keys()->sort()->values()->all())->toBe(['ai.cost', 'database.problem', 'exceptions.new', 'jobs.failed', 'logs.entries', 'queues.waiting', 'requests.error_rate', 'requests.p95', 'scheduled.failed', 'scheduled.overdue', 'servers.cpu', 'servers.disk', 'servers.stopped'])
         ->and($all['requests.error_rate']->threshold)->toBe(3.0)
         ->and($all['requests.error_rate']->enabled)->toBeTrue()
         ->and($all['jobs.failed']->enabled)->toBeFalse()
@@ -57,7 +57,13 @@ it('creates the default rules once, from the old config', function () {
         ->and($all['servers.stopped']->threshold)->toBe(5.0)
         ->and($all['servers.disk']->mode)->toBe(Rule::EACH)
         ->and($all['ai.cost']->enabled)->toBeFalse()
+        ->and($all['ai.cost']->threshold)->toBe(10.0)
         ->and($all['ai.cost']->window)->toBe(86_400)
+        // Ready to turn on as they are, to show what a rule can watch.
+        ->and($all->only(['requests.p95', 'queues.waiting', 'logs.entries', 'scheduled.overdue', 'servers.cpu'])->every(fn (Rule $rule) => ! $rule->enabled))->toBeTrue()
+        ->and($all['requests.p95']->threshold)->toBe(1000.0)
+        ->and($all['logs.entries']->filter?->values)->toBe(['emergency', 'alert', 'critical', 'error'])
+        ->and($all['servers.cpu']->mode)->toBe(Rule::EACH)
         ->and($all->every(fn (Rule $rule) => $rule->channels === [Rule::ALL_CHANNELS]))->toBeTrue();
 });
 
@@ -85,7 +91,7 @@ it('skips default rules whose metric is not available', function () {
 
     app(Rules::class)->createDefaults();
 
-    expect(array_map(fn (Rule $rule) => $rule->metric, app(Rules::class)->all()))->toHaveCount(7)->not->toContain('ai.cost');
+    expect(array_map(fn (Rule $rule) => $rule->metric, app(Rules::class)->all()))->toHaveCount(12)->not->toContain('ai.cost');
 });
 
 it('forgets what a rule had firing when what it watches changes, but not when only the threshold does', function () {

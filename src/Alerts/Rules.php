@@ -82,8 +82,9 @@ final class Rules
     }
 
     /**
-     * The default rules, made on the first look after the upgrade from the
-     * old `alerts.rules` config, and never again: a deleted one stays gone.
+     * The default rules, made on the first look or the first visit to the
+     * Alerts page, from the old `alerts.rules` config, and never again: a
+     * deleted one stays gone.
      */
     public function createDefaults(): void
     {
@@ -120,7 +121,13 @@ final class Rules
             $rule('Scheduled task failed', ['metric' => 'scheduled.failed']),
             $rule('Server stopped reporting', ['metric' => 'servers.stopped', 'operator' => '>=', 'threshold' => 5, 'mode' => Rule::EACH]),
             $rule('Disk almost full', ['metric' => 'servers.disk', 'operator' => '>=', 'threshold' => 90, 'mode' => Rule::EACH]),
-            $rule('AI cost per day', ['metric' => 'ai.cost', 'operator' => '>', 'threshold' => null, 'window' => 86_400, 'enabled' => false]),
+            // Ready to turn on, to show what else a rule can watch.
+            $rule('Slow requests', ['metric' => 'requests.p95', 'operator' => '>', 'threshold' => 1000, 'window' => 300, 'enabled' => false]),
+            $rule('Jobs waiting in a queue', ['metric' => 'queues.waiting', 'operator' => '>=', 'threshold' => 100, 'enabled' => false]),
+            $rule('Errors in the logs', ['metric' => 'logs.entries', 'operator' => '>=', 'threshold' => 10, 'window' => 300, 'filter' => ['by' => 'level', 'operator' => 'in', 'values' => ['emergency', 'alert', 'critical', 'error']], 'enabled' => false]),
+            $rule('Scheduled task overdue', ['metric' => 'scheduled.overdue', 'enabled' => false]),
+            $rule('High CPU', ['metric' => 'servers.cpu', 'operator' => '>', 'threshold' => 90, 'window' => 900, 'mode' => Rule::EACH, 'enabled' => false]),
+            $rule('AI cost per day', ['metric' => 'ai.cost', 'operator' => '>', 'threshold' => 10, 'window' => 86_400, 'enabled' => false]),
         ];
     }
 }

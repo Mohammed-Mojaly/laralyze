@@ -61,6 +61,14 @@ class AlertsPage extends Component
      */
     public string $notice = '';
 
+    /**
+     * Before the scheduler's first look, the page still shows the ready rules.
+     */
+    public function mount(): void
+    {
+        app(Laralyze::class)->rescue(fn () => app(Laralyze::class)->ignore(fn () => app(Rules::class)->createDefaults()));
+    }
+
     public function render(): View
     {
         $rules = app(Rules::class)->all();
@@ -100,6 +108,9 @@ class AlertsPage extends Component
             'dimension' => $this->dimension($metric),
             'preview' => $metric === null ? '' : $this->preview(),
             'suggestions' => $metric === null ? [] : $this->suggestions($metric),
+            'describe' => $this->describe(...),
+            'summary' => $metric === null ? '' : $this->summary(),
+            'autoName' => $metric === null ? '' : $this->describe(Rule::fromArray('form', $this->ruleData()), true),
         ]);
     }
 
@@ -188,7 +199,7 @@ class AlertsPage extends Component
         $dimension = $this->dimension($metric);
 
         $this->validate([
-            'form.name' => ['required', 'string', 'max:100'],
+            'form.name' => ['nullable', 'string', 'max:100'],
             'form.metric' => ['required', Allowed::in(array_keys($catalog->available()))],
             'form.operator' => [Allowed::in(Rule::OPERATORS)],
             'form.threshold' => $metric?->kind() === Metric::EVENT ? ['nullable'] : ['required', 'numeric'],
@@ -217,6 +228,10 @@ class AlertsPage extends Component
         ]);
 
         $data = $this->ruleData();
+
+        if (trim($data['name']) === '') {
+            $data['name'] = Str::limit($this->describe(Rule::fromArray('form', $data), true), 100, '');
+        }
         $rule = $existing === null ? Rule::fromArray((string) Str::ulid(), $data) : $existing->with($data);
         $rule = $rules->save($rule);
 
@@ -314,7 +329,7 @@ class AlertsPage extends Component
             : explode(',', (string) ($this->form['filter_values'] ?? ''));
 
         return [
-            'name' => $this->form['name'] ?? '',
+            'name' => (string) ($this->form['name'] ?? ''),
             'metric' => $this->form['metric'] ?? '',
             'operator' => $this->form['operator'] ?? '>',
             'threshold' => $this->form['threshold'] ?? null,
@@ -326,6 +341,60 @@ class AlertsPage extends Component
             'title' => (string) ($this->form['title'] ?? ''),
             'note' => (string) ($this->form['note'] ?? ''),
         ];
+    }
+
+    /**
+     * What a rule watches, in words: "Jobs · Failed is at least 10 over 5 minutes".
+     * Short leaves out the window, the filter and the mode, for a name.
+     */
+    protected function describe(Rule $rule, bool $short = false): string
+    {
+        $metric = app(Catalog::class)->find($rule->metric);
+
+        if ($metric === null) {
+            return $rule->metric;
+        }
+
+        $text = $metric->area.' · '.$metric->label;
+
+        // A threshold not typed in yet reads as "…", and a name leaves it out.
+        if ($metric->kind() !== Metric::EVENT && ($rule->threshold !== null || ! $short)) {
+            $text .= ($short ? ' ' : ' is ').(Rule::OPERATOR_WORDS[$rule->operator] ?? $rule->operator).' '.($rule->threshold === null ? '…' : $metric->format($rule->threshold));
+
+            if (! $short && $metric->kind() === Metric::NUMBER) {
+                $text .= ' over '.(Rule::WINDOWS[$rule->window] ?? $rule->window.' seconds');
+            }
+        }
+
+        if (! $short && $rule->filter) {
+            $text .= ' · '.$rule->filter->describe();
+        }
+
+        if (! $short && $rule->mode === Rule::EACH && $metric->kind() !== Metric::EVENT) {
+            $text .= ' · each separately';
+        }
+
+        return $text;
+    }
+
+    /**
+     * The form's rule in one sentence, above Save.
+     */
+    protected function summary(): string
+    {
+        $rule = Rule::fromArray('form', $this->ruleData());
+        $labels = app(Channels::class)->configured();
+        $to = match (true) {
+            in_array(Rule::ALL_CHANNELS, $rule->channels, true) => $labels === [] ? null : 'every channel',
+            default => implode(', ', array_map(fn (string $channel) => $labels[$channel] ?? $channel, $rule->channels)) ?: null,
+        };
+        $what = $this->describe($rule);
+
+        if (app(Catalog::class)->find($rule->metric)?->kind() === Metric::EVENT) {
+            return ($to === null ? 'Shows each one here and in the bell' : "Sends each one to {$to}").": {$what}.";
+        }
+
+        return ($to === null ? 'Shows it here and in the bell' : "Sends to {$to}")." when {$what}.";
     }
 
     protected function preview(): string

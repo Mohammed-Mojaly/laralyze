@@ -13,6 +13,11 @@ final class Rule
 
     public const OPERATORS = ['>', '>=', '<', '<=', '=', '!='];
 
+    /**
+     * How the dashboard says each operator.
+     */
+    public const OPERATOR_WORDS = ['>' => 'above', '>=' => 'at least', '<' => 'below', '<=' => 'at most', '=' => 'exactly', '!=' => 'not'];
+
     public const TOGETHER = 'together';
 
     public const EACH = 'each';

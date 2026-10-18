@@ -27,6 +27,9 @@
     --lz-sql-value: #2f7a3e;
     --lz-accent: #0e7c86;
     --lz-accent-ink: #ffffff;
+    /* Primary buttons look the same in both themes. */
+    --lz-primary: #0e7c86;
+    --lz-primary-ink: #ffffff;
     --lz-dot: #e2e5e8;
 
     /* The sidebar is dark in both themes. */
@@ -3675,14 +3678,16 @@ body.lz-root {
     font-size: 13px;
 }
 
-.lz-button-primary {
-    border-color: var(--lz-accent);
-    background: var(--lz-accent);
-    color: var(--lz-accent-ink);
+/* .lz-root so it wins over the button reset's inherited colour. */
+.lz-root .lz-button-primary {
+    border-color: var(--lz-primary);
+    background: var(--lz-primary);
+    color: var(--lz-primary-ink);
+    font-weight: 600;
 }
 
-.lz-button-primary:hover {
-    color: var(--lz-accent-ink);
+.lz-root .lz-button-primary:hover {
+    color: var(--lz-primary-ink);
     filter: brightness(1.08);
 }
 
@@ -3759,9 +3764,9 @@ body.lz-root {
 
 .lz-rule-preview {
     margin: 0;
-    color: var(--lz-ink-2);
-    font-family: var(--lz-mono);
-    font-size: 13px;
+    color: var(--lz-accent);
+    font-size: 12px;
+    font-weight: 600;
 }
 
 .lz-rule-preview.is-loading {
@@ -3770,9 +3775,199 @@ body.lz-root {
 
 .lz-form {
     display: grid;
+    gap: 20px;
+    max-width: 720px;
+    padding: 20px;
+}
+
+.lz-step {
+    display: grid;
+    gap: 8px;
+}
+
+.lz-step-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: var(--lz-ink);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.lz-step-num {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--lz-accent) 16%, transparent);
+    color: var(--lz-accent);
+    font-size: 12px;
+}
+
+.lz-step > :not(.lz-step-title) {
+    margin-left: 30px;
+}
+
+.lz-sentence {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    color: var(--lz-ink-2);
+    font-size: 13px;
+}
+
+.lz-sentence select,
+.lz-sentence input {
+    min-height: 32px;
+    padding: 6px 10px;
+    border: 1px solid var(--lz-line-strong);
+    border-radius: 6px;
+    background: var(--lz-surface-2);
+    color: var(--lz-ink);
+    font: inherit;
+}
+
+.lz-sentence input {
+    width: 110px;
+}
+
+.lz-sentence select:focus,
+.lz-sentence input:focus {
+    border-color: var(--lz-accent);
+    outline: none;
+}
+
+.lz-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.lz-pill {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border: 1px solid var(--lz-line-strong);
+    border-radius: 999px;
+    color: var(--lz-ink-2);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.lz-pill input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.lz-pill:hover {
+    color: var(--lz-ink);
+}
+
+.lz-pill:has(input:checked) {
+    border-color: var(--lz-accent);
+    background: color-mix(in srgb, var(--lz-accent) 14%, transparent);
+    color: var(--lz-accent);
+}
+
+.lz-pill:has(input:checked)::before {
+    content: "✓";
+    margin-right: 6px;
+}
+
+.lz-pill:has(input:disabled) {
+    opacity: .45;
+    cursor: default;
+}
+
+.lz-pill:has(input:focus-visible) {
+    outline: 2px solid var(--lz-accent);
+    outline-offset: 2px;
+}
+
+.lz-more {
+    border-top: 1px solid var(--lz-line);
+    padding-top: 12px;
+}
+
+.lz-root .lz-more-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--lz-ink);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.lz-more-toggle .lz-muted {
+    font-weight: 400;
+}
+
+.lz-more-caret {
+    display: inline-block;
+    color: var(--lz-ink-3);
+    transition: transform .15s;
+}
+
+.lz-more-caret.is-open {
+    transform: rotate(90deg);
+}
+
+.lz-more-body {
+    display: grid;
     gap: 16px;
-    max-width: 760px;
-    padding: 16px;
+    padding-top: 16px;
+}
+
+.lz-form-foot {
+    display: grid;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--lz-line);
+}
+
+.lz-form-summary {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: var(--lz-surface-2);
+    color: var(--lz-ink);
+    font-size: 13px;
+}
+
+.lz-rules-intro {
+    margin: 0;
+    padding: 12px 16px 0;
+    color: var(--lz-ink-3);
+    font-size: 12px;
+}
+
+.lz-rule.is-off .lz-rule-name {
+    color: var(--lz-ink-2);
+}
+
+.lz-rule-name .lz-badge {
+    margin-left: 6px;
+    vertical-align: 1px;
+}
+
+.lz-button-icon {
+    justify-content: center;
+    min-width: 30px;
+    font-weight: 700;
+}
+
+.lz-root .lz-option-danger {
+    color: var(--lz-bad);
 }
 
 .lz-field {
@@ -4016,5 +4211,13 @@ body.lz-root {
         right: 16px;
         left: 16px;
         width: auto;
+    }
+
+    .lz-form {
+        padding: 16px;
+    }
+
+    .lz-step > :not(.lz-step-title) {
+        margin-left: 0;
     }
 }

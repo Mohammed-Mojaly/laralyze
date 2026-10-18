@@ -7,11 +7,14 @@ use Livewire\Livewire;
 use MohammedMojaly\Laralyze\Alerts\History;
 use MohammedMojaly\Laralyze\Alerts\Rule;
 use MohammedMojaly\Laralyze\Alerts\Rules;
+use MohammedMojaly\Laralyze\Contracts\Storage;
 use MohammedMojaly\Laralyze\Facades\Laralyze;
 
 beforeEach(function () {
     app()->detectEnvironment(fn () => 'local');
     config(['laralyze.alerts.slack' => 'https://hooks.slack.test/abc']);
+    // The page makes the default rules on its first visit; most tests start without them.
+    app(Storage::class)->put(Rules::SETUP, 'defaults', '1');
 });
 
 it('lists the Alerts page under Issues and shows each rule with its state', function () {
@@ -22,7 +25,7 @@ it('lists the Alerts page under Issues and shows each rule with its state', func
     Livewire::test('laralyze.alerts')
         ->assertSee('Failed jobs')
         ->assertSee('Jobs · Failed')
-        ->assertSee('>= 10')
+        ->assertSee('at least 10')
         ->assertSee('Slack');
 });
 
@@ -211,4 +214,28 @@ it('offers Unmute only while a mute lasts', function () {
 
     $rules->save($rule->with(['muted_until' => now()->getTimestamp() + 3_600]));
     Livewire::test('laralyze.alerts')->assertSee('Unmute');
+});
+
+it('shows the ready rules on the first visit, before the scheduler has run', function () {
+    app(Storage::class)->forget(Rules::SETUP, 'defaults');
+
+    Livewire::test('laralyze.alerts')
+        ->assertSee('Ready to turn on')
+        ->assertSee('Slow requests')
+        ->assertSee('Turn on');
+
+    expect(app(Rules::class)->count())->toBe(13);
+});
+
+it('names a rule after what it watches when the name is left empty', function () {
+    Livewire::test('laralyze.alerts')
+        ->call('create')
+        ->set('form.metric', 'jobs.failed')
+        ->set('form.operator', '>=')
+        ->set('form.threshold', '5')
+        ->assertSee('Sends to every channel when Jobs · Failed is at least 5 over 5 minutes.')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(collect(app(Rules::class)->all())->pluck('name'))->toContain('Jobs · Failed at least 5');
 });

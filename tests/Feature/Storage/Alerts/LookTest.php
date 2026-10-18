@@ -299,7 +299,7 @@ it('makes the default rules, sends what is pending, and pings the heartbeat', fu
 
     app(Alerts::class)->run();
 
-    expect(app(Rules::class)->all())->toHaveCount(8)
+    expect(app(Rules::class)->all())->toHaveCount(13)
         ->and(alertHistory()[0]['title'])->toBe('Failed jobs: 12 (>= 10)')
         ->and(alertHistory()[0]['deliveries']['slack']['status'])->toBe('sent');
 
@@ -312,7 +312,7 @@ it('never lets the heartbeat stop the check', function () {
 
     app(Alerts::class)->run();
 
-    expect(app(Rules::class)->all())->toHaveCount(8);
+    expect(app(Rules::class)->all())->toHaveCount(13);
 });
 
 it('runs every minute from the scheduler on one server, even without a channel', function () {
