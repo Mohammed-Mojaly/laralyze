@@ -7,6 +7,8 @@ use MohammedMojaly\Laralyze\Alerts\Rules;
 use MohammedMojaly\Laralyze\Alerts\States;
 
 it('saves, finds, lists by name and deletes rules with their states', function () {
+    // A slow store can cross a second between saving and asserting.
+    $this->freezeTime();
     $rules = app(Rules::class);
     $beta = $rules->save(Rule::fromArray('B1', ['name' => 'beta', 'metric' => 'jobs.failed']));
     $rules->save(Rule::fromArray('A1', ['name' => 'Alpha', 'metric' => 'jobs.failed']));
