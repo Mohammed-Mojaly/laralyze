@@ -2,7 +2,7 @@
 
 Laralyze is in `0.x`. Minor releases (`0.1` → `0.2`) may change things; patch releases (`0.1.1`) only fix them. Each breaking change is listed here with what to do.
 
-## v0.8.0 (unreleased)
+## v0.8.0 - 2026-10-19
 
 - **Alert rules on the dashboard.** A new Alerts page, under Issues, makes rules from what Laralyze already measures: exceptions, requests, jobs, queues, scheduled tasks, logs, AI, database health and servers. Each rule has one condition and at most one filter, all together or each item separately, and picks its channels. It's told once when it starts and once when it's back to normal, after two clean checks, with an optional reminder. The form shows the current value as you type. Rules can be turned off, muted and test-sent. Seven default rules come turned on, and six more come ready but off, to turn on as they are or edit first; they're there from the first visit to the page.
 - **History and a bell.** Every message is kept with how each channel took it. A failed channel is tried three times, then shows in the History tab and in the bell in the top bar, which also counts what's new since you last opened it.
