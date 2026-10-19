@@ -2,6 +2,15 @@
 
 Make rules on the dashboard's **Alerts** page. Each rule watches one thing Laralyze already measures, and tells your channels once when it starts and once when it's back to normal. Every message is kept in the History tab with how each channel took it, and the bell in the top bar shows the latest ones.
 
+## Getting started
+
+1. Set at least one channel in `.env` (see below). Without one, alerts are only kept on the page and in the bell.
+2. Make sure your scheduler runs (`* * * * * php artisan schedule:run` in cron, or `php artisan schedule:work`). Rules are checked from it.
+3. Open the Alerts page. The default rules are already on; the ones under "Ready to turn on" need one click.
+4. Use "Send a test" in a rule's ⋯ menu to see a message reach your channel.
+
+To make your own rule, press **New rule** and answer three things: what to watch, when to alert and where to send it.
+
 ## Channels
 
 Channels come from `.env`; the dashboard never asks for a URL or a token.
@@ -18,7 +27,23 @@ LARALYZE_ALERTS_WEBHOOK_SECRET=a-long-random-string
 
 Each mail address and each Telegram chat is a channel of its own, so a rule can pick some of them. A rule can also pick "every channel set in .env", which includes channels you add later.
 
-The webhook gets a JSON POST with the event, the rule, the title, the items, the note and a link. With a secret set, it also gets `X-Laralyze-Timestamp` and `X-Laralyze-Signature`, an HMAC-SHA256 of `{timestamp}.{body}`:
+The webhook gets a JSON POST:
+
+```json
+{
+    "event": "fired",
+    "rule": {"id": "01K8Z3...", "name": "Failed jobs"},
+    "title": "Failed jobs: App\\Jobs\\Import 12 (>= 10)",
+    "items": [{"item": "App\\Jobs\\Import", "value": "12"}],
+    "more": 0,
+    "text": "",
+    "note": "Check the import API first.",
+    "url": "https://example.com/laralyze/alerts?tab=history&rule=01K8Z3...",
+    "at": 1792368450
+}
+```
+
+`event` is `fired`, `recovered`, `reminder` or `test`. `items` lists up to 5 items and `more` counts the rest; `text` carries more detail when there is some. With a secret set, it also gets `X-Laralyze-Timestamp` and `X-Laralyze-Signature`, an HMAC-SHA256 of `{timestamp}.{body}`:
 
 ```php
 $expected = hash_hmac('sha256', $request->header('X-Laralyze-Timestamp').'.'.$request->getContent(), $secret);
@@ -29,18 +54,40 @@ abort_if(abs(time() - (int) $request->header('X-Laralyze-Timestamp')) > 300, 403
 
 ## Rules
 
-A rule is one metric, one condition and one filter at most. The form asks three things: what to watch, when to alert and where to send it; the rest is under "More options". A rule left without a name is named after what it watches.
+A rule is one metric, one condition and one filter at most. The form asks three things: what to watch, when to alert and where to send it; the rest is under "More options". A rule left without a name is named after what it watches, and a sentence above Save says what the rule will do.
 
-- **Watch:** exceptions, requests, jobs, queues, scheduled tasks, logs, AI, database health or servers. Only areas whose recorder is on are offered.
-- **Condition:** a threshold over 5 minutes, 15 minutes, an hour or a day. The form shows the current value as you type it.
-- **Only:** one dimension, like a route, a job class, a queue, a user or a model. Text filters compare without case.
+- **Watch:** one of the metrics below. Only areas whose recorder is on are offered.
+- **Condition:** above, at least, below, at most, exactly or not a threshold. Counts, durations and rates are taken over 5 minutes, 15 minutes, an hour or a day; a few are read as they are now. The form shows the current value as you type it.- **Only:** one dimension, like a route, a job class, a queue, a user or a model. Text filters compare without case.
 - **Several items:** "all together" checks everything the filter matches as one; for durations and percentages that's the highest item. "Each separately" gives each item its own state, and one message lists up to 5 of them.
 - **Remind** while it's firing: never (default), every hour, 6 hours or day.
 - **Title and note:** the title may use `{rule}`, `{item}`, `{value}` and `{threshold}`. The note goes with every message, e.g. what to check first.
 
+### What a rule can watch
+
+| Area | Metric | Condition | Only |
+| --- | --- | --- | --- |
+| Exceptions | New, or back after it was resolved | Each one, once | Exception class, message |
+| Exceptions | Occurrences | Over a window | Exception class |
+| Requests | Error rate (%) | Over a window, from 20 requests | Route |
+| Requests | 5xx responses, 4xx responses | Over a window | Route |
+| Requests | Duration p95 | Over a window | Route |
+| Jobs | Failed | Over a window | Job class |
+| Jobs | Duration p95 | Over a window | Job class |
+| Queues | Wait time | Over a window | Queue |
+| Queues | Waiting (jobs in the queue) | Now | Queue |
+| Scheduled tasks | Failed, Overdue | Each one, once | Task |
+| Logs | Entries | Over a window | Level, message |
+| AI | Cost, Tokens | Over a window | Model, agent, user |
+| AI | Failed calls | Over a window | Model, agent |
+| Database health | A problem | Each one, once | Connection, kind |
+| Servers | CPU, Memory (%) | Over a window | Server |
+| Servers | Disk (%), Stopped reporting (minutes) | Now | Server |
+
+AI metrics need laravel/ai. "Each one, once" rules have no threshold: each exception, failed or overdue task or database problem is told once.
+
 A rule fires when its condition is true, and is back to normal after two looks in a row where it's false. Too little data, like fewer than 20 requests for the error rate, counts as false, so missing data never fires anything. Exceptions, failed or overdue scheduled tasks and database problems are told once each, with no "back to normal".
 
-Rules can be turned off, muted for an hour, a day or until unmuted, and test-sent. Laralyze keeps up to 100 rules.
+Rules can be turned off, muted for an hour, a day or until unmuted, and test-sent. A muted rule isn't checked and sends nothing; when the mute ends it carries on where it was. Laralyze keeps up to 100 rules.
 
 ## Default rules
 
